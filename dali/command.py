@@ -21,11 +21,11 @@ class Command(object):
 
     """
     __metaclass__=CommandTracker
-    def __init__(self,a,b,config=False,query=False):
+    _isconfig=False
+    _isquery=False
+    def __init__(self,a,b):
         self.a=a
         self.b=b
-        self.config=config
-        self.query=query
     @classmethod
     def from_bytes(cls,command):
         """
@@ -37,6 +37,10 @@ class Command(object):
         for dc in cls._commands:
             r=dc.from_bytes(command)
             if r: return r
+        # At this point we can simply wrap the bytes we received.  We
+        # don't know what kind of command this is (config, query,
+        # etc.) so we're unlikely ever to want to transmit it!
+        return cls(*command)
     @property
     def command(self):
         """
@@ -52,16 +56,16 @@ class Command(object):
         take effect?)
 
         """
-        return self.config
+        return self._isconfig
     @property
     def is_query(self):
         """
         Does this command return a result?
 
         """
-        return self.query
+        return self._isquery
     def __unicode__(self):
-        return u"Command(%02x,%02x)"%(self.a,self.b)
+        return u"Command(0x%02x,0x%02x)"%(self.a,self.b)
 
 class ArcPower(Command):
     """
@@ -107,17 +111,8 @@ class GeneralCommand(Command):
     with a destination as defined in E.4.3.2 and which is not a direct
     arc power command.
 
-    Subclasses need to define or override four class attributes:
-    "_cmdval" is the command
-    "_isconfig" is True if this is a configuration command that must
-        be repeated twice within 100ms to take effect
-    "_isquery" is True if this is a query command that expects a response
-    "_hasparam" is True if we have a four-bit parameter
-
     """
     _cmdval=None
-    _isconfig=False
-    _isquery=False
     _hasparam=False
     def __init__(self,destination,*args):
         if self._cmdval is None: raise NotImplementedError
@@ -133,9 +128,12 @@ class GeneralCommand(Command):
                 raise ValueError("param must be in the range 0..15")
             self.param=param
         else:
+            if len(args)!=0:
+                raise TypeError(
+                    "%s.__init__() takes exactly 2 arguments (%d given)"%(
+                        self.__class__.__name__,len(args)+2))
             param=0
-        Command.__init__(self,destination.addrbyte|0x01,self._cmdval|param,
-                         self._isconfig,self._isquery)
+        Command.__init__(self,destination.addrbyte|0x01,self._cmdval|param)
         self.destination=destination
     @classmethod
     def from_bytes(cls,command):
@@ -152,6 +150,9 @@ class GeneralCommand(Command):
             return cls(addr,b&0x0f)
         return cls(addr)
     def __unicode__(self):
+        if self._hasparam:
+            return u"%s(%s,%s)"%(self.__class__.__name__,self.destination,
+                                 self.param)
         return u"%s(%s)"%(self.__class__.__name__,self.destination)
 
 class Off(GeneralCommand):
@@ -253,7 +254,7 @@ class OnAndStepUp(GeneralCommand):
     """
     _cmdval=0x08
 
-class GoToScene(Command):
+class GoToScene(GeneralCommand):
     """
     Set the actual arc power level to the value stored for the scene
     using the actual fade time.
