@@ -1,0 +1,7 @@
+This is intended to be a complete interface to the DALI protocol as
+defined in Annex E of IEC-60929 and (if I can get my hands on them!)
+the various parts of IEC-62386.
+
+At the moment the example code works with "daliserver" from
+https://github.com/onitake/daliserver but ought to be easy to adapt to
+work with other DALI interfaces.
