@@ -11,6 +11,30 @@ class CommandTracker(type):
         else:
             cls._commands.append(cls)
 
+class Response(object):
+    """
+    Some DALI commands cause a response from the addressed devices.
+    The response is either an 8-bit frame encoding 8-bit data or 0xff
+    for "Yes", or a lack of response encoding "No".
+
+    """
+    def __init__(self,val):
+        """
+        If there was no response, call with val=None.
+
+        """
+        self._value=val
+    @property
+    def value(self):
+        return self._value
+    def __unicode__(self):
+        return u"%s(%s)"%(self.__class__.__name__,self.value)
+
+class YesNoResponse(Response):
+    @property
+    def value(self):
+        return self._value!=None
+
 class Command(object):
     """
     A standard DALI command defined in IEC-60929 annex E.
@@ -23,6 +47,7 @@ class Command(object):
     __metaclass__=CommandTracker
     _isconfig=False
     _isquery=False
+    _response=None
     def __init__(self,a,b):
         self.a=a
         self.b=b
@@ -64,6 +89,13 @@ class Command(object):
 
         """
         return self._isquery
+    @property
+    def response(self):
+        """
+        If this command returns a result, use this class for the response.
+
+        """
+        return self._response
     def __unicode__(self):
         return u"Command(0x%02x,0x%02x)"%(self.a,self.b)
 
@@ -427,6 +459,53 @@ class QueryCommand(GeneralCommand):
 
     """
     _isquery=True
+    _response=Response
+
+class QueryStatusResponse(Response):
+    bits=["status","lamp failure","arc power on","limit error",
+          "fade ready","reset state","missing short address","power failure"]
+    @property
+    def status(self):
+        v=self._value
+        l=[]
+        for b in self.bits:
+            if v&0x01: l.append(b)
+            v=(v>>1)
+        return l
+    @property
+    def ballast_status(self):
+        return self._value&0x01!=0
+    @property
+    def lamp_failure(self):
+        return self._value&0x02!=0
+    @property
+    def lamp_arc_power_on(self):
+        return self._value&0x04!=0
+    @property
+    def limit_error(self):
+        return self._value&0x08!=0
+    @property
+    def fade_ready(self):
+        return self._value&0x10!=0
+    @property
+    def reset_state(self):
+        return self._value&0x20!=0
+    @property
+    def missing_short_address(self):
+        return self._value&0x40!=0
+    @property
+    def power_failure(self):
+        return self._value&0x80!=0
+    @property
+    def error(self):
+        """
+        Is the ballast in any kind of error state?
+        (Ballast not ok, lamp fail, missing short address)
+
+        """
+        return self._value&0x43!=0
+    def __unicode__(self):
+        return u",".join(self.status)
 
 class QueryStatus(QueryCommand):
     """
@@ -445,6 +524,7 @@ class QueryStatus(QueryCommand):
 
     """
     _cmdval=0x90
+    _response=QueryStatusResponse
 
 class QueryBallast(QueryCommand):
     """
@@ -452,6 +532,7 @@ class QueryBallast(QueryCommand):
 
     """
     _cmdval=0x91
+    _response=YesNoResponse
 
 class QueryLampFailure(QueryCommand):
     """
@@ -459,6 +540,7 @@ class QueryLampFailure(QueryCommand):
 
     """
     _cmdval=0x92
+    _response=YesNoResponse
 
 class QueryLampPowerOn(QueryCommand):
     """
@@ -466,6 +548,7 @@ class QueryLampPowerOn(QueryCommand):
 
     """
     _cmdval=0x93
+    _response=YesNoResponse
 
 class QueryLimitError(QueryCommand):
     """
@@ -475,6 +558,7 @@ class QueryLimitError(QueryCommand):
 
     """
     _cmdval=0x94
+    _response=YesNoResponse
 
 class QueryResetState(QueryCommand):
     """
@@ -482,6 +566,7 @@ class QueryResetState(QueryCommand):
 
     """
     _cmdval=0x95
+    _response=YesNoResponse
 
 class QueryMissingShortAddress(QueryCommand):
     """
@@ -490,6 +575,7 @@ class QueryMissingShortAddress(QueryCommand):
 
     """
     _cmdval=0x96
+    _response=YesNoResponse
 
 class QueryVersionNumber(QueryCommand):
     """
@@ -542,6 +628,7 @@ class QueryPowerFailure(QueryCommand):
 
     """
     _cmdval=0x9b
+    _response=YesNoResponse
 
 class QueryActualLevel(QueryCommand):
     """
@@ -579,6 +666,14 @@ class QueryFailureLevel(QueryCommand):
     """
     _cmdval=0xa4
 
+class QueryFadeTimeAndRateResponse(Response):
+    @property
+    def fade_time(self):
+        return self._value>>4
+    @property
+    def fade_rate(self):
+        return self._value&0x0f
+
 class QueryFadeTimeAndRate(QueryCommand):
     """
     Return the configured fade time and rate.
@@ -589,6 +684,7 @@ class QueryFadeTimeAndRate(QueryCommand):
 
     """
     _cmdval=0xa5
+    _response=QueryFadeTimeAndRateResponse
 
 class QuerySceneLevel(QueryCommand):
     """
