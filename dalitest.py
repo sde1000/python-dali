@@ -1,26 +1,10 @@
 import struct,socket
 from dali.address import *
 from dali.command import *
-
-def dalicmd(address,value):
-    """
-    Very hackily send a message to the lighting system.  Does not
-    check for errors.
-
-    """
-    message=struct.pack("BB",address,value)
-    try:
-        s=socket.create_connection(
-            ("icarus.haymakers.i.individualpubs.co.uk",55825))
-        s.send(message)
-        result=s.recv(2)
-        s.close()
-        return result
-    except:
-        pass
+from dali.interface import daliserver
 
 if __name__=="__main__":
+    haymakers=daliserver("icarus.haymakers.i.individualpubs.co.uk",55825)
     for addr in range(0,64):
-        r=dalicmd(*QueryStatus(Short(addr)).command)
-        print "%d: %s"%(addr,repr(r))
-#    dalicmd(*ArcPower(Broadcast(),254).command)
+        cmd=QueryDeviceType(Short(addr))
+        print "%d: %s"%(addr,unicode(haymakers.send(cmd)))

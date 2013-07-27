@@ -28,7 +28,7 @@ class Response(object):
     def value(self):
         return self._value
     def __unicode__(self):
-        return u"%s(%s)"%(self.__class__.__name__,self.value)
+        return unicode(self.value)
 
 class YesNoResponse(Response):
     @property
@@ -596,6 +596,18 @@ class QueryDtr(QueryCommand):
 
 QueryContentDtr=QueryDtr
 
+class QueryDeviceTypeResponse(Response):
+    _types={0: u"fluorescent lamp",
+            1: u"emergency lighting",
+            2: u"HID lamp",
+            3: u"low voltage halogen lamp",
+            4: u"incandescent lamp dimmer",
+            5: u"dc-controlled dimmer",
+            6: u"LED lamp"}
+    def __unicode__(self):
+        if self.value in self._types: return self._types[self.value]
+        return unicode(self.value)
+
 class QueryDeviceType(QueryCommand):
     """
     Return the device type.  Currently defined:
@@ -613,6 +625,7 @@ class QueryDeviceType(QueryCommand):
 
     """
     _cmdval=0x99
+    _response=QueryDeviceTypeResponse
 
 class QueryPhysicalMinimumLevel(QueryCommand):
     """
@@ -673,6 +686,8 @@ class QueryFadeTimeAndRateResponse(Response):
     @property
     def fade_rate(self):
         return self._value&0x0f
+    def __unicode__(self):
+        return u"Fade time: %s; Fade rate: %s"%(self.fade_time,self.fade_rate)
 
 class QueryFadeTimeAndRate(QueryCommand):
     """
