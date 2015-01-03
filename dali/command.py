@@ -58,6 +58,11 @@ class Command(object):
         command.  Returns None if there is no match.
 
         """
+        a,b=command
+        if not isinstance(a,int) or not isinstance(b,int) or \
+           a<0 or a>255 or b<0 or b>255:
+            raise ValueError("command must be a two-tuple (a,b) where a and b "
+                             "are integers in the range 0..255")
         if cls!=Command: return None
         for dc in cls._commands:
             r=dc.from_bytes(command)
@@ -748,25 +753,250 @@ class QueryRandomAddressL(QueryCommand):
     _cmdval=0xc4
 
 class SpecialCommand(Command):
-    """
-    Special commands are broadcast and are received by all devices.
+    """Special commands are broadcast and are received by all devices.
 
     """
-    pass
-
-class SetDtr(SpecialCommand):
-    """
-    This is a broadcast command to set the value of the DTR register."
-
-    """
-    def __init__(self,value):
-        if not isinstance(value,int):
-            raise ValueError("value must be an int")
-        if value<0 or value>255:
-            raise ValueError("value must be in range 0..255")
-        self.value=value
+    _hasparam=False
+    def __init__(self,*args):
+        if self._hasparam:
+            if len(args)!=1:
+                raise TypeError(
+                    "{}.__init__() takes exactly 2 arguments ({} given)".format(
+                        self.__class__.__name__,len(args)+1))
+            param=args[0]
+            if not isinstance(param,int):
+                raise ValueError("param must be an int")
+            if param<0 or param>255:
+                raise ValueError("param must be in range 0..255")
+            self.param=param
+        else:
+            if len(args)!=0:
+                raise TypeError(
+                    "{}.__init__() takes exactly 1 arguments ({} given)".format(
+                        self.__class__.__name__,len(args)+1))
+            param=0
+        self.param=param
     @property
     def command(self):
-        return (0xa3,self.value)
+        return (self._cmdval,self.param)
+    @classmethod
+    def from_bytes(cls,command):
+        if cls==SpecialCommand: return
+        a,b=command
+        if a==cls._cmdval:
+            if cls._hasparam:
+                return cls(b)
+            else:
+                if b==0: return cls()
+    def __unicode__(self):
+        if self._hasparam:
+            return u"{}({})".format(self.__class__.__name__,self.param)
+        return u"{}()".format(self.__class__.__name__)
+
+class ShortAddrSpecialCommand(SpecialCommand):
+    """A special command that has a short address as its parameter.
+
+    """
+    def __init__(self,address):
+        if not isinstance(address,int):
+            raise ValueError("address must be an integer")
+        if address<0 or address>63:
+            raise ValueError("address must be in the range 0..63")
+        self.address=address
+    @property
+    def command(self):
+        return (self._cmdval,(self.address<<1) | 1)
+    @classmethod
+    def from_bytes(cls,command):
+        if cls==ShortAddrSpecialCommand: return
+        a,b=command
+        if a==cls._cmdval:
+            if (b&0x81) == 0x01:
+                return cls(address=(b>>1))
+    def __unicode__(self):
+        return u"{}({})".format(self.__class__.__name__,self.address)
+
+class Terminate(SpecialCommand):
+    """All special mode processes shall be terminated.
+
+    """
+    _cmdval=0xa1
+
+class SetDtr(SpecialCommand):
+    """This is a broadcast command to set the value of the DTR register."
+
+    """
+    _cmdval=0xa3
+    _hasparam=True
+
+class Initialise(Command):
+    """This command shall start or re-trigger a timer for 15 minutes; the
+    addressing commands shall only be processed within this period.
+    All other commands shall still be processed during this period.
+
+    This time period shall be aborted with the "Terminate" command.
+
+    Ballasts shall react as follows:
+
+    * if broadcast is True then all ballasts shall react
+
+    * if broadcast is False and address is None then ballasts without
+      a short address shall react
+
+    * if broadcast is False and address is an integer 0..63 then
+      ballasts with the address supplied shall react
+
+    """
+    _isconfig=True
+    _cmdval=0xa5
+    def __init__(self,broadcast=False,address=None):
+        if broadcast and address is not None:
+            raise ValueError("can't specify address when broadcasting")
+        if address is not None:
+            if not isinstance(address,int):
+                raise ValueError("address must be an integer")
+            if address<0 or address>63:
+                raise ValueError("address must be in the range 0..63")
+        self.broadcast=broadcast
+        self.address=address
+    @property
+    def command(self):
+        if self.broadcast:
+            b=0
+        elif self.address is None:
+            b=0xff
+        else:
+            b=(self.address<<1) | 1
+        return (self._cmdval,b)
+    @classmethod
+    def from_bytes(cls,command):
+        a,b=command
+        if a==cls._cmdval:
+            if b==0: return cls(broadcast=True)
+            if b==0xff: return cls(address=None)
+            if (b&0x81) == 0x01:
+                return cls(address=(b>>1))
+    def __unicode__(self):
+        if self.broadcast:
+            return u"Initialise(broadcast=True)"
+        return u"Initialise(address={})".format(self.address)
+
+class Randomise(SpecialCommand):
+    """The ballast shall generate a new 24-bit random address.  The new
+    random address shall be available within a time period of 100ms.
+
+    """
+    _cmdval=0xa7
+    _isconfig=True
+
+class Compare(SpecialCommand):
+    """The ballast shall compare its 24-bit random address with the
+    combined search address stored in SearchAddrH, SearchAddrM and
+    SearchAddrL.  If its random address is smaller or equal to the
+    search address and the ballast is not withdrawn then the ballast
+    shall generate a query "YES".
+
+    """
+    _cmdval=0xa9
+    _isquery=True
+    _response=YesNoResponse
+
+class Withdraw(SpecialCommand):
+    """The ballast that has a 24-bit random address equal to the combined
+    search address stored in SearchAddrH, SearchAddrM and SearchAddrL
+    snall no longer respond to the compare command.  This ballast
+    shall not be excluded from the initialisation process.
+
+    """
+    _cmdval=0xab
+
+class SetSearchAddrH(SpecialCommand):
+    """Set the high 8 bits of the search address.
+
+    """
+    _cmdval=0xb1
+    _hasparam=True
+
+class SetSearchAddrM(SpecialCommand):
+    """Set the mid 8 bits of the search address.
+
+    """
+    _cmdval=0xb3
+    _hasparam=True
+
+class SetSearchAddrL(SpecialCommand):
+    """Set the low 8 bits of the search address.
+
+    """
+    _cmdval=0xb5
+    _hasparam=True
+
+class ProgramShortAddress(ShortAddrSpecialCommand):
+    """The ballast shall store the received 6-bit address as its short
+    address if it is selected.  It is selected if:
+
+    * the ballast's 24-bit random address is equal to the address in
+      SearchAddrH, SearchAddrM and SearchAddrL
+
+    * physical selection has been detected (the lamp is electrically
+      disconnected after reception of command PhysicalSelection())
+
+    """
+    _cmdval=0xb7
+
+class DeleteShortAddress(SpecialCommand):
+    """The ballast shall delete its short address if it is selected.
+    Selection criteria is as for ProgramShortAddress().
+
+    """
+    _cmdval=0xb7
+    @property
+    def command(self):
+        return (self._cmdval,0xff)
+    @classmethod
+    def from_bytes(cls,command):
+        a,b=command
+        if a==cls._cmdval and b==0xff:
+            return cls()
+    def __unicode__(self):
+        return u"DeleteShortAddress()"
+
+class VerifyShortAddress(ShortAddrSpecialCommand):
+    """The ballast shall give an answer "YES" if the received short
+    address is equal to its own short address.
+
+    """
+    _cmdval=0xb9
+    _isquery=True
+    _response=YesNoResponse
+
+class QueryShortAddress(SpecialCommand):
+    """The ballast shall send the short address if the random address is
+    the same as the search address or the ballast is physically
+    selected.  The answer will be in the format (address<<1)|1 if the
+    short address is programmed, or "MASK" (0xff) if there is no short
+    address stored.
+
+    """
+    _cmdval=0xbb
+    _isquery=True
+
+class PhysicalSelection(SpecialCommand):
+    """The ballast shall cancel its selection and shall set "Physical
+    Selection Mode".  In this mode the comparison of the random
+    address and search address shall be disabled; the ballast becomes
+    selected when its lamp is electrically disconnected.
+
+    """
+    _cmdval=0xbd
+
+class EnableDeviceType(SpecialCommand):
+    """This command shall be sent before an application extended command.
+    This command can be processed without the use of the Initialise()
+    command.  This command shall not be used for device type 0.
+
+    """
+    _cmdval=0xbf
+    _hasparam=True
 
 from_bytes=Command.from_bytes
