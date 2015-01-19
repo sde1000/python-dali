@@ -1068,9 +1068,15 @@ class SetDtr2(SpecialCommand):
 
 class EmergencyLightingCommand(GeneralCommand):
     _devicetype=1
+
+class EmergencyLightingControlCommand(EmergencyLightingCommand):
+    """An emergency lighting control command as defined in section
+    11.3.4.1 of IEC 62386-202:2009
+
+    """
     _isconfig=True
 
-class Rest(EmergencyLightingCommand):
+class Rest(EmergencyLightingControlCommand):
     """If this command is received when the control gear is in emergency
     mode then the lamp shall be extinguished.
 
@@ -1081,7 +1087,7 @@ class Rest(EmergencyLightingCommand):
     """
     _cmdval=0xe0
 
-class Inhibit(EmergencyLightingCommand):
+class Inhibit(EmergencyLightingControlCommand):
     """If the control gear is in normal mode on receipt of this command,
     bit 0 of the Emergency Status byte shall be set and the control
     gear shall go into inhibit mode.
@@ -1095,7 +1101,7 @@ class Inhibit(EmergencyLightingCommand):
     """
     _cmdval=0xe1
 
-class ReLightResetInhibit(EmergencyLightingCommand):
+class ReLightResetInhibit(EmergencyLightingControlCommand):
     """This command cancels the inhibit timer.  If the control gear is in
     rest mode and re-light in rest mode is supported then the control
     gear will enter emergency mode.
@@ -1103,7 +1109,7 @@ class ReLightResetInhibit(EmergencyLightingCommand):
     """
     _cmdval=0xe2
 
-class StartFunctionTest(EmergencyLightingCommand):
+class StartFunctionTest(EmergencyLightingControlCommand):
     """The control gear is requested to perform a function test.  A
     function test is a brief test of the operation of the lamp, the
     battery and the changeover circuit.
@@ -1118,7 +1124,7 @@ class StartFunctionTest(EmergencyLightingCommand):
     """
     _cmdval=0xe3
 
-class StartDurationTest(EmergencyLightingCommand):
+class StartDurationTest(EmergencyLightingControlCommand):
     """The control gear is requested to perform a duration test.  A
     duration test tests that the lamp can be operated for the rated
     duration from the battery.
@@ -1133,41 +1139,48 @@ class StartDurationTest(EmergencyLightingCommand):
     """
     _cmdval=0xe4
 
-class StopTest(EmergencyLightingCommand):
+class StopTest(EmergencyLightingControlControlCommand):
     """Any running tests are stopped and any pending tests are cancelled.
     Bits 4 and 5 of the Emergency Status byte will be cleared.
 
     """
     _cmdval=0xe5
 
-class ResetFunctionTestDoneFlag(EmergencyLightingCommand):
+class ResetFunctionTestDoneFlag(EmergencyLightingControlCommand):
     """The "function test done and result valid" flag (bit 1 of the
     Emergency Status byte) shall be cleared.
 
     """
     _cmdval=0xe6
 
-class ResetDurationTestDoneFlag(EmergencyLightingCommand):
+class ResetDurationTestDoneFlag(EmergencyLightingControlCommand):
     """The "duration test done and result valid" flag (bit 2 of the
     Emergency Status byte) shall be cleared.
 
     """
     _cmdval=0xe7
 
-class ResetLampTime(EmergencyLightingCommand):
+class ResetLampTime(EmergencyLightingControlCommand):
     """The lamp emergency time and lamp total operation time counters
     shall be reset.
 
     """
     _cmdval=0xe8
 
-class StoreDtrAsEmergencyLevel(EmergencyLightingCommand):
+class EmergencyLightingConfigCommand(EmergencyLightingCommand):
+    """An emergency lighting configuration command as defined in section
+    11.3.4.2 of IEC 62386-202:2009
+
+    """
+    _isconfig=True
+
+class StoreDtrAsEmergencyLevel(EmergencyLightingConfigCommand):
     """DTR0 shall be stored as the Emergency Level.
 
     """
     _cmdval=0xe9
 
-class StoreTestDelayTimeHighByte(EmergencyLightingCommand):
+class StoreTestDelayTimeHighByte(EmergencyLightingConfigCommand):
     """DTR0 shall be stored as the high byte of Test Delay Time.
 
     Test Delay Time is a 16-bit quantity in quarters of an hour.
@@ -1177,7 +1190,7 @@ class StoreTestDelayTimeHighByte(EmergencyLightingCommand):
     """
     _cmdval=0xea
 
-class StoreTestDelayTimeLowByte(EmergencyLightingCommand):
+class StoreTestDelayTimeLowByte(EmergencyLightingConfigCommand):
     """DTR0 shall be stored as the low byte of Test Delay Time.
 
     This command is ignored if automatic testing is not supported.
@@ -1185,7 +1198,7 @@ class StoreTestDelayTimeLowByte(EmergencyLightingCommand):
     """
     _cmdval=0xeb
 
-class StoreFunctionTestInterval(EmergencyLightingCommand):
+class StoreFunctionTestInterval(EmergencyLightingConfigCommand):
     """DTR0 shall be stored as the Function Test Interval.  This is the
     number of days (1..255) between automatic function tests.  0
     disables automatic function tests.
@@ -1195,7 +1208,7 @@ class StoreFunctionTestInterval(EmergencyLightingCommand):
     """
     _cmdval=0xec
 
-class StoreDurationTestInterval(EmergencyLightingCommand):
+class StoreDurationTestInterval(EmergencyLightingConfigCommand):
     """DTR0 shall be stored as the Duration Test Interval.  This is the
     number of weeks (1..97) between automatic duration tests.  0
     disables automatic duration tests.
@@ -1205,7 +1218,7 @@ class StoreDurationTestInterval(EmergencyLightingCommand):
     """
     _cmdval=0xed
 
-class StoreTestExecutionTimeout(EmergencyLightingCommand):
+class StoreTestExecutionTimeout(EmergencyLightingConfigCommand):
     """DTR0 shall be stored as the Test Execution Timeout.  This is
     defined in days (1..255).  A value of 0 means 15 minutes.
 
@@ -1217,7 +1230,7 @@ class StoreTestExecutionTimeout(EmergencyLightingCommand):
     """
     _cmdval=0xee
 
-class StoreProlongTime(EmergencyLightingCommand):
+class StoreProlongTime(EmergencyLightingConfigCommand):
     """DTR0 shall be stored as the Prolong Time.  This is defined in 30s
     units (0..255) and is used to determine the length of time the
     control gear will remain in emergency mode after mains power is
@@ -1226,7 +1239,7 @@ class StoreProlongTime(EmergencyLightingCommand):
     """
     _cmdval=0xef
 
-class StartIdentification(EmergencyLightingCommand):
+class StartIdentification(EmergencyLightingConfigCommand):
     """The control gear shall start or restart a ten-second procedure
     intended to enable the operator to identify it.
 
@@ -1234,6 +1247,10 @@ class StartIdentification(EmergencyLightingCommand):
     _cmdval=0xf0
 
 class EmergencyLightingQueryCommand(EmergencyLightingCommand):
+    """An emergency lighting query command as defined in section 11.3.4.3
+    of IEC 62386-202:2009
+
+    """
     _isquery=True
     _response=Response
 
@@ -1429,7 +1446,7 @@ class QueryEmergencyStatus(EmergencyLightingQueryCommand):
     _cmdval=0xfd
     _response=QueryEmergencyStatusResponse
 
-class PerformDtrSelectedFunction(EmergencyLightingCommand):
+class PerformDtrSelectedFunction(EmergencyLightingControlCommand):
     """Perform a function depending on the value in DTR0:
 
     0 - restore factory default settings
