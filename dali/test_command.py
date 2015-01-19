@@ -1,21 +1,28 @@
 from . import command,address
 import unittest
 
+# Only test device types up to this number - if we went all the way to
+# 255 the tests would take unnecessarily long!
+max_devicetype=10
+
 class TestCommands(unittest.TestCase):
     def test_roundtrip(self):
         "all two-byte sequences (a,b) survive command.from_bytes()"
-        for a in xrange(0,256):
-            for b in xrange(0,256):
-                ts=(a,b)
-                self.assertEqual(ts,command.from_bytes(ts).command)
+        for dt in xrange(0,max_devicetype):
+            for a in xrange(0,256):
+                for b in xrange(0,256):
+                    ts=(a,b)
+                    self.assertEqual(ts,command.from_bytes(ts,dt).command)
 
     def test_unicode(self):
         "command objects return unicode from their __unicode__ method"
-        for a in xrange(0,256):
-            for b in xrange(0,256):
-                ts=(a,b)
-                self.assertTrue(
-                    isinstance(command.from_bytes(ts).__unicode__(),unicode))
+        for dt in xrange(0,max_devicetype):
+            for a in xrange(0,256):
+                for b in xrange(0,256):
+                    ts=(a,b)
+                    self.assertTrue(
+                        isinstance(command.from_bytes(ts,dt).__unicode__(),
+                                   unicode))
 
     def test_bad_command(self):
         "command.from_bytes() rejects invalid inputs"

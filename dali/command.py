@@ -48,14 +48,18 @@ class Command(object):
     _isconfig=False
     _isquery=False
     _response=None
+    _devicetype=0
     def __init__(self,a,b):
         self.a=a
         self.b=b
     @classmethod
-    def from_bytes(cls,command):
-        """
-        Return a Command instance corresponding to the bytes in
+    def from_bytes(cls,command,devicetype=0):
+        """Return a Command instance corresponding to the bytes in
         command.  Returns None if there is no match.
+
+        If the device type the command is intended for is known
+        (i.e. the previous command was EnableDeviceType(foo)) then
+        specify it here.
 
         """
         a,b=command
@@ -65,6 +69,7 @@ class Command(object):
                              "are integers in the range 0..255")
         if cls!=Command: return None
         for dc in cls._commands:
+            if dc._devicetype!=devicetype: continue
             r=dc.from_bytes(command)
             if r: return r
         # At this point we can simply wrap the bytes we received.  We
@@ -1058,5 +1063,384 @@ class SetDtr2(SpecialCommand):
     """
     _cmdval=0xc5
     _hasparam=True
+
+# Application extended control commands for device type 1 (emergency lighting)
+
+class EmergencyLightingCommand(GeneralCommand):
+    _devicetype=1
+    _isconfig=True
+
+class Rest(EmergencyLightingCommand):
+    """If this command is received when the control gear is in emergency
+    mode then the lamp shall be extinguished.
+
+    Rest mode shall revert to normal mode in the event of restoration
+    of normal supply, or on receipt of command "ReLightResetInhibit"
+    if re-light in rest mode is supported.
+
+    """
+    _cmdval=0xe0
+
+class Inhibit(EmergencyLightingCommand):
+    """If the control gear is in normal mode on receipt of this command,
+    bit 0 of the Emergency Status byte shall be set and the control
+    gear shall go into inhibit mode.
+
+    In inhibit mode, a 15 minute timer starts.  Normal mode is resumed
+    on expiry of this timer, or on receipt of command
+    "ReLightResetInhibit".
+
+    If mains power is lost while in inhibit mode, rest mode will be entered.
+
+    """
+    _cmdval=0xe1
+
+class ReLightResetInhibit(EmergencyLightingCommand):
+    """This command cancels the inhibit timer.  If the control gear is in
+    rest mode and re-light in rest mode is supported then the control
+    gear will enter emergency mode.
+
+    """
+    _cmdval=0xe2
+
+class StartFunctionTest(EmergencyLightingCommand):
+    """The control gear is requested to perform a function test.  A
+    function test is a brief test of the operation of the lamp, the
+    battery and the changeover circuit.
+
+    If a function test is already in progress then this command is
+    ignored.
+
+    If the function test cannot be started immediately then it will be
+    set as pending until it can be performed.  Bit 4 of the Emergency
+    Status byte will be set.
+
+    """
+    _cmdval=0xe3
+
+class StartDurationTest(EmergencyLightingCommand):
+    """The control gear is requested to perform a duration test.  A
+    duration test tests that the lamp can be operated for the rated
+    duration from the battery.
+
+    If a duration test is already in progress then this command is
+    ignored.
+
+    If the duration test cannot be started immediately then it will be
+    set as pending until it can be performed.  Bit 5 of the Emergency
+    Status byte will be set.
+
+    """
+    _cmdval=0xe4
+
+class StopTest(EmergencyLightingCommand):
+    """Any running tests are stopped and any pending tests are cancelled.
+    Bits 4 and 5 of the Emergency Status byte will be cleared.
+
+    """
+    _cmdval=0xe5
+
+class ResetFunctionTestDoneFlag(EmergencyLightingCommand):
+    """The "function test done and result valid" flag (bit 1 of the
+    Emergency Status byte) shall be cleared.
+
+    """
+    _cmdval=0xe6
+
+class ResetDurationTestDoneFlag(EmergencyLightingCommand):
+    """The "duration test done and result valid" flag (bit 2 of the
+    Emergency Status byte) shall be cleared.
+
+    """
+    _cmdval=0xe7
+
+class ResetLampTime(EmergencyLightingCommand):
+    """The lamp emergency time and lamp total operation time counters
+    shall be reset.
+
+    """
+    _cmdval=0xe8
+
+class StoreDtrAsEmergencyLevel(EmergencyLightingCommand):
+    """DTR0 shall be stored as the Emergency Level.
+
+    """
+    _cmdval=0xe9
+
+class StoreTestDelayTimeHighByte(EmergencyLightingCommand):
+    """DTR0 shall be stored as the high byte of Test Delay Time.
+
+    Test Delay Time is a 16-bit quantity in quarters of an hour.
+
+    This command is ignored if automatic testing is not supported.
+
+    """
+    _cmdval=0xea
+
+class StoreTestDelayTimeLowByte(EmergencyLightingCommand):
+    """DTR0 shall be stored as the low byte of Test Delay Time.
+
+    This command is ignored if automatic testing is not supported.
+
+    """
+    _cmdval=0xeb
+
+class StoreFunctionTestInterval(EmergencyLightingCommand):
+    """DTR0 shall be stored as the Function Test Interval.  This is the
+    number of days (1..255) between automatic function tests.  0
+    disables automatic function tests.
+
+    This command is ignored if automatic testing is not supported.
+
+    """
+    _cmdval=0xec
+
+class StoreDurationTestInterval(EmergencyLightingCommand):
+    """DTR0 shall be stored as the Duration Test Interval.  This is the
+    number of weeks (1..97) between automatic duration tests.  0
+    disables automatic duration tests.
+
+    This command is ignored if automatic testing is not supported.
+
+    """
+    _cmdval=0xed
+
+class StoreTestExecutionTimeout(EmergencyLightingCommand):
+    """DTR0 shall be stored as the Test Execution Timeout.  This is
+    defined in days (1..255).  A value of 0 means 15 minutes.
+
+    The Test Execution Timeout period starts when a test becomes
+    pending.  If the period expires without the test being finished,
+    it shall be flagged as a failure in the Failure Status byte but
+    the test shall remain pending.
+
+    """
+    _cmdval=0xee
+
+class StoreProlongTime(EmergencyLightingCommand):
+    """DTR0 shall be stored as the Prolong Time.  This is defined in 30s
+    units (0..255) and is used to determine the length of time the
+    control gear will remain in emergency mode after mains power is
+    restored.
+
+    """
+    _cmdval=0xef
+
+class StartIdentification(EmergencyLightingCommand):
+    """The control gear shall start or restart a ten-second procedure
+    intended to enable the operator to identify it.
+
+    """
+    _cmdval=0xf0
+
+class EmergencyLightingQueryCommand(EmergencyLightingCommand):
+    _isquery=True
+    _response=Response
+
+class QueryBatteryCharge(EmergencyLightingQueryCommand):
+    """Query the actual battery charge level from 0 (the deep discharge
+    point) to 254 (fully charged).  255 (MASK) indicates the value is
+    unknown, possibly because the control gear has not performed a
+    successful duration test.
+
+    """
+    _cmdval=0xf1
+
+class QueryTestTiming(EmergencyLightingQueryCommand):
+    """The answer depends on the content of DTR0:
+
+    0 - time until the next function test in quarters of an hour (high byte)
+    1 - time until the next function test in quarters of an hour (low byte)
+    2 - time until the next duration test in quarters of an hour (high byte)
+    3 - time until the next duration test in quarters of an hour (low byte)
+    4 - function test interval time in days (or 0)
+    5 - duration test interval time in weeks (or 0)
+    6 - test execution timeout in days
+    7 - prolong time in 30s intervals
+
+    When the high byte of a 16-bit value is read, the low byte is
+    placed in DTR1 to enable atomic reads.  If automatic testing is
+    not supported then queries 0-3 will return 255 (MASK).
+
+    """
+    _cmdval=0xf2
+
+class QueryDurationTestResult(EmergencyLightingQueryCommand):
+    """Returns the duration test result in 120s (2min) units.  255 means
+    the maximum value or longer.
+
+    """
+    _cmdval=0xf3
+
+class QueryLampEmergencyTime(EmergencyLightingQueryCommand):
+    """Returns the accumulated lamp functioning time with the battery as
+    power source in hours.  255 means the maximum value or longer.
+
+    """
+    _cmdval=0xf4
+
+class QueryLampTotalOperationTime(EmergencyLightingQueryCommand):
+    """Returns the accumulated lamp total functioning time in 4-hour
+    units.  255 means the maximum value of 1016h or longer.
+
+    If the lamp is operated by another control device (for example
+    where the emercency lighting control device does not support
+    operating the lamp from the mains) this time may not include the
+    time the lamp is operated by the other control device.
+
+    """
+    _cmdval=0xf5
+
+class QueryEmergencyLevel(EmergencyLightingQueryCommand):
+    """Return the Emergency Level, or MASK (255) if it is unknown.
+
+    """
+    _cmdval=0xf6
+
+class QueryEmergencyMinLevel(EmergencyLightingQueryCommand):
+    """Return the Emergency Min Level, or MASK (255) if it is unknown.
+
+    """
+    _cmdval=0xf7
+
+class QueryEmergencyMaxLevel(EmergencyLightingQueryCommand):
+    """Return the Emergency Max Level, or MASK (255) if it is unknown.
+
+    """
+    _cmdval=0xf8
+
+class QueryRatedDuration(EmergencyLightingQueryCommand):
+    """Return the rated duration in units of 2min.  255 means 510 min or
+    longer.
+
+    """
+    _cmdval=0xf9
+
+class QueryEmergencyModeResponse(Response):
+    bits=["rest mode","normal mode","emergency mode","extended emergency mode",
+          "function test","duration test","hardwired inhibit active",
+          "hardwired switch on"]
+    @property
+    def status(self):
+        v=self._value
+        l=[]
+        for b in self.bits:
+            if v&0x01: l.append(b)
+            v=(v>>1)
+        return l
+    @property
+    def hardwired_inhibit(self):
+        return self._value&0x40!=0
+    @property
+    def hardwired_switch(self):
+        return self._value&0x80!=0
+    @property
+    def mode(self):
+        """Operating mode of the emergency control gear.  Only one of bits 0-5
+        should be set at once, but we support returning a sensible
+        response even when multiple bits are set.
+
+        """
+        v=self._value&0x3f
+        l=[]
+        for b in self.bits:
+            if v&0x01: l.append(b)
+            v=(v>>1)
+        return ",".join(l)
+    def __unicode__(self):
+        return u",".join(self.status)
+
+class QueryEmergencyMode(EmergencyLightingQueryCommand):
+    """Return the Emergency Mode Information byte.
+
+    """
+    _cmdval=0xfa
+    _response=QueryEmergencyModeResponse
+
+class QueryEmergencyFeaturesResponse(Response):
+    bits=["integral emergency control gear","maintained control gear",
+          "switched maintained control gear","auto test capability",
+          "adjustable emergency level","hardwired inhibit supported",
+          "physical selection supported","re-light in rest mode supported"]
+    @property
+    def auto_test_supported(self):
+        return self._value&0x08!=0
+    @property
+    def status(self):
+        v=self._value
+        l=[]
+        for b in self.bits:
+            if v&0x01: l.append(b)
+            v=(v>>1)
+        return l
+    def __unicode__(self):
+        return u",".join(self.status)
+
+class QueryEmergencyFeatures(EmergencyLightingQueryCommand):
+    """Return the Features information byte.
+
+    """
+    _cmdval=0xfb
+    _response=QueryEmergencyFeaturesResponse
+
+class QueryEmergencyFailureStatusResponse(Response):
+    bits=["circuit failure","battery duration failure","battery failure",
+          "emergency lamp failure","function test max delay exceeded",
+          "duration test max delay exceeded","function test failed",
+          "duration test failed"]
+    @property
+    def status(self):
+        v=self._value
+        l=[]
+        for b in self.bits:
+            if v&0x01: l.append(b)
+            v=(v>>1)
+        return l
+    def __unicode__(self):
+        return u",".join(self.status)
+
+class QueryEmergencyFailureStatus(EmergencyLightingQueryCommand):
+    """Return the Failure Status information byte.
+
+    """
+    _cmdval=0xfc
+    _response=QueryEmergencyFailureStatusResponse
+
+class QueryEmergencyStatusResponse(Response):
+    bits=["inhibit mode","function test done and result valid",
+          "duration test done and result valid","battery fully charged",
+          "function test pending","duration test pending","identification active",
+          "physically selected"]
+    @property
+    def status(self):
+        v=self._value
+        l=[]
+        for b in self.bits:
+            if v&0x01: l.append(b)
+            v=(v>>1)
+        return l
+    def __unicode__(self):
+        return u",".join(self.status)
+
+class QueryEmergencyStatus(EmergencyLightingQueryCommand):
+    """Return the Emergency Status information byte.
+
+    """
+    _cmdval=0xfd
+    _response=QueryEmergencyStatusResponse
+
+class PerformDtrSelectedFunction(EmergencyLightingCommand):
+    """Perform a function depending on the value in DTR0:
+
+    0 - restore factory default settings
+
+    """
+    _cmdval=0xfe
+
+class QueryExtendedVersionNumber(EmergencyLightingCommand):
+    """Returns 1.
+
+    """
+    _cmdval=0xff
 
 from_bytes=Command.from_bytes
