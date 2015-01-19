@@ -1139,7 +1139,7 @@ class StartDurationTest(EmergencyLightingControlCommand):
     """
     _cmdval=0xe4
 
-class StopTest(EmergencyLightingControlControlCommand):
+class StopTest(EmergencyLightingControlCommand):
     """Any running tests are stopped and any pending tests are cancelled.
     Bits 4 and 5 of the Emergency Status byte will be cleared.
 
