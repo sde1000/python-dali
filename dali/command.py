@@ -101,6 +101,18 @@ class Command(object):
 
         """
         return self._response
+    @staticmethod
+    def _check_destination(destination):
+        """destination can be a dali.device.Device object with _addressobj
+        attribute, a dali.address.Address object with addrbyte attribute,
+        or an integer which will be wrapped in a dali.address.Address object.
+
+        """
+        if hasattr(destination,"_addressobj"): destination=destination._addressobj
+        if isinstance(destination,int): destination=address.Short(destination)
+        if hasattr(destination,"addrbyte"): return destination
+        raise ValueError("destination must be an integer, dali.device.Device "
+                         "object or dali.address.Address object")
     def __unicode__(self):
         return u"Command(0x%02x,0x%02x)"%(self.a,self.b)
 
@@ -108,7 +120,7 @@ class ArcPower(Command):
     """
     A command to set the arc power level directly.
     
-    destination is a dali.address.Address object
+    destination is a dali.address.Address or dali.device.Device object
     power is either an integer in the range 0..255, or one of two
     special strings:
     
@@ -126,9 +138,9 @@ class ArcPower(Command):
             raise ValueError("power must be an integer or string")
         if power<0 or power>255:
             raise ValueError("power must be in the range 0..255")
-        self.destination=destination
+        self.destination=self._check_destination(destination)
         self.power=power
-        Command.__init__(self,destination.addrbyte,power)
+        Command.__init__(self,self.destination.addrbyte,power)
     @classmethod
     def from_bytes(cls,command):
         a,b=command
@@ -170,8 +182,8 @@ class GeneralCommand(Command):
                     "%s.__init__() takes exactly 2 arguments (%d given)"%(
                         self.__class__.__name__,len(args)+2))
             param=0
-        Command.__init__(self,destination.addrbyte|0x01,self._cmdval|param)
-        self.destination=destination
+        self.destination=self._check_destination(destination)
+        Command.__init__(self,self.destination.addrbyte|0x01,self._cmdval|param)
     @classmethod
     def from_bytes(cls,command):
         if cls==GeneralCommand: return

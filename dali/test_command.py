@@ -1,4 +1,4 @@
-from . import command
+from . import command,address
 import unittest
 
 class TestCommands(unittest.TestCase):
@@ -25,6 +25,14 @@ class TestCommands(unittest.TestCase):
         self.assertRaises(ValueError,command.from_bytes,(0,256))
         self.assertRaises(ValueError,command.from_bytes,(-1,0))
         self.assertRaises(ValueError,command.from_bytes,(0,-1))
+
+    def test_with_integer_destination(self):
+        "commands accept integer destination"
+        self.assertEqual(command.ArcPower(5,100).destination,address.Short(5))
+        self.assertEqual(command.Off(5).destination,address.Short(5))
+        self.assertRaises(ValueError,command.Off,-1)
+        self.assertRaises(ValueError,command.Off,64)
+        self.assertRaises(ValueError,command.Off,None)
 
 if __name__=="__main__":
     unittest.main()
