@@ -1043,7 +1043,7 @@ class EnableDeviceType(SpecialCommand):
     command.  This command shall not be used for device type 0.
 
     """
-    _cmdval=0xbf
+    _cmdval=0xc1
     _hasparam=True
 
 class SetDtr1(SpecialCommand):
