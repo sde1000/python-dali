@@ -38,8 +38,7 @@ class Address(object):
         return u"<no address>"
 
 class Broadcast(Address):
-    """
-    All ballasts connected to the network.
+    """All control gear connected to the network.
 
     """
     @property
@@ -56,6 +55,24 @@ class Broadcast(Address):
         return isinstance(other,Broadcast)
     def __unicode__(self):
         return u"<broadcast>"
+
+class BroadcastUnaddressed(Address):
+    """All control devices in the system that have no short address.
+
+    """
+    @property
+    def addrbyte(self):
+        """The DALI address byte for broadcasts to unaddressed devices.
+
+        """
+        return 0xfc
+    @classmethod
+    def from_byte(cls,a):
+        if a==0xfc or a==0xfd: return cls()
+    def __eq__(self,other):
+        return isinstance(other,BroadcastUnaddressed)
+    def __unicode__(self):
+        return u"<broadcast unaddressed>"
 
 class Group(Address):
     """
