@@ -52,6 +52,8 @@ class Broadcast(Address):
     @classmethod
     def from_byte(cls,a):
         if a==0xfe or a==0xff: return cls()
+    def __eq__(self,other):
+        return isinstance(other,Broadcast)
     def __unicode__(self):
         return u"<broadcast>"
 
@@ -77,6 +79,8 @@ class Group(Address):
     def from_byte(cls,a):
         if (a&0xe0)==0x80:
             return cls((a&0x1e)>>1)
+    def __eq__(self,other):
+        return isinstance(other,Group) and other.group==self.group
     def __unicode__(self):
         return u"<group %d>"%self.group
 
@@ -105,6 +109,8 @@ class Short(Address):
     def from_byte(cls,a):
         if (a&0x80)==0x00:
             return cls((a&0x7e)>>1)
+    def __eq__(self,other):
+        return isinstance(other,Short) and other.address==self.address
     def __unicode__(self):
         return u"<address %d>"%self.address
 
