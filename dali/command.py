@@ -660,6 +660,26 @@ class QueryPowerFailure(QueryCommand):
     _cmdval=0x9b
     _response=YesNoResponse
 
+class QueryDtr1(QueryCommand):
+    """Return the contents of DTR1.
+
+    NB not checked against IEC 62386
+
+    """
+    _cmdval=0x9c
+
+QueryContentDtr1=QueryDtr1
+
+class QueryDtr2(QueryCommand):
+    """Return the contents of DTR2.
+
+    NB not checked against IEC 62386
+
+    """
+    _cmdval=0x9d
+
+QueryContentDtr2=QueryDtr2
+
 class QueryActualLevel(QueryCommand):
     """
     Return the current actual power level.  During preheating and if a
@@ -764,6 +784,16 @@ class QueryRandomAddressL(QueryCommand):
     """
     _cmdval=0xc4
 
+class ReadMemoryLocation(QueryCommand):
+    """Read a byte from memory.  The bank is specified in DTR1.  The
+    offset in the bank is specified in DTR.  The byte is returned as
+    the response.  DTR is incremented.  Another byte is read into DTR2.
+
+    NB not checked with IEC 62386
+
+    """
+    _cmdval=0xc5
+
 class SpecialCommand(Command):
     """Special commands are broadcast and are received by all devices.
 
@@ -835,7 +865,7 @@ class Terminate(SpecialCommand):
     _cmdval=0xa1
 
 class SetDtr(SpecialCommand):
-    """This is a broadcast command to set the value of the DTR register."
+    """This is a broadcast command to set the value of the DTR register.
 
     """
     _cmdval=0xa3
@@ -1009,6 +1039,24 @@ class EnableDeviceType(SpecialCommand):
 
     """
     _cmdval=0xbf
+    _hasparam=True
+
+class SetDtr1(SpecialCommand):
+    """This is a broadcast command to set the value of the DTR1 register.
+
+    NB not checked against IEC 62386 yet
+
+    """
+    _cmdval=0xc3
+    _hasparam=True
+
+class SetDtr2(SpecialCommand):
+    """This is a broadcast command to set the value of the DTR2 register.
+
+    NB not checked against IEC 62386 yet
+
+    """
+    _cmdval=0xc5
     _hasparam=True
 
 from_bytes=Command.from_bytes
