@@ -1,10 +1,25 @@
-import struct,socket
+#!/usr/bin/env python
+
 from dali.address import *
 from dali.command import *
 from dali.interface import daliserver
 
 if __name__=="__main__":
-    haymakers=daliserver("icarus.haymakers.i.individualpubs.co.uk",55825)
+    d=daliserver("localhost",55825)
     for addr in range(0,64):
         cmd=QueryDeviceType(Short(addr))
-        print "%d: %s"%(addr,unicode(haymakers.send(cmd)))
+        r=d.send(cmd)
+        print "%d: %s"%(addr,unicode(r))
+        if r.value==1:
+            d.send(EnableDeviceType(1))
+            r=d.send(QueryEmergencyMode(Short(addr)))
+            print " -- {}".format(unicode(r))
+            d.send(EnableDeviceType(1))
+            r=d.send(QueryEmergencyFeatures(Short(addr)))
+            print " -- {}".format(unicode(r))
+            d.send(EnableDeviceType(1))
+            r=d.send(QueryEmergencyFailureStatus(Short(addr)))
+            print " -- {}".format(unicode(r))
+            d.send(EnableDeviceType(1))
+            r=d.send(QueryEmergencyStatus(Short(addr)))
+            print " -- {}".format(unicode(r))
