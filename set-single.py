@@ -1,11 +1,13 @@
+#!/usr/bin/env python
+
 import struct,socket,sys
 from dali.address import *
 from dali.command import *
 from dali.interface import daliserver
 
 if __name__=="__main__":
-    addr=int(sys.argv[1])
+    addr=Short(int(sys.argv[1])) if sys.argv[1]!="all" else Broadcast()
     level=int(sys.argv[2])
-    haymakers=daliserver("icarus.haymakers.i.individualpubs.co.uk",55825)
-    cmd=ArcPower(Short(addr),level)
-    haymakers.send(cmd)
+    d=daliserver("localhost",55825)
+    cmd=ArcPower(addr,level)
+    d.send(cmd)

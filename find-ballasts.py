@@ -50,9 +50,8 @@ def find_ballasts(interface):
     return ballasts
 
 if __name__=="__main__":
-    haymakers=daliserver("icarus.haymakers.i.individualpubs.co.uk",55825,
-                         verbose=True)
+    d=daliserver("localhost",55825,verbose=True)
 
-    ballasts=find_ballasts(haymakers)
+    ballasts=find_ballasts(d)
     print("{} ballasts found:".format(len(ballasts)))
     print(ballasts)
