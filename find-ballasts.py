@@ -10,11 +10,10 @@ def set_search_addr(i,addr):
     i.send(SetSearchAddrM((addr>>8)&0xff))
     i.send(SetSearchAddrL(addr&0xff))
 
-def search_range(i,low,high,ballasts):
-    """Search a range of random addresses from low to high inclusive for
-    previously undiscovered ballasts.  There must be no previously
-    undiscovered ballasts with addresses lower than "low" when this
-    function is called.
+def find_next(i,low,high):
+    """Find the ballast with the lowest random address.  The caller
+    guarantees that there are no ballasts with an address lower than
+    'low'.
 
     """
     print("Searching from {} to {}...".format(low,high))
@@ -24,16 +23,13 @@ def search_range(i,low,high,ballasts):
         if response.value==True:
             print("Found ballast at {}; withdrawing it...".format(low))
             i.send(Withdraw())
-            ballasts.append(low)
-        return
-    # See if there are any ballasts between low and high
+            return low
+        return None
     set_search_addr(i,high)
     response=i.send(Compare())
     if response.value==True:
-        # There are.  Search each half of the range separately.
         midpoint=(low+high)/2
-        search_range(i,low,midpoint,ballasts)
-        search_range(i,midpoint+1,high,ballasts)
+        return find_next(i,low,midpoint) or find_next(i,midpoint+1,high)
 
 def find_ballasts(interface):
     i=interface
@@ -44,7 +40,13 @@ def find_ballasts(interface):
     i.send(Randomise())
     time.sleep(0.1) # Randomise may take up to 100ms
 
-    search_range(i,0,0xffffff,ballasts)
+    low=0
+    high=0xffffff
+    while low is not None:
+        low=find_next(i,low,high)
+        if low is not None:
+            ballasts.append(low)
+            low=low+1
 
     i.send(Terminate())
     return ballasts
