@@ -1,0 +1,13 @@
+Source: python-dali
+Section: python
+X-Python-Version: >= 2.7
+Priority: optional
+Maintainer: Stephen Early <steve@greenend.org.uk>
+Build-Depends: debhelper (>= 5), python2.7
+Standards-Version: 3.7.2
+
+Package: python-dali
+Architecture: all
+Depends: ${python:Depends}
+Description: IEC 62386 (DALI) lighting control library
+ A python interface to DALI lighting systems.

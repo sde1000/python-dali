@@ -1,0 +1,122 @@
+#!/bin/bash
+
+# How to use this script:
+# 1) Make sure that the git index is what you want to release
+# 2) Edit setup.py in the working copy to set the new version number
+# 3) Run this script
+# 4) If the generated package is ok, copy and paste the commands output
+#    by this script in order to commit the new setup.py and changelog
+#    and build the source distribution archive
+
+set -e
+
+# Defaults
+packagename=python-dali
+distribution=unstable
+urgency=low
+tmpdir=release-tmp
+
+usage="make-release [ -p packagename ] [ -d distribution ]
+             [ -u urgency ] [ -t tmpdir ] [ -r ] [-s ]"
+
+rerelease=no
+skiptests=no
+
+while getopts "p:d:u:t:hrs" options; do
+  case $options in
+    p ) packagename=$OPTARG;;
+    d ) distribution=$OPTARG;;
+    u ) urgency=$OPTARG;;
+    t ) tmpdir=$OPTARG;;
+    h ) echo "$usage" ; exit;;
+    r ) echo "Re-release: skipping version number and changelog update"
+	rerelease=yes;;
+    s ) echo "Skipping package tests"
+	skiptests=yes;;
+    \? ) echo "$usage"
+         exit 1;;
+    * ) echo "$usage"
+          exit 1;;
+  esac
+done
+
+
+# Find the new version number.
+
+newversion=$(./setup.py -V)
+echo "New version: ${newversion}"
+
+# Find the previous version number
+
+rm -rf ${tmpdir}
+mkdir ${tmpdir}
+pkgdir=${tmpdir}/${packagename}-${newversion}
+git checkout-index -a --prefix=${pkgdir}/
+
+releasedate="$(date -R)"
+version="${newversion} (${releasedate})"
+
+# Put the version number in the version.py file
+echo "version=u\"${version}\"" >${pkgdir}/dali/version.py
+
+if [ "${rerelease}" = "yes" ]; then
+  (cd ${pkgdir} ; dpkg-buildpackage -rfakeroot -us -uc)
+  echo "Rebuilt package is in ${tmpdir}"
+  exit 0
+fi
+
+oldversion=$(dpkg-parsechangelog -l${pkgdir}/debian/changelog | grep Version: | sed 's/Version: //')
+echo "Previous version: ${oldversion}"
+
+if [ "${oldversion}" = "${newversion}" ]; then
+  echo Versions are the same!  Have you forgotten to update setup.py?
+  echo If you are rebuilding the current release, use the -r option
+  exit 1
+fi
+
+# Construct a changelog entry with the new version number
+
+mv ${pkgdir}/debian/changelog ${pkgdir}/debian/changelog.old
+
+echo -e "${packagename} (${newversion}) ${distribution}; urgency=${urgency}\n" >${pkgdir}/debian/changelog
+echo -e "  * New release ${newversion}\n" >>${pkgdir}/debian/changelog
+git log '--pretty=format:  * %s%n' v${oldversion}.. -- >>${pkgdir}/debian/changelog
+echo -e "\n -- $(git config --get user.name) <$(git config --get user.email)>  ${releasedate}\n">>${pkgdir}/debian/changelog
+cat ${pkgdir}/debian/changelog.old >>${pkgdir}/debian/changelog
+rm ${pkgdir}/debian/changelog.old
+
+# Copy the working tree setup.py into the temporary tree - it has
+# the version number that we want to use for the generated package.
+
+cp setup.py ${pkgdir}/setup.py
+
+# Run tests
+if [ "${skiptests}" = "no" ]; then
+  (cd ${pkgdir} ; python -m unittest discover)
+fi
+
+# Build the Debian package files
+
+(cd ${pkgdir} ; dpkg-buildpackage -rfakeroot -us -uc)
+
+# If we reach this point, we should have Debian packages built in ${tmpdir}
+
+# Copy the changelog back to the working tree and add it to the index
+
+cp ${pkgdir}/debian/changelog debian/changelog
+
+echo "debian/changelog updated, but not yet added to the index."
+dpkg-parsechangelog
+
+cat <<EOF
+
+You can commit this release by pasting the following commands:
+
+git add setup.py debian/changelog
+git commit -m "${packagename} ${newversion}"
+git tag -a -m "Version ${newversion}" v${newversion}
+
+The following files should be put in the "incoming" directory:
+cp ${tmpdir}/python-dali_* ~packages/incoming/
+
+EOF
