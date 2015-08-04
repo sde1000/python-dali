@@ -26,7 +26,8 @@ class Address(object):
         byte is for a special command.
         
         """
-        if cls != Address: return
+        if cls != Address:
+            return
         for at in cls._addrtypes:
             r = at.from_byte(a)
             if r: return r

@@ -3,10 +3,11 @@
 # import logger
 
 from dali.address import *
-from dali.command import *
+from dali.commands import *
 from dali.interface import daliserver
 
 if __name__ == "__main__":
+
     d = daliserver("localhost", 55825)
 
     for addr in range(0, 64):

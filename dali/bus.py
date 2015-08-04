@@ -90,7 +90,8 @@ class Bus(object):
         """
         i = self.get_interface()
         for sa in xrange(0, 64):
-            if sa in self._devices: continue
+            if sa in self._devices:
+                continue
             response = i.send(
                 command.QueryBallast(address.Short(sa)))
             if response.value:

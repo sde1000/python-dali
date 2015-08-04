@@ -2,7 +2,7 @@
 
 import struct, socket, sys
 from dali.address import *
-from dali.command import *
+from dali.commands import *
 from dali.interface import daliserver
 
 if __name__ == "__main__":
