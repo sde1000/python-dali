@@ -2,122 +2,10 @@
 Definition of known dali commands
 """
 
-from .command import Command
+from .command import GeneralCommand
+from .command import ConfigCommand
 from .command import Response
 from .command import YesNoResponse
-
-
-class ArcPower(Command):
-    """
-    A command to set the arc power level directly.
-    
-    destination is a dali.address.Address or dali.device.Device object
-    power is either an integer in the range 0..255, or one of two
-    special strings:
-    
-    "OFF" sets the ballast off (same as power level 0)
-    "MASK" stops any fade in progress (same as power level 255)
-    
-    The lamp will fade to the specified power according to its
-    programmed fade time.  The MAX LEVEL and MIN LEVEL settings will
-    be respected.
-    """
-
-    def __init__(self, destination, power):
-        if power == "OFF":
-            power = 0
-        if power == "MASK":
-            power = 255
-        if not isinstance(power, int):
-            raise ValueError("power must be an integer or string")
-        if power < 0 or power > 255:
-            raise ValueError("power must be in the range 0..255")
-        self.destination = self._check_destination(destination)
-        self.power = power
-        Command.__init__(self, self.destination.addrbyte, power)
-
-    @classmethod
-    def from_bytes(cls, command):
-        a, b = command
-        if a & 0x01:
-            return
-        addr = address.from_byte(a)
-        if addr is None:
-            return
-        return cls(addr, b)
-
-    def __unicode__(self):
-        if self.power == 0:
-            power = "OFF"
-        elif self.power == 255:
-            power = "MASK"
-        else:
-            power = self.power
-        return u"ArcPower(%s,%s)" % (self.destination, power)
-
-
-class GeneralCommand(Command):
-    """
-    A command addressed to broadcast, short address or group, i.e. one
-    with a destination as defined in E.4.3.2 and which is not a direct
-    arc power command.
-
-    """
-    _cmdval = None
-    _hasparam = False
-
-    def __init__(self, destination, *args):
-        if self._cmdval is None:
-            raise NotImplementedError
-        if self._hasparam:
-            if len(args) != 1:
-                raise TypeError(
-                    "%s.__init__() takes exactly 3 arguments (%d given)" % (
-                        self.__class__.__name__, len(args) + 2))
-            param = args[0]
-            if not isinstance(param, int):
-                raise ValueError("param must be an integer")
-            if param < 0 or param > 15:
-                raise ValueError("param must be in the range 0..15")
-            self.param = param
-        else:
-            if len(args) != 0:
-                raise TypeError(
-                    "%s.__init__() takes exactly 2 arguments (%d given)" % (
-                        self.__class__.__name__, len(args) + 2))
-            param = 0
-        self.destination = self._check_destination(destination)
-        Command.__init__(self, self.destination.addrbyte | 0x01, self._cmdval | param)
-
-    @classmethod
-    def from_bytes(cls, command):
-        if cls == GeneralCommand:
-            return
-        a, b = command
-
-        if a & 0x01 == 0:
-            return
-
-        if cls._hasparam:
-            if b & 0xf0 != cls._cmdval:
-                return
-        else:
-            if b != cls._cmdval:
-                return
-
-        addr = address.from_byte(a)
-
-        if addr is None:
-            return
-        if cls._hasparam:
-            return cls(addr, b & 0x0f)
-        return cls(addr)
-
-    def __unicode__(self):
-        if self._hasparam:
-            return u"%s(%s,%s)" % (self.__class__.__name__, self.destination,
-                                   self.param)
-        return u"%s(%s)" % (self.__class__.__name__, self.destination)
 
 
 class Off(GeneralCommand):
@@ -245,16 +133,6 @@ class GoToScene(GeneralCommand):
     """
     _cmdval = 0x10
     _hasparam = True
-
-
-class ConfigCommand(GeneralCommand):
-    """
-    Configuration commands must be transmitted twice within 100ms,
-    with no other commands addressing the same ballast being
-    transmitted in between.
-
-    """
-    _isconfig = True
 
 
 class Reset(ConfigCommand):
