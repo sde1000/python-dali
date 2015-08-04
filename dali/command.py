@@ -1,15 +1,18 @@
 from . import address
 
+
 class CommandTracker(type):
     """
     Metaclass keeping track of all the types of Command we understand.
 
     """
-    def __init__(cls,name,bases,attrs):
-        if not hasattr(cls,'_commands'):
-            cls._commands=[]
+
+    def __init__(cls, name, bases, attrs):
+        if not hasattr(cls, '_commands'):
+            cls._commands = []
         else:
             cls._commands.append(cls)
+
 
 class Response(object):
     """
@@ -18,22 +21,27 @@ class Response(object):
     for "Yes", or a lack of response encoding "No".
 
     """
-    def __init__(self,val):
+
+    def __init__(self, val):
         """
         If there was no response, call with val=None.
 
         """
-        self._value=val
+        self._value = val
+
     @property
     def value(self):
         return self._value
+
     def __unicode__(self):
         return unicode(self.value)
+
 
 class YesNoResponse(Response):
     @property
     def value(self):
-        return self._value!=None
+        return self._value != None
+
 
 class Command(object):
     """
@@ -44,16 +52,18 @@ class Command(object):
     corresponding to that command, or "None" if there is no match.
 
     """
-    __metaclass__=CommandTracker
-    _isconfig=False
-    _isquery=False
-    _response=None
-    _devicetype=0
-    def __init__(self,a,b):
-        self.a=a
-        self.b=b
+    __metaclass__ = CommandTracker
+    _isconfig = False
+    _isquery = False
+    _response = None
+    _devicetype = 0
+
+    def __init__(self, a, b):
+        self.a = a
+        self.b = b
+
     @classmethod
-    def from_bytes(cls,command,devicetype=0):
+    def from_bytes(cls, command, devicetype=0):
         """Return a Command instance corresponding to the bytes in
         command.  Returns None if there is no match.
 
@@ -62,20 +72,21 @@ class Command(object):
         specify it here.
 
         """
-        a,b=command
-        if not isinstance(a,int) or not isinstance(b,int) or \
-           a<0 or a>255 or b<0 or b>255:
+        a, b = command
+        if not isinstance(a, int) or not isinstance(b, int) or \
+                        a < 0 or a > 255 or b < 0 or b > 255:
             raise ValueError("command must be a two-tuple (a,b) where a and b "
                              "are integers in the range 0..255")
-        if cls!=Command: return None
+        if cls != Command: return None
         for dc in cls._commands:
-            if dc._devicetype!=devicetype: continue
-            r=dc.from_bytes(command)
+            if dc._devicetype != devicetype: continue
+            r = dc.from_bytes(command)
             if r: return r
         # At this point we can simply wrap the bytes we received.  We
         # don't know what kind of command this is (config, query,
         # etc.) so we're unlikely ever to want to transmit it!
         return cls(*command)
+
     @property
     def command(self):
         """
@@ -83,7 +94,8 @@ class Command(object):
         command, as a two-tuple of integers.
 
         """
-        return (self.a,self.b)
+        return (self.a, self.b)
+
     @property
     def is_config(self):
         """
@@ -92,6 +104,7 @@ class Command(object):
 
         """
         return self._isconfig
+
     @property
     def is_query(self):
         """
@@ -99,6 +112,7 @@ class Command(object):
 
         """
         return self._isquery
+
     @property
     def response(self):
         """
@@ -106,6 +120,7 @@ class Command(object):
 
         """
         return self._response
+
     @staticmethod
     def _check_destination(destination):
         """destination can be a dali.device.Device object with _addressobj
@@ -113,13 +128,15 @@ class Command(object):
         or an integer which will be wrapped in a dali.address.Address object.
 
         """
-        if hasattr(destination,"_addressobj"): destination=destination._addressobj
-        if isinstance(destination,int): destination=address.Short(destination)
-        if hasattr(destination,"addrbyte"): return destination
+        if hasattr(destination, "_addressobj"): destination = destination._addressobj
+        if isinstance(destination, int): destination = address.Short(destination)
+        if hasattr(destination, "addrbyte"): return destination
         raise ValueError("destination must be an integer, dali.device.Device "
                          "object or dali.address.Address object")
+
     def __unicode__(self):
-        return u"Command(0x%02x,0x%02x)"%(self.a,self.b)
+        return u"Command(0x%02x,0x%02x)" % (self.a, self.b)
+
 
 class ArcPower(Command):
     """
@@ -136,28 +153,35 @@ class ArcPower(Command):
     programmed fade time.  The MAX LEVEL and MIN LEVEL settings will
     be respected.
     """
-    def __init__(self,destination,power):
-        if power=="OFF": power=0
-        if power=="MASK": power=255
-        if not isinstance(power,int):
+
+    def __init__(self, destination, power):
+        if power == "OFF": power = 0
+        if power == "MASK": power = 255
+        if not isinstance(power, int):
             raise ValueError("power must be an integer or string")
-        if power<0 or power>255:
+        if power < 0 or power > 255:
             raise ValueError("power must be in the range 0..255")
-        self.destination=self._check_destination(destination)
-        self.power=power
-        Command.__init__(self,self.destination.addrbyte,power)
+        self.destination = self._check_destination(destination)
+        self.power = power
+        Command.__init__(self, self.destination.addrbyte, power)
+
     @classmethod
-    def from_bytes(cls,command):
-        a,b=command
-        if a&0x01: return
-        addr=address.from_byte(a)
+    def from_bytes(cls, command):
+        a, b = command
+        if a & 0x01: return
+        addr = address.from_byte(a)
         if addr is None: return
-        return cls(addr,b)
+        return cls(addr, b)
+
     def __unicode__(self):
-        if self.power==0: power="OFF"
-        elif self.power==255: power="MASK"
-        else: power=self.power
-        return u"ArcPower(%s,%s)"%(self.destination,power)
+        if self.power == 0:
+            power = "OFF"
+        elif self.power == 255:
+            power = "MASK"
+        else:
+            power = self.power
+        return u"ArcPower(%s,%s)" % (self.destination, power)
+
 
 class GeneralCommand(Command):
     """
@@ -166,55 +190,60 @@ class GeneralCommand(Command):
     arc power command.
 
     """
-    _cmdval=None
-    _hasparam=False
-    def __init__(self,destination,*args):
+    _cmdval = None
+    _hasparam = False
+
+    def __init__(self, destination, *args):
         if self._cmdval is None: raise NotImplementedError
         if self._hasparam:
-            if len(args)!=1:
+            if len(args) != 1:
                 raise TypeError(
-                    "%s.__init__() takes exactly 3 arguments (%d given)"%(
-                        self.__class__.__name__,len(args)+2))
-            param=args[0]
-            if not isinstance(param,int):
+                    "%s.__init__() takes exactly 3 arguments (%d given)" % (
+                        self.__class__.__name__, len(args) + 2))
+            param = args[0]
+            if not isinstance(param, int):
                 raise ValueError("param must be an integer")
-            if param<0 or param>15:
+            if param < 0 or param > 15:
                 raise ValueError("param must be in the range 0..15")
-            self.param=param
+            self.param = param
         else:
-            if len(args)!=0:
+            if len(args) != 0:
                 raise TypeError(
-                    "%s.__init__() takes exactly 2 arguments (%d given)"%(
-                        self.__class__.__name__,len(args)+2))
-            param=0
-        self.destination=self._check_destination(destination)
-        Command.__init__(self,self.destination.addrbyte|0x01,self._cmdval|param)
+                    "%s.__init__() takes exactly 2 arguments (%d given)" % (
+                        self.__class__.__name__, len(args) + 2))
+            param = 0
+        self.destination = self._check_destination(destination)
+        Command.__init__(self, self.destination.addrbyte | 0x01, self._cmdval | param)
+
     @classmethod
-    def from_bytes(cls,command):
-        if cls==GeneralCommand: return
-        a,b=command
-        if a&0x01 == 0: return
+    def from_bytes(cls, command):
+        if cls == GeneralCommand: return
+        a, b = command
+        if a & 0x01 == 0: return
         if cls._hasparam:
-            if b&0xf0!=cls._cmdval: return
+            if b & 0xf0 != cls._cmdval: return
         else:
-            if b!=cls._cmdval: return
-        addr=address.from_byte(a)
+            if b != cls._cmdval: return
+        addr = address.from_byte(a)
         if addr is None: return
         if cls._hasparam:
-            return cls(addr,b&0x0f)
+            return cls(addr, b & 0x0f)
         return cls(addr)
+
     def __unicode__(self):
         if self._hasparam:
-            return u"%s(%s,%s)"%(self.__class__.__name__,self.destination,
-                                 self.param)
-        return u"%s(%s)"%(self.__class__.__name__,self.destination)
+            return u"%s(%s,%s)" % (self.__class__.__name__, self.destination,
+                                   self.param)
+        return u"%s(%s)" % (self.__class__.__name__, self.destination)
+
 
 class Off(GeneralCommand):
     """
     Extinguish the lamp immediately without fading.
 
     """
-    _cmdval=0x00
+    _cmdval = 0x00
+
 
 class Up(GeneralCommand):
     """
@@ -229,7 +258,8 @@ class Up(GeneralCommand):
     No lamp shall be ignited with this command.
 
     """
-    _cmdval=0x01
+    _cmdval = 0x01
+
 
 class Down(GeneralCommand):
     """
@@ -243,7 +273,8 @@ class Down(GeneralCommand):
     Lamp shall not be switched off via this command.
 
     """
-    _cmdval=0x02
+    _cmdval = 0x02
+
 
 class StepUp(GeneralCommand):
     """
@@ -256,7 +287,8 @@ class StepUp(GeneralCommand):
     lamp shall be ignited with this command.
 
     """
-    _cmdval=0x03
+    _cmdval = 0x03
+
 
 class StepDown(GeneralCommand):
     """
@@ -268,7 +300,8 @@ class StepDown(GeneralCommand):
     No change if the arc power output is already at the "MIN LEVEL".
 
     """
-    _cmdval=0x04
+    _cmdval = 0x04
+
 
 class RecallMaxLevel(GeneralCommand):
     """
@@ -276,7 +309,8 @@ class RecallMaxLevel(GeneralCommand):
     If the lamp is off it shall be ignited with this command.
 
     """
-    _cmdval=0x05
+    _cmdval = 0x05
+
 
 class RecallMinLevel(GeneralCommand):
     """
@@ -284,7 +318,8 @@ class RecallMinLevel(GeneralCommand):
     If the lamp is off it shall be ignited with this command.
 
     """
-    _cmdval=0x06
+    _cmdval = 0x06
+
 
 class StepDownAndOff(GeneralCommand):
     """
@@ -295,7 +330,8 @@ class StepDownAndOff(GeneralCommand):
     lamp shall be switched off by this command.
 
     """
-    _cmdval=0x07
+    _cmdval = 0x07
+
 
 class OnAndStepUp(GeneralCommand):
     """
@@ -306,7 +342,8 @@ class OnAndStepUp(GeneralCommand):
     command and shall be set to the "MIN LEVEL".
 
     """
-    _cmdval=0x08
+    _cmdval = 0x08
+
 
 class GoToScene(GeneralCommand):
     """
@@ -323,8 +360,9 @@ class GoToScene(GeneralCommand):
     time.
 
     """
-    _cmdval=0x10
-    _hasparam=True
+    _cmdval = 0x10
+    _hasparam = True
+
 
 class ConfigCommand(GeneralCommand):
     """
@@ -333,7 +371,8 @@ class ConfigCommand(GeneralCommand):
     transmitted in between.
 
     """
-    _isconfig=True
+    _isconfig = True
+
 
 class Reset(ConfigCommand):
     """
@@ -343,7 +382,8 @@ class Reset(ConfigCommand):
     this command.
 
     """
-    _cmdval=0x20
+    _cmdval = 0x20
+
 
 class StoreActualLevelInDtr(ConfigCommand):
     """
@@ -351,14 +391,16 @@ class StoreActualLevelInDtr(ConfigCommand):
     current light intensity.
 
     """
-    _cmdval=0x21
+    _cmdval = 0x21
+
 
 class StoreDtrAsMaxLevel(ConfigCommand):
     """
     Save the value in the DTR as the new "MAX LEVEL".
 
     """
-    _cmdval=0x2a
+    _cmdval = 0x2a
+
 
 class StoreDtrAsMinLevel(ConfigCommand):
     """
@@ -367,21 +409,24 @@ class StoreDtrAsMinLevel(ConfigCommand):
     the "PHYSICAL MIN LEVEL" as the new "MIN LEVEL".
     
     """
-    _cmdval=0x2b
+    _cmdval = 0x2b
+
 
 class StoreDtrAsFailLevel(ConfigCommand):
     """
     Save the value in the DTR as the new "SYSTEM FAILURE LEVEL".
 
     """
-    _cmdval=0x2c
+    _cmdval = 0x2c
+
 
 class StoreDtrAsPowerOnLevel(ConfigCommand):
     """
     Save the value in the DTR as the new "POWER ON LEVEL".
 
     """
-    _cmdval=0x2d
+    _cmdval = 0x2d
+
 
 class StoreDtrAsFadeTime(ConfigCommand):
     """
@@ -403,7 +448,8 @@ class StoreDtrAsFadeTime(ConfigCommand):
     process, the running fade process is not affected.
 
     """
-    _cmdval=0x2e
+    _cmdval = 0x2e
+
 
 class StoreDtrAsFadeRate(ConfigCommand):
     """
@@ -419,7 +465,8 @@ class StoreDtrAsFadeRate(ConfigCommand):
     process, the running fade process is not affected.
 
     """
-    _cmdval=0x2f
+    _cmdval = 0x2f
+
 
 class StoreDtrAsScene(ConfigCommand):
     """
@@ -427,8 +474,9 @@ class StoreDtrAsScene(ConfigCommand):
     The value 255 ("MASK") removes the ballast from the scene.
 
     """
-    _cmdval=0x40
-    _hasparam=True
+    _cmdval = 0x40
+    _hasparam = True
+
 
 class RemoveFromScene(ConfigCommand):
     """
@@ -437,24 +485,27 @@ class RemoveFromScene(ConfigCommand):
     This stores 255 ("MASK") in the specified scene register.
 
     """
-    _cmdval=0x50
-    _hasparam=True
+    _cmdval = 0x50
+    _hasparam = True
+
 
 class AddToGroup(ConfigCommand):
     """
     Add the ballast to the specified group.
 
     """
-    _cmdval=0x60
-    _hasparam=True
+    _cmdval = 0x60
+    _hasparam = True
+
 
 class RemoveFromGroup(ConfigCommand):
     """
     Remove the ballast from the specified group.
 
     """
-    _cmdval=0x70
-    _hasparam=True
+    _cmdval = 0x70
+    _hasparam = True
+
 
 class StoreDtrAsShortAddress(ConfigCommand):
     """
@@ -465,7 +516,8 @@ class StoreDtrAsShortAddress(ConfigCommand):
     - 255 (i.e. 11111111) to remove the short address
 
     """
-    _cmdval=0x80
+    _cmdval = 0x80
+
 
 class QueryCommand(GeneralCommand):
     """
@@ -480,44 +532,55 @@ class QueryCommand(GeneralCommand):
     a "Yes" response, for example to "QueryLampFailure".
 
     """
-    _isquery=True
-    _response=Response
+    _isquery = True
+    _response = Response
+
 
 class QueryStatusResponse(Response):
-    bits=["status","lamp failure","arc power on","limit error",
-          "fade ready","reset state","missing short address","power failure"]
+    bits = ["status", "lamp failure", "arc power on", "limit error",
+            "fade ready", "reset state", "missing short address", "power failure"]
+
     @property
     def status(self):
-        v=self._value
-        l=[]
+        v = self._value
+        l = []
         for b in self.bits:
-            if v&0x01: l.append(b)
-            v=(v>>1)
+            if v & 0x01: l.append(b)
+            v = (v >> 1)
         return l
+
     @property
     def ballast_status(self):
-        return self._value&0x01!=0
+        return self._value & 0x01 != 0
+
     @property
     def lamp_failure(self):
-        return self._value&0x02!=0
+        return self._value & 0x02 != 0
+
     @property
     def lamp_arc_power_on(self):
-        return self._value&0x04!=0
+        return self._value & 0x04 != 0
+
     @property
     def limit_error(self):
-        return self._value&0x08!=0
+        return self._value & 0x08 != 0
+
     @property
     def fade_ready(self):
-        return self._value&0x10!=0
+        return self._value & 0x10 != 0
+
     @property
     def reset_state(self):
-        return self._value&0x20!=0
+        return self._value & 0x20 != 0
+
     @property
     def missing_short_address(self):
-        return self._value&0x40!=0
+        return self._value & 0x40 != 0
+
     @property
     def power_failure(self):
-        return self._value&0x80!=0
+        return self._value & 0x80 != 0
+
     @property
     def error(self):
         """
@@ -525,9 +588,11 @@ class QueryStatusResponse(Response):
         (Ballast not ok, lamp fail, missing short address)
 
         """
-        return self._value&0x43!=0
+        return self._value & 0x43 != 0
+
     def __unicode__(self):
         return u",".join(self.status)
+
 
 class QueryStatus(QueryCommand):
     """
@@ -545,32 +610,36 @@ class QueryStatus(QueryCommand):
       been received since the last power-on
 
     """
-    _cmdval=0x90
-    _response=QueryStatusResponse
+    _cmdval = 0x90
+    _response = QueryStatusResponse
+
 
 class QueryBallast(QueryCommand):
     """
     Ask if there is a ballast that is able to communicate.
 
     """
-    _cmdval=0x91
-    _response=YesNoResponse
+    _cmdval = 0x91
+    _response = YesNoResponse
+
 
 class QueryLampFailure(QueryCommand):
     """
     Ask if there is a lamp problem.
 
     """
-    _cmdval=0x92
-    _response=YesNoResponse
+    _cmdval = 0x92
+    _response = YesNoResponse
+
 
 class QueryLampPowerOn(QueryCommand):
     """
     Ask if there is a lamp operating.
 
     """
-    _cmdval=0x93
-    _response=YesNoResponse
+    _cmdval = 0x93
+    _response = YesNoResponse
+
 
 class QueryLimitError(QueryCommand):
     """
@@ -579,16 +648,18 @@ class QueryLimitError(QueryCommand):
     of 0 is always "OFF" and is not an error.)
 
     """
-    _cmdval=0x94
-    _response=YesNoResponse
+    _cmdval = 0x94
+    _response = YesNoResponse
+
 
 class QueryResetState(QueryCommand):
     """
     Ask if the ballast is in "RESET STATE".
 
     """
-    _cmdval=0x95
-    _response=YesNoResponse
+    _cmdval = 0x95
+    _response = YesNoResponse
+
 
 class QueryMissingShortAddress(QueryCommand):
     """
@@ -596,8 +667,9 @@ class QueryMissingShortAddress(QueryCommand):
     that the ballast has no short address.
 
     """
-    _cmdval=0x96
-    _response=YesNoResponse
+    _cmdval = 0x96
+    _response = YesNoResponse
+
 
 class QueryVersionNumber(QueryCommand):
     """
@@ -607,28 +679,33 @@ class QueryVersionNumber(QueryCommand):
     version number 0.
 
     """
-    _cmdval=0x97
+    _cmdval = 0x97
+
 
 class QueryDtr(QueryCommand):
     """
     Return the contents of the DTR.
 
     """
-    _cmdval=0x98
+    _cmdval = 0x98
 
-QueryContentDtr=QueryDtr
+
+QueryContentDtr = QueryDtr
+
 
 class QueryDeviceTypeResponse(Response):
-    _types={0: u"fluorescent lamp",
-            1: u"emergency lighting",
-            2: u"HID lamp",
-            3: u"low voltage halogen lamp",
-            4: u"incandescent lamp dimmer",
-            5: u"dc-controlled dimmer",
-            6: u"LED lamp"}
+    _types = {0: u"fluorescent lamp",
+              1: u"emergency lighting",
+              2: u"HID lamp",
+              3: u"low voltage halogen lamp",
+              4: u"incandescent lamp dimmer",
+              5: u"dc-controlled dimmer",
+              6: u"LED lamp"}
+
     def __unicode__(self):
         if self.value in self._types: return self._types[self.value]
         return unicode(self.value)
+
 
 class QueryDeviceType(QueryCommand):
     """
@@ -646,15 +723,17 @@ class QueryDeviceType(QueryCommand):
     device will respond to.
 
     """
-    _cmdval=0x99
-    _response=QueryDeviceTypeResponse
+    _cmdval = 0x99
+    _response = QueryDeviceTypeResponse
+
 
 class QueryPhysicalMinimumLevel(QueryCommand):
     """
     Return the physical minimum level for this device.
 
     """
-    _cmdval=0x9a
+    _cmdval = 0x9a
+
 
 class QueryPowerFailure(QueryCommand):
     """
@@ -662,8 +741,9 @@ class QueryPowerFailure(QueryCommand):
     control command since the last power-on.
 
     """
-    _cmdval=0x9b
-    _response=YesNoResponse
+    _cmdval = 0x9b
+    _response = YesNoResponse
+
 
 class QueryDtr1(QueryCommand):
     """Return the contents of DTR1.
@@ -671,9 +751,11 @@ class QueryDtr1(QueryCommand):
     NB not checked against IEC 62386
 
     """
-    _cmdval=0x9c
+    _cmdval = 0x9c
 
-QueryContentDtr1=QueryDtr1
+
+QueryContentDtr1 = QueryDtr1
+
 
 class QueryDtr2(QueryCommand):
     """Return the contents of DTR2.
@@ -681,9 +763,11 @@ class QueryDtr2(QueryCommand):
     NB not checked against IEC 62386
 
     """
-    _cmdval=0x9d
+    _cmdval = 0x9d
 
-QueryContentDtr2=QueryDtr2
+
+QueryContentDtr2 = QueryDtr2
+
 
 class QueryActualLevel(QueryCommand):
     """
@@ -691,45 +775,53 @@ class QueryActualLevel(QueryCommand):
     lamp error occurs the answer will be 0xff ("MASK").
 
     """
-    _cmdval=0xa0
+    _cmdval = 0xa0
+
 
 class QueryMaxLevel(QueryCommand):
     """
     Return "MAX LEVEL".
 
     """
-    _cmdval=0xa1
+    _cmdval = 0xa1
+
 
 class QueryMinLevel(QueryCommand):
     """
     Return "MIN LEVEL".
 
     """
-    _cmdval=0xa2
+    _cmdval = 0xa2
+
 
 class QueryPowerOnLevel(QueryCommand):
     """
     Return "POWER ON LEVEL".
 
     """
-    _cmdval=0xa3
+    _cmdval = 0xa3
+
 
 class QueryFailureLevel(QueryCommand):
     """
     Return "SYSTEM FAILURE LEVEL".
 
     """
-    _cmdval=0xa4
+    _cmdval = 0xa4
+
 
 class QueryFadeTimeAndRateResponse(Response):
     @property
     def fade_time(self):
-        return self._value>>4
+        return self._value >> 4
+
     @property
     def fade_rate(self):
-        return self._value&0x0f
+        return self._value & 0x0f
+
     def __unicode__(self):
-        return u"Fade time: %s; Fade rate: %s"%(self.fade_time,self.fade_rate)
+        return u"Fade time: %s; Fade rate: %s" % (self.fade_time, self.fade_rate)
+
 
 class QueryFadeTimeAndRate(QueryCommand):
     """
@@ -740,8 +832,9 @@ class QueryFadeTimeAndRate(QueryCommand):
     is in the lower four bits of the response.
 
     """
-    _cmdval=0xa5
-    _response=QueryFadeTimeAndRateResponse
+    _cmdval = 0xa5
+    _response = QueryFadeTimeAndRateResponse
+
 
 class QuerySceneLevel(QueryCommand):
     """
@@ -749,8 +842,9 @@ class QuerySceneLevel(QueryCommand):
     the device is not part of the scene.
 
     """
-    _cmdval=0xb0
-    _hasparam=True
+    _cmdval = 0xb0
+    _hasparam = True
+
 
 class QueryGroupsLSB(QueryCommand):
     """
@@ -758,7 +852,8 @@ class QueryGroupsLSB(QueryCommand):
     least-significant bit of the response.
 
     """
-    _cmdval=0xc0
+    _cmdval = 0xc0
+
 
 class QueryGroupsMSB(QueryCommand):
     """
@@ -766,28 +861,32 @@ class QueryGroupsMSB(QueryCommand):
     least-significant bit of the response.
 
     """
-    _cmdval=0xc1
+    _cmdval = 0xc1
+
 
 class QueryRandomAddressH(QueryCommand):
     """
     Return the 8 high bits of the random address.
 
     """
-    _cmdval=0xc2
+    _cmdval = 0xc2
+
 
 class QueryRandomAddressM(QueryCommand):
     """
     Return the 8 mid bits of the random address.
 
     """
-    _cmdval=0xc3
+    _cmdval = 0xc3
+
 
 class QueryRandomAddressL(QueryCommand):
     """
     Return the 8 low bits of the random address.
 
     """
-    _cmdval=0xc4
+    _cmdval = 0xc4
+
 
 class ReadMemoryLocation(QueryCommand):
     """Read a byte from memory.  The bank is specified in DTR1.  The
@@ -797,84 +896,97 @@ class ReadMemoryLocation(QueryCommand):
     NB not checked with IEC 62386
 
     """
-    _cmdval=0xc5
+    _cmdval = 0xc5
+
 
 class SpecialCommand(Command):
     """Special commands are broadcast and are received by all devices.
 
     """
-    _hasparam=False
-    def __init__(self,*args):
+    _hasparam = False
+
+    def __init__(self, *args):
         if self._hasparam:
-            if len(args)!=1:
+            if len(args) != 1:
                 raise TypeError(
                     "{}.__init__() takes exactly 2 arguments ({} given)".format(
-                        self.__class__.__name__,len(args)+1))
-            param=args[0]
-            if not isinstance(param,int):
+                        self.__class__.__name__, len(args) + 1))
+            param = args[0]
+            if not isinstance(param, int):
                 raise ValueError("param must be an int")
-            if param<0 or param>255:
+            if param < 0 or param > 255:
                 raise ValueError("param must be in range 0..255")
-            self.param=param
+            self.param = param
         else:
-            if len(args)!=0:
+            if len(args) != 0:
                 raise TypeError(
                     "{}.__init__() takes exactly 1 arguments ({} given)".format(
-                        self.__class__.__name__,len(args)+1))
-            param=0
-        self.param=param
+                        self.__class__.__name__, len(args) + 1))
+            param = 0
+        self.param = param
+
     @property
     def command(self):
-        return (self._cmdval,self.param)
+        return (self._cmdval, self.param)
+
     @classmethod
-    def from_bytes(cls,command):
-        if cls==SpecialCommand: return
-        a,b=command
-        if a==cls._cmdval:
+    def from_bytes(cls, command):
+        if cls == SpecialCommand: return
+        a, b = command
+        if a == cls._cmdval:
             if cls._hasparam:
                 return cls(b)
             else:
-                if b==0: return cls()
+                if b == 0: return cls()
+
     def __unicode__(self):
         if self._hasparam:
-            return u"{}({})".format(self.__class__.__name__,self.param)
+            return u"{}({})".format(self.__class__.__name__, self.param)
         return u"{}()".format(self.__class__.__name__)
+
 
 class ShortAddrSpecialCommand(SpecialCommand):
     """A special command that has a short address as its parameter.
 
     """
-    def __init__(self,address):
-        if not isinstance(address,int):
+
+    def __init__(self, address):
+        if not isinstance(address, int):
             raise ValueError("address must be an integer")
-        if address<0 or address>63:
+        if address < 0 or address > 63:
             raise ValueError("address must be in the range 0..63")
-        self.address=address
+        self.address = address
+
     @property
     def command(self):
-        return (self._cmdval,(self.address<<1) | 1)
+        return (self._cmdval, (self.address << 1) | 1)
+
     @classmethod
-    def from_bytes(cls,command):
-        if cls==ShortAddrSpecialCommand: return
-        a,b=command
-        if a==cls._cmdval:
-            if (b&0x81) == 0x01:
-                return cls(address=(b>>1))
+    def from_bytes(cls, command):
+        if cls == ShortAddrSpecialCommand: return
+        a, b = command
+        if a == cls._cmdval:
+            if (b & 0x81) == 0x01:
+                return cls(address=(b >> 1))
+
     def __unicode__(self):
-        return u"{}({})".format(self.__class__.__name__,self.address)
+        return u"{}({})".format(self.__class__.__name__, self.address)
+
 
 class Terminate(SpecialCommand):
     """All special mode processes shall be terminated.
 
     """
-    _cmdval=0xa1
+    _cmdval = 0xa1
+
 
 class SetDtr(SpecialCommand):
     """This is a broadcast command to set the value of the DTR register.
 
     """
-    _cmdval=0xa3
-    _hasparam=True
+    _cmdval = 0xa3
+    _hasparam = True
+
 
 class Initialise(Command):
     """This command shall start or re-trigger a timer for 15 minutes; the
@@ -894,47 +1006,53 @@ class Initialise(Command):
       ballasts with the address supplied shall react
 
     """
-    _isconfig=True
-    _cmdval=0xa5
-    def __init__(self,broadcast=False,address=None):
+    _isconfig = True
+    _cmdval = 0xa5
+
+    def __init__(self, broadcast=False, address=None):
         if broadcast and address is not None:
             raise ValueError("can't specify address when broadcasting")
         if address is not None:
-            if not isinstance(address,int):
+            if not isinstance(address, int):
                 raise ValueError("address must be an integer")
-            if address<0 or address>63:
+            if address < 0 or address > 63:
                 raise ValueError("address must be in the range 0..63")
-        self.broadcast=broadcast
-        self.address=address
+        self.broadcast = broadcast
+        self.address = address
+
     @property
     def command(self):
         if self.broadcast:
-            b=0
+            b = 0
         elif self.address is None:
-            b=0xff
+            b = 0xff
         else:
-            b=(self.address<<1) | 1
-        return (self._cmdval,b)
+            b = (self.address << 1) | 1
+        return (self._cmdval, b)
+
     @classmethod
-    def from_bytes(cls,command):
-        a,b=command
-        if a==cls._cmdval:
-            if b==0: return cls(broadcast=True)
-            if b==0xff: return cls(address=None)
-            if (b&0x81) == 0x01:
-                return cls(address=(b>>1))
+    def from_bytes(cls, command):
+        a, b = command
+        if a == cls._cmdval:
+            if b == 0: return cls(broadcast=True)
+            if b == 0xff: return cls(address=None)
+            if (b & 0x81) == 0x01:
+                return cls(address=(b >> 1))
+
     def __unicode__(self):
         if self.broadcast:
             return u"Initialise(broadcast=True)"
         return u"Initialise(address={})".format(self.address)
+
 
 class Randomise(SpecialCommand):
     """The ballast shall generate a new 24-bit random address.  The new
     random address shall be available within a time period of 100ms.
 
     """
-    _cmdval=0xa7
-    _isconfig=True
+    _cmdval = 0xa7
+    _isconfig = True
+
 
 class Compare(SpecialCommand):
     """The ballast shall compare its 24-bit random address with the
@@ -944,9 +1062,10 @@ class Compare(SpecialCommand):
     shall generate a query "YES".
 
     """
-    _cmdval=0xa9
-    _isquery=True
-    _response=YesNoResponse
+    _cmdval = 0xa9
+    _isquery = True
+    _response = YesNoResponse
+
 
 class Withdraw(SpecialCommand):
     """The ballast that has a 24-bit random address equal to the combined
@@ -955,28 +1074,32 @@ class Withdraw(SpecialCommand):
     shall not be excluded from the initialisation process.
 
     """
-    _cmdval=0xab
+    _cmdval = 0xab
+
 
 class SetSearchAddrH(SpecialCommand):
     """Set the high 8 bits of the search address.
 
     """
-    _cmdval=0xb1
-    _hasparam=True
+    _cmdval = 0xb1
+    _hasparam = True
+
 
 class SetSearchAddrM(SpecialCommand):
     """Set the mid 8 bits of the search address.
 
     """
-    _cmdval=0xb3
-    _hasparam=True
+    _cmdval = 0xb3
+    _hasparam = True
+
 
 class SetSearchAddrL(SpecialCommand):
     """Set the low 8 bits of the search address.
 
     """
-    _cmdval=0xb5
-    _hasparam=True
+    _cmdval = 0xb5
+    _hasparam = True
+
 
 class ProgramShortAddress(ShortAddrSpecialCommand):
     """The ballast shall store the received 6-bit address as its short
@@ -989,33 +1112,39 @@ class ProgramShortAddress(ShortAddrSpecialCommand):
       disconnected after reception of command PhysicalSelection())
 
     """
-    _cmdval=0xb7
+    _cmdval = 0xb7
+
 
 class DeleteShortAddress(SpecialCommand):
     """The ballast shall delete its short address if it is selected.
     Selection criteria is as for ProgramShortAddress().
 
     """
-    _cmdval=0xb7
+    _cmdval = 0xb7
+
     @property
     def command(self):
-        return (self._cmdval,0xff)
+        return (self._cmdval, 0xff)
+
     @classmethod
-    def from_bytes(cls,command):
-        a,b=command
-        if a==cls._cmdval and b==0xff:
+    def from_bytes(cls, command):
+        a, b = command
+        if a == cls._cmdval and b == 0xff:
             return cls()
+
     def __unicode__(self):
         return u"DeleteShortAddress()"
+
 
 class VerifyShortAddress(ShortAddrSpecialCommand):
     """The ballast shall give an answer "YES" if the received short
     address is equal to its own short address.
 
     """
-    _cmdval=0xb9
-    _isquery=True
-    _response=YesNoResponse
+    _cmdval = 0xb9
+    _isquery = True
+    _response = YesNoResponse
+
 
 class QueryShortAddress(SpecialCommand):
     """The ballast shall send the short address if the random address is
@@ -1025,8 +1154,9 @@ class QueryShortAddress(SpecialCommand):
     address stored.
 
     """
-    _cmdval=0xbb
-    _isquery=True
+    _cmdval = 0xbb
+    _isquery = True
+
 
 class PhysicalSelection(SpecialCommand):
     """The ballast shall cancel its selection and shall set "Physical
@@ -1035,7 +1165,8 @@ class PhysicalSelection(SpecialCommand):
     selected when its lamp is electrically disconnected.
 
     """
-    _cmdval=0xbd
+    _cmdval = 0xbd
+
 
 class EnableDeviceType(SpecialCommand):
     """This command shall be sent before an application extended command.
@@ -1043,8 +1174,9 @@ class EnableDeviceType(SpecialCommand):
     command.  This command shall not be used for device type 0.
 
     """
-    _cmdval=0xc1
-    _hasparam=True
+    _cmdval = 0xc1
+    _hasparam = True
+
 
 class SetDtr1(SpecialCommand):
     """This is a broadcast command to set the value of the DTR1 register.
@@ -1052,8 +1184,9 @@ class SetDtr1(SpecialCommand):
     NB not checked against IEC 62386 yet
 
     """
-    _cmdval=0xc3
-    _hasparam=True
+    _cmdval = 0xc3
+    _hasparam = True
+
 
 class SetDtr2(SpecialCommand):
     """This is a broadcast command to set the value of the DTR2 register.
@@ -1061,20 +1194,23 @@ class SetDtr2(SpecialCommand):
     NB not checked against IEC 62386 yet
 
     """
-    _cmdval=0xc5
-    _hasparam=True
+    _cmdval = 0xc5
+    _hasparam = True
+
 
 # Application extended control commands for device type 1 (emergency lighting)
 
 class EmergencyLightingCommand(GeneralCommand):
-    _devicetype=1
+    _devicetype = 1
+
 
 class EmergencyLightingControlCommand(EmergencyLightingCommand):
     """An emergency lighting control command as defined in section
     11.3.4.1 of IEC 62386-202:2009
 
     """
-    _isconfig=True
+    _isconfig = True
+
 
 class Rest(EmergencyLightingControlCommand):
     """If this command is received when the control gear is in emergency
@@ -1085,7 +1221,8 @@ class Rest(EmergencyLightingControlCommand):
     if re-light in rest mode is supported.
 
     """
-    _cmdval=0xe0
+    _cmdval = 0xe0
+
 
 class Inhibit(EmergencyLightingControlCommand):
     """If the control gear is in normal mode on receipt of this command,
@@ -1099,7 +1236,8 @@ class Inhibit(EmergencyLightingControlCommand):
     If mains power is lost while in inhibit mode, rest mode will be entered.
 
     """
-    _cmdval=0xe1
+    _cmdval = 0xe1
+
 
 class ReLightResetInhibit(EmergencyLightingControlCommand):
     """This command cancels the inhibit timer.  If the control gear is in
@@ -1107,7 +1245,8 @@ class ReLightResetInhibit(EmergencyLightingControlCommand):
     gear will enter emergency mode.
 
     """
-    _cmdval=0xe2
+    _cmdval = 0xe2
+
 
 class StartFunctionTest(EmergencyLightingControlCommand):
     """The control gear is requested to perform a function test.  A
@@ -1122,7 +1261,8 @@ class StartFunctionTest(EmergencyLightingControlCommand):
     Status byte will be set.
 
     """
-    _cmdval=0xe3
+    _cmdval = 0xe3
+
 
 class StartDurationTest(EmergencyLightingControlCommand):
     """The control gear is requested to perform a duration test.  A
@@ -1137,48 +1277,55 @@ class StartDurationTest(EmergencyLightingControlCommand):
     Status byte will be set.
 
     """
-    _cmdval=0xe4
+    _cmdval = 0xe4
+
 
 class StopTest(EmergencyLightingControlCommand):
     """Any running tests are stopped and any pending tests are cancelled.
     Bits 4 and 5 of the Emergency Status byte will be cleared.
 
     """
-    _cmdval=0xe5
+    _cmdval = 0xe5
+
 
 class ResetFunctionTestDoneFlag(EmergencyLightingControlCommand):
     """The "function test done and result valid" flag (bit 1 of the
     Emergency Status byte) shall be cleared.
 
     """
-    _cmdval=0xe6
+    _cmdval = 0xe6
+
 
 class ResetDurationTestDoneFlag(EmergencyLightingControlCommand):
     """The "duration test done and result valid" flag (bit 2 of the
     Emergency Status byte) shall be cleared.
 
     """
-    _cmdval=0xe7
+    _cmdval = 0xe7
+
 
 class ResetLampTime(EmergencyLightingControlCommand):
     """The lamp emergency time and lamp total operation time counters
     shall be reset.
 
     """
-    _cmdval=0xe8
+    _cmdval = 0xe8
+
 
 class EmergencyLightingConfigCommand(EmergencyLightingCommand):
     """An emergency lighting configuration command as defined in section
     11.3.4.2 of IEC 62386-202:2009
 
     """
-    _isconfig=True
+    _isconfig = True
+
 
 class StoreDtrAsEmergencyLevel(EmergencyLightingConfigCommand):
     """DTR0 shall be stored as the Emergency Level.
 
     """
-    _cmdval=0xe9
+    _cmdval = 0xe9
+
 
 class StoreTestDelayTimeHighByte(EmergencyLightingConfigCommand):
     """DTR0 shall be stored as the high byte of Test Delay Time.
@@ -1188,7 +1335,8 @@ class StoreTestDelayTimeHighByte(EmergencyLightingConfigCommand):
     This command is ignored if automatic testing is not supported.
 
     """
-    _cmdval=0xea
+    _cmdval = 0xea
+
 
 class StoreTestDelayTimeLowByte(EmergencyLightingConfigCommand):
     """DTR0 shall be stored as the low byte of Test Delay Time.
@@ -1196,7 +1344,8 @@ class StoreTestDelayTimeLowByte(EmergencyLightingConfigCommand):
     This command is ignored if automatic testing is not supported.
 
     """
-    _cmdval=0xeb
+    _cmdval = 0xeb
+
 
 class StoreFunctionTestInterval(EmergencyLightingConfigCommand):
     """DTR0 shall be stored as the Function Test Interval.  This is the
@@ -1206,7 +1355,8 @@ class StoreFunctionTestInterval(EmergencyLightingConfigCommand):
     This command is ignored if automatic testing is not supported.
 
     """
-    _cmdval=0xec
+    _cmdval = 0xec
+
 
 class StoreDurationTestInterval(EmergencyLightingConfigCommand):
     """DTR0 shall be stored as the Duration Test Interval.  This is the
@@ -1216,7 +1366,8 @@ class StoreDurationTestInterval(EmergencyLightingConfigCommand):
     This command is ignored if automatic testing is not supported.
 
     """
-    _cmdval=0xed
+    _cmdval = 0xed
+
 
 class StoreTestExecutionTimeout(EmergencyLightingConfigCommand):
     """DTR0 shall be stored as the Test Execution Timeout.  This is
@@ -1228,7 +1379,8 @@ class StoreTestExecutionTimeout(EmergencyLightingConfigCommand):
     the test shall remain pending.
 
     """
-    _cmdval=0xee
+    _cmdval = 0xee
+
 
 class StoreProlongTime(EmergencyLightingConfigCommand):
     """DTR0 shall be stored as the Prolong Time.  This is defined in 30s
@@ -1237,22 +1389,25 @@ class StoreProlongTime(EmergencyLightingConfigCommand):
     restored.
 
     """
-    _cmdval=0xef
+    _cmdval = 0xef
+
 
 class StartIdentification(EmergencyLightingConfigCommand):
     """The control gear shall start or restart a ten-second procedure
     intended to enable the operator to identify it.
 
     """
-    _cmdval=0xf0
+    _cmdval = 0xf0
+
 
 class EmergencyLightingQueryCommand(EmergencyLightingCommand):
     """An emergency lighting query command as defined in section 11.3.4.3
     of IEC 62386-202:2009
 
     """
-    _isquery=True
-    _response=Response
+    _isquery = True
+    _response = Response
+
 
 class QueryBatteryCharge(EmergencyLightingQueryCommand):
     """Query the actual battery charge level from 0 (the deep discharge
@@ -1261,7 +1416,8 @@ class QueryBatteryCharge(EmergencyLightingQueryCommand):
     successful duration test.
 
     """
-    _cmdval=0xf1
+    _cmdval = 0xf1
+
 
 class QueryTestTiming(EmergencyLightingQueryCommand):
     """The answer depends on the content of DTR0:
@@ -1280,21 +1436,24 @@ class QueryTestTiming(EmergencyLightingQueryCommand):
     not supported then queries 0-3 will return 255 (MASK).
 
     """
-    _cmdval=0xf2
+    _cmdval = 0xf2
+
 
 class QueryDurationTestResult(EmergencyLightingQueryCommand):
     """Returns the duration test result in 120s (2min) units.  255 means
     the maximum value or longer.
 
     """
-    _cmdval=0xf3
+    _cmdval = 0xf3
+
 
 class QueryLampEmergencyTime(EmergencyLightingQueryCommand):
     """Returns the accumulated lamp functioning time with the battery as
     power source in hours.  255 means the maximum value or longer.
 
     """
-    _cmdval=0xf4
+    _cmdval = 0xf4
+
 
 class QueryLampTotalOperationTime(EmergencyLightingQueryCommand):
     """Returns the accumulated lamp total functioning time in 4-hour
@@ -1306,51 +1465,60 @@ class QueryLampTotalOperationTime(EmergencyLightingQueryCommand):
     time the lamp is operated by the other control device.
 
     """
-    _cmdval=0xf5
+    _cmdval = 0xf5
+
 
 class QueryEmergencyLevel(EmergencyLightingQueryCommand):
     """Return the Emergency Level, or MASK (255) if it is unknown.
 
     """
-    _cmdval=0xf6
+    _cmdval = 0xf6
+
 
 class QueryEmergencyMinLevel(EmergencyLightingQueryCommand):
     """Return the Emergency Min Level, or MASK (255) if it is unknown.
 
     """
-    _cmdval=0xf7
+    _cmdval = 0xf7
+
 
 class QueryEmergencyMaxLevel(EmergencyLightingQueryCommand):
     """Return the Emergency Max Level, or MASK (255) if it is unknown.
 
     """
-    _cmdval=0xf8
+    _cmdval = 0xf8
+
 
 class QueryRatedDuration(EmergencyLightingQueryCommand):
     """Return the rated duration in units of 2min.  255 means 510 min or
     longer.
 
     """
-    _cmdval=0xf9
+    _cmdval = 0xf9
+
 
 class QueryEmergencyModeResponse(Response):
-    bits=["rest mode","normal mode","emergency mode","extended emergency mode",
-          "function test","duration test","hardwired inhibit active",
-          "hardwired switch on"]
+    bits = ["rest mode", "normal mode", "emergency mode", "extended emergency mode",
+            "function test", "duration test", "hardwired inhibit active",
+            "hardwired switch on"]
+
     @property
     def status(self):
-        v=self._value
-        l=[]
+        v = self._value
+        l = []
         for b in self.bits:
-            if v&0x01: l.append(b)
-            v=(v>>1)
+            if v & 0x01: l.append(b)
+            v = (v >> 1)
         return l
+
     @property
     def hardwired_inhibit(self):
-        return self._value&0x40!=0
+        return self._value & 0x40 != 0
+
     @property
     def hardwired_switch(self):
-        return self._value&0x80!=0
+        return self._value & 0x80 != 0
+
     @property
     def mode(self):
         """Operating mode of the emergency control gear.  Only one of bits 0-5
@@ -1358,93 +1526,109 @@ class QueryEmergencyModeResponse(Response):
         response even when multiple bits are set.
 
         """
-        v=self._value&0x3f
-        l=[]
+        v = self._value & 0x3f
+        l = []
         for b in self.bits:
-            if v&0x01: l.append(b)
-            v=(v>>1)
+            if v & 0x01: l.append(b)
+            v = (v >> 1)
         return ",".join(l)
+
     def __unicode__(self):
         return u",".join(self.status)
+
 
 class QueryEmergencyMode(EmergencyLightingQueryCommand):
     """Return the Emergency Mode Information byte.
 
     """
-    _cmdval=0xfa
-    _response=QueryEmergencyModeResponse
+    _cmdval = 0xfa
+    _response = QueryEmergencyModeResponse
+
 
 class QueryEmergencyFeaturesResponse(Response):
-    bits=["integral emergency control gear","maintained control gear",
-          "switched maintained control gear","auto test capability",
-          "adjustable emergency level","hardwired inhibit supported",
-          "physical selection supported","re-light in rest mode supported"]
+    bits = ["integral emergency control gear", "maintained control gear",
+            "switched maintained control gear", "auto test capability",
+            "adjustable emergency level", "hardwired inhibit supported",
+            "physical selection supported", "re-light in rest mode supported"]
+
     @property
     def auto_test_supported(self):
-        return self._value&0x08!=0
+        return self._value & 0x08 != 0
+
     @property
     def status(self):
-        v=self._value
-        l=[]
+        v = self._value
+        l = []
         for b in self.bits:
-            if v&0x01: l.append(b)
-            v=(v>>1)
+            if v & 0x01: l.append(b)
+            v = (v >> 1)
         return l
+
     def __unicode__(self):
         return u",".join(self.status)
+
 
 class QueryEmergencyFeatures(EmergencyLightingQueryCommand):
     """Return the Features information byte.
 
     """
-    _cmdval=0xfb
-    _response=QueryEmergencyFeaturesResponse
+    _cmdval = 0xfb
+    _response = QueryEmergencyFeaturesResponse
+
 
 class QueryEmergencyFailureStatusResponse(Response):
-    bits=["circuit failure","battery duration failure","battery failure",
-          "emergency lamp failure","function test max delay exceeded",
-          "duration test max delay exceeded","function test failed",
-          "duration test failed"]
+    bits = ["circuit failure", "battery duration failure", "battery failure",
+            "emergency lamp failure", "function test max delay exceeded",
+            "duration test max delay exceeded", "function test failed",
+            "duration test failed"]
+
     @property
     def status(self):
-        v=self._value
-        l=[]
+        v = self._value
+        l = []
         for b in self.bits:
-            if v&0x01: l.append(b)
-            v=(v>>1)
+            if v & 0x01: l.append(b)
+            v = (v >> 1)
         return l
+
     def __unicode__(self):
         return u",".join(self.status)
+
 
 class QueryEmergencyFailureStatus(EmergencyLightingQueryCommand):
     """Return the Failure Status information byte.
 
     """
-    _cmdval=0xfc
-    _response=QueryEmergencyFailureStatusResponse
+    _cmdval = 0xfc
+    _response = QueryEmergencyFailureStatusResponse
+
 
 class QueryEmergencyStatusResponse(Response):
-    bits=["inhibit mode","function test done and result valid",
-          "duration test done and result valid","battery fully charged",
-          "function test pending","duration test pending","identification active",
-          "physically selected"]
+    bits = ["inhibit mode", "function test done and result valid",
+            "duration test done and result valid", "battery fully charged",
+            "function test pending", "duration test pending", "identification active",
+            "physically selected"]
+
     @property
     def status(self):
-        v=self._value
-        l=[]
+        v = self._value
+        l = []
         for b in self.bits:
-            if v&0x01: l.append(b)
-            v=(v>>1)
+            if v & 0x01: l.append(b)
+            v = (v >> 1)
         return l
+
     def __unicode__(self):
         return u",".join(self.status)
+
 
 class QueryEmergencyStatus(EmergencyLightingQueryCommand):
     """Return the Emergency Status information byte.
 
     """
-    _cmdval=0xfd
-    _response=QueryEmergencyStatusResponse
+    _cmdval = 0xfd
+    _response = QueryEmergencyStatusResponse
+
 
 class PerformDtrSelectedFunction(EmergencyLightingControlCommand):
     """Perform a function depending on the value in DTR0:
@@ -1452,12 +1636,14 @@ class PerformDtrSelectedFunction(EmergencyLightingControlCommand):
     0 - restore factory default settings
 
     """
-    _cmdval=0xfe
+    _cmdval = 0xfe
+
 
 class QueryExtendedVersionNumber(EmergencyLightingCommand):
     """Returns 1.
 
     """
-    _cmdval=0xff
+    _cmdval = 0xff
 
-from_bytes=Command.from_bytes
+
+from_bytes = Command.from_bytes
