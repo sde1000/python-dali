@@ -242,7 +242,7 @@ class ArcPower(Command):
         if a & 0x01:
             return
 
-        addr = Address.from_byte(a)
+        addr = address.from_byte(a)
 
         if addr is None:
             return
@@ -341,3 +341,68 @@ class ConfigCommand(GeneralCommand):
 
     """
     _isconfig = True
+
+
+class SpecialCommand(Command):
+    """Special commands are broadcast and are received by all devices.
+
+    """
+    _hasparam = False
+
+    def __init__(self, *args):
+        if self._hasparam:
+            if len(args) != 1:
+                raise TypeError(
+                    "{}.__init__() takes exactly 2 arguments ({} given)".format(
+                        self.__class__.__name__, len(args) + 1))
+            param = args[0]
+            if not isinstance(param, int):
+                raise ValueError("param must be an int")
+            if param < 0 or param > 255:
+                raise ValueError("param must be in range 0..255")
+            self.param = param
+        else:
+            if len(args) != 0:
+                raise TypeError(
+                    "{}.__init__() takes exactly 1 arguments ({} given)".format(
+                        self.__class__.__name__, len(args) + 1))
+            param = 0
+        self.param = param
+
+    @property
+    def command(self):
+        return (self._cmdval, self.param)
+
+    @classmethod
+    def from_bytes(cls, command):
+        if cls == SpecialCommand:
+            return
+        a, b = command
+        if a == cls._cmdval:
+            if cls._hasparam:
+                return cls(b)
+            else:
+                if b == 0:
+                    return cls()
+
+    def __unicode__(self):
+        if self._hasparam:
+            return u"{}({})".format(self.__class__.__name__, self.param)
+        return u"{}()".format(self.__class__.__name__)
+
+
+class QueryCommand(GeneralCommand):
+    """
+    Query commands are answered with "Yes", "No" or 8-bit information.
+
+    "Yes" is encoded as 0xff (255)
+    "No" is encoded as no response
+
+    Query commands addressed to more than one ballast may receive
+    invalid answers as all ballasts addressed will answer.  It may be
+    useful to do this to check whether any ballast in a group provides
+    a "Yes" response, for example to "QueryLampFailure".
+
+    """
+    _isquery = True
+    _response = Response
