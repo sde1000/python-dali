@@ -4,6 +4,7 @@ Definition of known dali commands
 
 from .command import *
 
+
 class Off(GeneralCommand):
     """
     Extinguish the lamp immediately without fading.
