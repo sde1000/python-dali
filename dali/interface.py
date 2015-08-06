@@ -51,8 +51,28 @@ class DaliServer(object):
         finally:
             pass
 
+        response = self.unpack_response(command, result)
+
+        if response:
+            logging.info("  -> {0}".format(response))
+
+        return response
+
+    def unpack_response(self, command, result):
+        """
+        Unpack result from the given bytestream and creates the corresponding
+        response object
+
+        :param command: the command which waiting for it's response
+        :param result: the result bytestream which came back
+        :return: the result object
+        """
+
+        assert isinstance(command, Command)
+
         ver, status, rval, pad = struct.unpack("BBBB", result)
         response = None
+
         if command._response:
             if status == 0:
                 response = command._response(None)
@@ -64,9 +84,6 @@ class DaliServer(object):
                 response = command._response(255)
             else:
                 raise CommunicationError("status was %d" % status)
-
-            if response:
-                logging.info("  -> {0}".format(response))
 
         return response
 
