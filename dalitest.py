@@ -4,31 +4,34 @@
 
 from dali.address import *
 from dali.commands import *
-from dali.interface import daliserver
+from dali.interface import DaliServer
 
 if __name__ == "__main__":
 
-    d = daliserver("localhost", 55825)
+    logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG)
 
-    for addr in range(0, 64):
+    with DaliServer() as d:
 
-        cmd = QueryDeviceType(Short(addr))
-        r = d.send(cmd)
-        print("%d: %s" % (addr, unicode(r)))
+        for addr in range(0, 64):
 
-        if r.value == 1:
-            d.send(EnableDeviceType(1))
-            r = d.send(QueryEmergencyMode(Short(addr)))
-            print(" -- {0}".format(unicode(r)))
+            cmd = QueryDeviceType(Short(addr))
+            r = d.send(cmd)
 
-            d.send(EnableDeviceType(1))
-            r = d.send(QueryEmergencyFeatures(Short(addr)))
-            print(" -- {0}".format(unicode(r)))
+            logging.info("[%d]: resp: %s" % (addr, r))
 
-            d.send(EnableDeviceType(1))
-            r = d.send(QueryEmergencyFailureStatus(Short(addr)))
-            print(" -- {0}".format(unicode(r)))
+            if r.value == 1:
+                d.send(EnableDeviceType(1))
+                r = d.send(QueryEmergencyMode(Short(addr)))
+                logging.info(" -- {0}".format(r))
 
-            d.send(EnableDeviceType(1))
-            r = d.send(QueryEmergencyStatus(Short(addr)))
-            print(" -- {0}".format(unicode(r)))
+                d.send(EnableDeviceType(1))
+                r = d.send(QueryEmergencyFeatures(Short(addr)))
+                logging.info(" -- {0}".format(r))
+
+                d.send(EnableDeviceType(1))
+                r = d.send(QueryEmergencyFailureStatus(Short(addr)))
+                logging.info(" -- {0}".format(r))
+
+                d.send(EnableDeviceType(1))
+                r = d.send(QueryEmergencyStatus(Short(addr)))
+                logging.info(" -- {0}".format(r))
