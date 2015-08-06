@@ -2,8 +2,8 @@ from __future__ import print_function
 import struct
 import socket
 import logging
+
 from .command import Command
-from .command import Response
 
 
 class CommunicationError(Exception):
@@ -33,7 +33,7 @@ class DaliServer(object):
     def send(self, command):
         assert isinstance(command, Command)
         # message = struct.pack("BBBB", 2, 0, *command.command)
-        message = command.pack
+        message = "\x02\x00" + command.pack
 
         logging.info("command: {}{}".format(command, " (twice)" if command._isconfig else ""))
 
