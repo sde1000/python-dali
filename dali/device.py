@@ -1,6 +1,7 @@
 from . import command
 from .address import Short
 
+
 # descriptor classes for DALI device attributes goes here...
 # XXX
 
@@ -11,14 +12,16 @@ class Device(object):
     address.
 
     """
-    def __init__(self,address,name=None,bus=None):
-        if not isinstance(address,int) or address<0 or address>63:
+
+    def __init__(self, address, name=None, bus=None):
+        if not isinstance(address, int) or address < 0 or address > 63:
             raise ValueError("address must be an integer in the range 0..63")
-        self.address=address
-        self._addressobj=Short(address)
-        self.bus=None
+        self.address = address
+        self._addressobj = Short(address)
+        self.bus = None
         if bus: self.bind(bus)
-    def bind(self,bus):
+
+    def bind(self, bus):
         """Bind this device object to a particular DALI bus.
 
         """
