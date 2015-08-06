@@ -3,9 +3,10 @@ Delclaration of base type for dali commands and their response
 
 """
 
-from . import address
 import logging
 import struct
+
+from . import address
 
 
 class CommandTracker(type):
@@ -48,8 +49,8 @@ class Response(object):
     def value(self):
         return self._value
 
-    def __unicode__(self):
-        return unicode(self.value)
+    def __str__(self):
+        return "{0}".format(self.value)
 
 
 class YesNoResponse(Response):
@@ -78,6 +79,7 @@ class Command(object):
     def __init__(self, *params):
         self._data = tuple(params)
         Command.check_command_format(self._data)
+        # logging.info(self._data)
 
     @classmethod
     def from_bytes(cls, command, devicetype=0):
@@ -198,8 +200,10 @@ class Command(object):
         raise ValueError("destination must be an integer, dali.device.Device "
                          "object or dali.address.Address object")
 
-    def __unicode__(self):
-        return "({0})".format(type(self)) + u":".join("{:02x}".format(ord(c)) for c in self._data)
+    def __str__(self):
+        assert self._data is not None
+        assert isinstance(self._data, tuple)
+        return "{} ({})".format(self.__class__.__name__, ":".join("{:02x}".format(ord(chr(c))) for c in self._data))
 
 
 class ArcPower(Command):
@@ -249,14 +253,14 @@ class ArcPower(Command):
 
         return cls(addr, b)
 
-    def __unicode__(self):
+    def __str__(self):
         if self.power == 0:
             power = "OFF"
         elif self.power == 255:
             power = "MASK"
         else:
             power = self.power
-        return u"ArcPower(%s,%s)" % (self.destination, power)
+        return "ArcPower(%s,%s)" % (self.destination, power)
 
 
 class GeneralCommand(Command):
@@ -304,6 +308,7 @@ class GeneralCommand(Command):
     def from_bytes(cls, command):
         if cls == GeneralCommand:
             return
+
         a, b = command
 
         if a & 0x01 == 0:
@@ -326,11 +331,13 @@ class GeneralCommand(Command):
 
         return cls(addr)
 
-    def __unicode__(self):
+
+"""
+    def __str__(self):
         if self._hasparam:
-            return u"%s(%s,%s)" % (self.__class__.__name__, self.destination,
-                                   self.param)
-        return u"%s(%s)" % (self.__class__.__name__, self.destination)
+            return "%s(%s,%s)" % (self.__class__.__name__, self.destination, self.param)
+        return "%s(%s)" % (self.__class__.__name__, self.destination)
+"""
 
 
 class ConfigCommand(GeneralCommand):
@@ -385,10 +392,13 @@ class SpecialCommand(Command):
                 if b == 0:
                     return cls()
 
-    def __unicode__(self):
+
+"""
+    def __str__(self):
         if self._hasparam:
-            return u"{}({})".format(self.__class__.__name__, self.param)
-        return u"{}()".format(self.__class__.__name__)
+            return "{}({})".format(self.__class__.__name__, self.param)
+        return "{}()".format(self.__class__.__name__)
+"""
 
 
 class QueryCommand(GeneralCommand):
