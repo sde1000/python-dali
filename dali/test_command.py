@@ -36,7 +36,7 @@ class TestCommands(unittest.TestCase):
 
     def test_with_integer_destination(self):
         "commands accept integer destination"
-        self.assertEqual(command.ArcPower(5, 100).destination, address.Short(5))
+        self.assertEqual(commands.ArcPower(5, 100).destination, address.Short(5))
         self.assertEqual(commands.Off(5).destination, address.Short(5))
         self.assertRaises(ValueError, commands.Off, -1)
         self.assertRaises(ValueError, commands.Off, 64)

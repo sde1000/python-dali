@@ -204,63 +204,6 @@ class Command(object):
         return "({0})".format(type(self)) + u":".join("{:02x}".format(c) for c in self.command)
 
 
-class ArcPower(Command):
-    """
-    A command to set the arc power level directly.
-
-    destination is a dali.address.Address or dali.device.Device object
-    power is either an integer in the range 0..255, or one of two
-    special strings:
-
-    "OFF" sets the ballast off (same as power level 0)
-    "MASK" stops any fade in progress (same as power level 255)
-
-    The lamp will fade to the specified power according to its
-    programmed fade time.  The MAX LEVEL and MIN LEVEL settings will
-    be respected.
-    """
-
-    def __init__(self, destination, power):
-        if power == "OFF":
-            power = 0
-
-        if power == "MASK":
-            power = 255
-
-        if not isinstance(power, int):
-            raise ValueError("power must be an integer or string")
-
-        if power < 0 or power > 255:
-            raise ValueError("power must be in the range 0..255")
-
-        self.destination = self._check_destination(destination)
-        self.power = power
-
-        Command.__init__(self, self.destination.addrbyte, power)
-
-    @classmethod
-    def from_bytes(cls, command):
-        a, b = command
-        if a & 0x01:
-            return
-
-        addr = address.from_byte(a)
-
-        if addr is None:
-            return
-
-        return cls(addr, b)
-
-    def __unicode__(self):
-        if self.power == 0:
-            power = "OFF"
-        elif self.power == 255:
-            power = "MASK"
-        else:
-            power = self.power
-        return u"ArcPower(%s,%s)" % (self.destination, power)
-
-
 class GeneralCommand(Command):
     """
     A command addressed to broadcast, short address or group, i.e. one
@@ -391,6 +334,34 @@ class SpecialCommand(Command):
         if self._hasparam:
             return u"{}({})".format(self.__class__.__name__, self.param)
         return u"{}()".format(self.__class__.__name__)
+
+
+class ShortAddrSpecialCommand(SpecialCommand):
+    """A special command that has a short address as its parameter.
+
+    """
+
+    def __init__(self, address):
+        if not isinstance(address, int):
+            raise ValueError("address must be an integer")
+        if address < 0 or address > 63:
+            raise ValueError("address must be in the range 0..63")
+        self.address = address
+
+    @property
+    def command(self):
+        return (self._cmdval, (self.address << 1) | 1)
+
+    @classmethod
+    def from_bytes(cls, command):
+        if cls == ShortAddrSpecialCommand: return
+        a, b = command
+        if a == cls._cmdval:
+            if (b & 0x81) == 0x01:
+                return cls(address=(b >> 1))
+
+    def __unicode__(self):
+        return u"{}({})".format(self.__class__.__name__, self.address)
 
 
 class QueryCommand(GeneralCommand):
