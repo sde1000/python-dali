@@ -1341,6 +1341,3 @@ class QueryExtendedVersionNumber(EmergencyLightingCommand):
 
     """
     _cmdval = 0xff
-
-
-from_bytes = Command.from_bytes

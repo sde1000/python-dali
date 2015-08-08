@@ -1,5 +1,5 @@
 """
-Delclaration of base type for dali commands and their response
+Declaration of base types for dali commands and their responses.
 
 """
 
@@ -86,7 +86,8 @@ class Command(object):
         (i.e. the previous command was EnableDeviceType(foo)) then
         specify it here.
 
-        :parameter devicetype: type of the desired device
+        :parameter command: tuple of command bytes
+        :parameter devicetype: type of the addressed device
 
         :returns: Return a Command instance corresponding to the bytes in
         command.  Returns None if there is no match.
@@ -98,24 +99,23 @@ class Command(object):
         if cls != Command:
             return None
 
-        if devicetype in cls._devicetype:
-            r = devicetype.from_bytes(command)
+        for dc in cls._commands:
+            if dc._devicetype != devicetype:
+                continue
+            r = dc.from_bytes(command)
             if r:
                 return r
-        else:
-            logging.info("The given device type ({0}) is not in the device/command tracer".format(type(devicetype)))
-            pass
 
         # At this point we can simply wrap the bytes we received.  We
         # don't know what kind of command this is (config, query,
         # etc.) so we're unlikely ever to want to transmit it!
-        return cls(command)
+        return cls(*command)
 
     @property
     def command(self):
         """
-        The two bytes to be transmitted over the wire for this
-        command, as a two-tuple of integers.
+        The bytes to be transmitted over the wire for this
+        command, as a tuple of integers.
 
         """
         return self._data
@@ -147,23 +147,25 @@ class Command(object):
 
     @staticmethod
     def check_command_format(command):
-        """
-        Checks the input param tye, and throws an exception when it is invalid
+        """Checks the input param type, and throws an exception when it is
+        invalid.
+
         :param command:
         :return:
+
         """
-        if not isinstance(command, tuple) and len(command) < 2 or len(command) > 4:
-            raise ValueError("command must be a two to four length tuple")
+        if not isinstance(command, tuple) or len(command) < 2 or len(command) > 4:
+            raise TypeError("command must be a two to four length tuple")
 
         for digit in command:
             if not isinstance(digit, int) or digit < 0 or digit > 255:
-                raise ValueError("command values must be between [0..255]")
+                raise ValueError("command values must be in the range 0..255")
 
     @property
     def _FORMAT_STRING(self):
-        assert isinstance(self._data, tuple)
+        assert isinstance(self.command, tuple)
         pack = ""
-        for elem in self._data:
+        for elem in self.command:
             assert isinstance(elem, int)
             pack += "B"
         return pack
@@ -174,7 +176,7 @@ class Command(object):
         :return: Bytestream of the object
         """
 
-        return struct.pack(self._FORMAT_STRING, *self._data)
+        return struct.pack(self._FORMAT_STRING, *self.command)
 
     def __len__(self):
         """
@@ -199,7 +201,7 @@ class Command(object):
                          "object or dali.address.Address object")
 
     def __unicode__(self):
-        return "({0})".format(type(self)) + u":".join("{:02x}".format(ord(c)) for c in self._data)
+        return "({0})".format(type(self)) + u":".join("{:02x}".format(c) for c in self.command)
 
 
 class ArcPower(Command):
@@ -406,3 +408,6 @@ class QueryCommand(GeneralCommand):
     """
     _isquery = True
     _response = Response
+
+
+from_bytes = Command.from_bytes
