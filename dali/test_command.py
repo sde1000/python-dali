@@ -1,4 +1,20 @@
-from . import command, address, commands
+try:
+
+    from dali import command, address, commands
+
+except:
+    # Realign paths, and try import again
+    # Since pyCharm's unittest runner fails on relative imports
+
+    import sys
+    import os
+
+    PACKAGE_PARENT = '..'
+    SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
+    sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
+
+    from dali import command, address, commands
+
 import unittest
 
 # Only test device types up to this number - if we went all the way to
