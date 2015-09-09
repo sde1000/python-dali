@@ -67,7 +67,7 @@ class DaliServer(DriverInterface):
             if not self._s:
                 s.close()
 
-        response = self.unpack_response(command, result)
+        response = self._unpack_response(command, result)
 
         if response:
             logging.info(u"  -> {0}".format(response))
