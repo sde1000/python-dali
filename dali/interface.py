@@ -7,6 +7,9 @@ class CommunicationError(Exception):
     pass
 
 
+class ParameterError(Exception):
+    pass
+
 class DriverInterface(object):
     """
     Driver interface class
@@ -32,6 +35,8 @@ class DriverInterface(object):
         """
 
         assert isinstance(command, Command)
+        assert isinstance(result, str)
+        assert len(result) is 4
 
         ver, status, rval, pad = struct.unpack("BBBB", result)
         response = None
