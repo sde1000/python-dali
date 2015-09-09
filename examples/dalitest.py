@@ -7,7 +7,7 @@ from dali.gear.emergency import QueryEmergencyFailureStatus
 from dali.gear.emergency import QueryEmergencyFeatures
 from dali.gear.emergency import QueryEmergencyMode
 from dali.gear.emergency import QueryEmergencyStatus
-from dali.interface import DaliServer
+from dali.driver.daliserver import DaliServer
 import logging
 
 if __name__ == "__main__":
