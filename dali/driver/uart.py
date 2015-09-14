@@ -5,6 +5,7 @@ UART communication driver for DALI
 
 import logging
 import serial
+import struct
 from dali.command import Command
 from dali.interface import DriverInterface, ParameterError
 
@@ -52,7 +53,13 @@ class DaliUART(DriverInterface):
         response = None
 
         try:
-            data = command.pack
+            #
+            crc = 0
+            for c in list(command.pack):
+                crc ^= ord(c)
+
+            # send data in reverse order
+            data = struct.pack("B", len(command)) + command.pack + struct.pack("B", crc)
             logging.info("Send data: {0}".format(":".join("{:02x}".format(ord(c)) for c in data)))
             self._s.write(data)
 
