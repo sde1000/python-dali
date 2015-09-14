@@ -42,8 +42,19 @@ class DaliUART(DriverInterface):
     def send(self, command):
         """
         Send a DALI command, and recv. response if there's any expected
-        :param command: command object
-        :return: response object
+
+        Data format:
+            Data is sent and recieved in binary format.
+
+            - 1 byte : length of the package
+            - n byte : data of the package
+            - 1 byte : XOR crc of the data
+
+        :param command: Command object
+
+        :returns: response object, if any
+
+        :raise ParameterError: when the recv data is not matching or timeot occured
         """
         assert isinstance(command, Command)
         assert self._s is not None
@@ -64,14 +75,26 @@ class DaliUART(DriverInterface):
             self._s.write(data)
 
             if command.is_query:
-                logging.info("Query, awaiting response")
+                logging.info("Query was sent, awaiting response")
                 self._s.timeout = 1
                 recv_data = self._s.read(4)
 
             if recv_data is not None:
                 logging.info("Recv data: {0}".format(":".join("{:02x}".format(ord(c)) for c in recv_data)))
                 try:
-                    response = self._unpack_response(command, recv_data)
+                    # If the recieved data is shorter than the shortest possible data, we fail unconditionally
+                    if len(recv_data) < 3:
+                        raise ParameterError
+
+                    length = struct.unpack("B", recv_data[0])
+                    crc = struct.unpack("B", recv_data[-1])
+
+                    # The data is in between the first and the last byte
+                    data = recv_data[1:-1]
+
+                    # TODO --- at this point we have a chance to check the CRC of the response
+
+                    response = self._unpack_response(command, data)
                 except:
                     raise ParameterError
 
@@ -79,8 +102,8 @@ class DaliUART(DriverInterface):
                     logging.info(u"  -> {0}".format(response))
 
         except:
-            # nothing to have here yet
+            # nothing to do here yet
             raise
-        # no need to clean up connection here
 
+        # no need to clean up connection here
         return response
