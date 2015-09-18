@@ -13,8 +13,7 @@ class DuplicateDevice(Exception):
 
 
 class BadDevice(Exception):
-    """Device with invalid attributes.
-    """
+    """Device with invalid attributes."""
     pass
 
 
@@ -33,22 +32,19 @@ class NotConnected(Exception):
 
 
 class NoFreeAddress(Exception):
-    """An unused short address was required but none was available.
-    """
+    """An unused short address was required but none was available."""
     pass
 
 
 class ProgramShortAddressFailure(Exception):
-    """A device did not accept programming of its short address.
-    """
+    """A device did not accept programming of its short address."""
 
     def __init__(self, address):
         self.address = address
 
 
 class Bus(object):
-    """A DALI bus.
-    """
+    """A DALI bus."""
     _all_addresses = sets.ImmutableSet(xrange(64))
 
     def __init__(self, name=None, interface=None):
@@ -74,8 +70,7 @@ class Bus(object):
         device.bus = self
 
     def unused_addresses(self):
-        """Return all short addresses that are not in use.
-        """
+        """Return all short addresses that are not in use."""
         used_addresses = sets.ImmutableSet(self._devices.keys())
         return list(self._all_addresses - used_addresses)
 

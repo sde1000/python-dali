@@ -1,5 +1,4 @@
-"""DALI commands defined in IEC 62386-102 and IEC62386-202
-"""
+"""DALI commands defined in IEC 62386-102 and IEC62386-202"""
 
 from dali import address
 from dali.command import Command
@@ -69,8 +68,7 @@ class ArcPower(Command):
 
 
 class Off(GeneralCommand):
-    """Extinguish the lamp immediately without fading.
-    """
+    """Extinguish the lamp immediately without fading."""
     _cmdval = 0x00
 
 
@@ -192,8 +190,7 @@ class StoreActualLevelInDtr(ConfigCommand):
 
 
 class StoreDtrAsMaxLevel(ConfigCommand):
-    """Save the value in the DTR as the new "MAX LEVEL".
-    """
+    """Save the value in the DTR as the new "MAX LEVEL"."""
     _cmdval = 0x2a
 
 
@@ -206,14 +203,12 @@ class StoreDtrAsMinLevel(ConfigCommand):
 
 
 class StoreDtrAsFailLevel(ConfigCommand):
-    """Save the value in the DTR as the new "SYSTEM FAILURE LEVEL".
-    """
+    """Save the value in the DTR as the new "SYSTEM FAILURE LEVEL"."""
     _cmdval = 0x2c
 
 
 class StoreDtrAsPowerOnLevel(ConfigCommand):
-    """Save the value in the DTR as the new "POWER ON LEVEL".
-    """
+    """Save the value in the DTR as the new "POWER ON LEVEL"."""
     _cmdval = 0x2d
 
 
@@ -271,15 +266,13 @@ class RemoveFromScene(ConfigCommand):
 
 
 class AddToGroup(ConfigCommand):
-    """Add the ballast to the specified group.
-    """
+    """Add the ballast to the specified group."""
     _cmdval = 0x60
     _hasparam = True
 
 
 class RemoveFromGroup(ConfigCommand):
-    """Remove the ballast from the specified group.
-    """
+    """Remove the ballast from the specified group."""
     _cmdval = 0x70
     _hasparam = True
 
@@ -371,22 +364,19 @@ class QueryStatus(QueryCommand):
 
 
 class QueryBallast(QueryCommand):
-    """Ask if there is a ballast that is able to communicate.
-    """
+    """Ask if there is a ballast that is able to communicate."""
     _cmdval = 0x91
     _response = YesNoResponse
 
 
 class QueryLampFailure(QueryCommand):
-    """Ask if there is a lamp problem.
-    """
+    """Ask if there is a lamp problem."""
     _cmdval = 0x92
     _response = YesNoResponse
 
 
 class QueryLampPowerOn(QueryCommand):
-    """Ask if there is a lamp operating.
-    """
+    """Ask if there is a lamp operating."""
     _cmdval = 0x93
     _response = YesNoResponse
 
@@ -401,8 +391,7 @@ class QueryLimitError(QueryCommand):
 
 
 class QueryResetState(QueryCommand):
-    """Ask if the ballast is in "RESET STATE".
-    """
+    """Ask if the ballast is in "RESET STATE"."""
     _cmdval = 0x95
     _response = YesNoResponse
 
@@ -425,8 +414,7 @@ class QueryVersionNumber(QueryCommand):
 
 
 class QueryDtr(QueryCommand):
-    """Return the contents of the DTR.
-    """
+    """Return the contents of the DTR."""
     _cmdval = 0x98
 
 QueryContentDtr = QueryDtr
@@ -467,8 +455,7 @@ class QueryDeviceType(QueryCommand):
 
 
 class QueryPhysicalMinimumLevel(QueryCommand):
-    """Return the physical minimum level for this device.
-    """
+    """Return the physical minimum level for this device."""
     _cmdval = 0x9a
 
 
@@ -494,7 +481,6 @@ class QueryDtr2(QueryCommand):
     """Return the contents of DTR2.
 
     NB not checked against IEC 62386
-
     """
     _cmdval = 0x9d
 
@@ -509,26 +495,22 @@ class QueryActualLevel(QueryCommand):
 
 
 class QueryMaxLevel(QueryCommand):
-    """Return "MAX LEVEL".
-    """
+    """Return "MAX LEVEL"."""
     _cmdval = 0xa1
 
 
 class QueryMinLevel(QueryCommand):
-    """Return "MIN LEVEL".
-    """
+    """Return "MIN LEVEL"."""
     _cmdval = 0xa2
 
 
 class QueryPowerOnLevel(QueryCommand):
-    """Return "POWER ON LEVEL".
-    """
+    """Return "POWER ON LEVEL"."""
     _cmdval = 0xa3
 
 
 class QueryFailureLevel(QueryCommand):
-    """Return "SYSTEM FAILURE LEVEL".
-    """
+    """Return "SYSTEM FAILURE LEVEL"."""
     _cmdval = 0xa4
 
 
@@ -583,20 +565,17 @@ class QueryGroupsMSB(QueryCommand):
 
 
 class QueryRandomAddressH(QueryCommand):
-    """Return the 8 high bits of the random address.
-    """
+    """Return the 8 high bits of the random address."""
     _cmdval = 0xc2
 
 
 class QueryRandomAddressM(QueryCommand):
-    """Return the 8 mid bits of the random address.
-    """
+    """Return the 8 mid bits of the random address."""
     _cmdval = 0xc3
 
 
 class QueryRandomAddressL(QueryCommand):
-    """Return the 8 low bits of the random address.
-    """
+    """Return the 8 low bits of the random address."""
     _cmdval = 0xc4
 
 
@@ -611,14 +590,12 @@ class ReadMemoryLocation(QueryCommand):
 
 
 class Terminate(SpecialCommand):
-    """All special mode processes shall be terminated.
-    """
+    """All special mode processes shall be terminated."""
     _cmdval = 0xa1
 
 
 class SetDtr(SpecialCommand):
-    """This is a broadcast command to set the value of the DTR register.
-    """
+    """This is a broadcast command to set the value of the DTR register."""
     _cmdval = 0xa3
     _hasparam = True
 
@@ -711,22 +688,19 @@ class Withdraw(SpecialCommand):
 
 
 class SetSearchAddrH(SpecialCommand):
-    """Set the high 8 bits of the search address.
-    """
+    """Set the high 8 bits of the search address."""
     _cmdval = 0xb1
     _hasparam = True
 
 
 class SetSearchAddrM(SpecialCommand):
-    """Set the mid 8 bits of the search address.
-    """
+    """Set the mid 8 bits of the search address."""
     _cmdval = 0xb3
     _hasparam = True
 
 
 class SetSearchAddrL(SpecialCommand):
-    """Set the low 8 bits of the search address.
-    """
+    """Set the low 8 bits of the search address."""
     _cmdval = 0xb5
     _hasparam = True
 
@@ -934,8 +908,7 @@ class EmergencyLightingConfigCommand(EmergencyLightingCommand):
 
 
 class StoreDtrAsEmergencyLevel(EmergencyLightingConfigCommand):
-    """DTR0 shall be stored as the Emergency Level.
-    """
+    """DTR0 shall be stored as the Emergency Level."""
     _cmdval = 0xe9
 
 
@@ -1068,20 +1041,17 @@ class QueryLampTotalOperationTime(EmergencyLightingQueryCommand):
 
 
 class QueryEmergencyLevel(EmergencyLightingQueryCommand):
-    """Return the Emergency Level, or MASK (255) if it is unknown.
-    """
+    """Return the Emergency Level, or MASK (255) if it is unknown."""
     _cmdval = 0xf6
 
 
 class QueryEmergencyMinLevel(EmergencyLightingQueryCommand):
-    """Return the Emergency Min Level, or MASK (255) if it is unknown.
-    """
+    """Return the Emergency Min Level, or MASK (255) if it is unknown."""
     _cmdval = 0xf7
 
 
 class QueryEmergencyMaxLevel(EmergencyLightingQueryCommand):
-    """Return the Emergency Max Level, or MASK (255) if it is unknown.
-    """
+    """Return the Emergency Max Level, or MASK (255) if it is unknown."""
     _cmdval = 0xf8
 
 
@@ -1134,8 +1104,7 @@ class QueryEmergencyModeResponse(Response):
 
 
 class QueryEmergencyMode(EmergencyLightingQueryCommand):
-    """Return the Emergency Mode Information byte.
-    """
+    """Return the Emergency Mode Information byte."""
     _cmdval = 0xfa
     _response = QueryEmergencyModeResponse
 
@@ -1165,8 +1134,7 @@ class QueryEmergencyFeaturesResponse(Response):
 
 
 class QueryEmergencyFeatures(EmergencyLightingQueryCommand):
-    """Return the Features information byte.
-    """
+    """Return the Features information byte."""
     _cmdval = 0xfb
     _response = QueryEmergencyFeaturesResponse
 
@@ -1192,8 +1160,7 @@ class QueryEmergencyFailureStatusResponse(Response):
 
 
 class QueryEmergencyFailureStatus(EmergencyLightingQueryCommand):
-    """Return the Failure Status information byte.
-    """
+    """Return the Failure Status information byte."""
     _cmdval = 0xfc
     _response = QueryEmergencyFailureStatusResponse
 
@@ -1219,8 +1186,7 @@ class QueryEmergencyStatusResponse(Response):
 
 
 class QueryEmergencyStatus(EmergencyLightingQueryCommand):
-    """Return the Emergency Status information byte.
-    """
+    """Return the Emergency Status information byte."""
     _cmdval = 0xfd
     _response = QueryEmergencyStatusResponse
 
@@ -1234,6 +1200,5 @@ class PerformDtrSelectedFunction(EmergencyLightingControlCommand):
 
 
 class QueryExtendedVersionNumber(EmergencyLightingCommand):
-    """Returns 1.
-    """
+    """Returns 1."""
     _cmdval = 0xff

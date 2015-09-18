@@ -1,6 +1,5 @@
 class AddressTracker(type):
-    """Metaclass keeping track of all the types of Address we understand.
-    """
+    """Metaclass keeping track of all the types of Address we understand."""
 
     def __init__(cls, name, bases, attrs):
         if not hasattr(cls, '_addrtypes'):
@@ -10,8 +9,7 @@ class AddressTracker(type):
 
 
 class Address(object):
-    """An address for one or more ballasts.
-    """
+    """An address for one or more ballasts."""
     __metaclass__ = AddressTracker
 
     @classmethod
@@ -29,8 +27,7 @@ class Address(object):
 
     @property
     def addrbyte(self):
-        """The DALI address byte encoding this address.
-        """
+        """The DALI address byte encoding this address."""
         return None
 
     def __unicode__(self):
@@ -38,13 +35,11 @@ class Address(object):
 
 
 class Broadcast(Address):
-    """All control gear connected to the network.
-    """
+    """All control gear connected to the network."""
 
     @property
     def addrbyte(self):
-        """The DALI address byte for broadcasts.
-        """
+        """The DALI address byte for broadcasts."""
         return 0xfe
 
     @classmethod
@@ -60,13 +55,11 @@ class Broadcast(Address):
 
 
 class BroadcastUnaddressed(Address):
-    """All control devices in the system that have no short address.
-    """
+    """All control devices in the system that have no short address."""
 
     @property
     def addrbyte(self):
-        """The DALI address byte for broadcasts to unaddressed devices.
-        """
+        """The DALI address byte for broadcasts to unaddressed devices."""
         return 0xfc
 
     @classmethod
@@ -82,8 +75,7 @@ class BroadcastUnaddressed(Address):
 
 
 class Group(Address):
-    """All ballasts that are members of the specified group.
-    """
+    """All ballasts that are members of the specified group."""
 
     def __init__(self, group):
         if not isinstance(group, int):
@@ -94,8 +86,7 @@ class Group(Address):
 
     @property
     def addrbyte(self):
-        """The DALI address byte for this group.
-        """
+        """The DALI address byte for this group."""
         return 0x80 | (self.group << 1)
 
     @classmethod
@@ -126,8 +117,7 @@ class Short(Address):
 
     @property
     def addrbyte(self):
-        """The DALI address byte for this particular ballast.
-        """
+        """The DALI address byte for this particular ballast."""
         return (self.address << 1)
 
     @classmethod

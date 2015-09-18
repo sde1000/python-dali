@@ -1,13 +1,11 @@
-"""Declaration of base types for dali commands and their responses.
-"""
+"""Declaration of base types for dali commands and their responses."""
 
 from dali import address
 import struct
 
 
 class CommandTracker(type):
-    """Metaclass keeping track of all the types of Command we understand.
-    """
+    """Metaclass keeping track of all the types of Command we understand."""
 
     def __init__(cls, name, bases, attrs):
         if not hasattr(cls, '_commands'):
@@ -30,8 +28,7 @@ class Response(object):
     """
 
     def __init__(self, val):
-        """If there was no response, call with val=None.
-        """
+        """If there was no response, call with val=None."""
         self._value = val
 
     @property
@@ -111,8 +108,7 @@ class Command(object):
 
     @property
     def is_query(self):
-        """Does this command return a result?
-        """
+        """Does this command return a result?"""
         return self._isquery
 
     @property
@@ -148,15 +144,11 @@ class Command(object):
 
     @property
     def pack(self):
-        """
-        :return: Bytestream of the object
-        """
+        """:return: Bytestream of the object"""
         return struct.pack(self._FORMAT_STRING, *self.command)
 
     def __len__(self):
-        """
-        :return: the length of the dali command in bytes
-        """
+        """:return: the length of the dali command in bytes"""
         return struct.calcsize(self._FORMAT_STRING)
 
     @staticmethod
@@ -261,8 +253,7 @@ class ConfigCommand(GeneralCommand):
 
 
 class SpecialCommand(Command):
-    """Special commands are broadcast and are received by all devices.
-    """
+    """Special commands are broadcast and are received by all devices."""
     _hasparam = False
 
     def __init__(self, *args):
@@ -308,8 +299,7 @@ class SpecialCommand(Command):
 
 
 class ShortAddrSpecialCommand(SpecialCommand):
-    """A special command that has a short address as its parameter.
-    """
+    """A special command that has a short address as its parameter."""
 
     def __init__(self, address):
         if not isinstance(address, int):

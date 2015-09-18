@@ -19,6 +19,5 @@ class Device(object):
             self.bind(bus)
 
     def bind(self, bus):
-        """Bind this device object to a particular DALI bus.
-        """
+        """Bind this device object to a particular DALI bus."""
         bus.add_device(self)

@@ -12,8 +12,7 @@ class DeviceNotFound(Exception):
 
 
 class DaliUSB(object):
-    """A driver for a Tridonic/Lunatone DALI-USB interface.
-    """
+    """A driver for a Tridonic/Lunatone DALI-USB interface."""
 
     id_list = [(0x17b5, 0x0020)]
 
@@ -47,8 +46,7 @@ class DaliUSB(object):
         return self._dev.serial_number
 
     def start(self):
-        """Detach the kernel driver and configure the device.
-        """
+        """Detach the kernel driver and configure the device."""
         self._dev.set_configuration()
         self._dev.set_interface_altsetting(0)
 
