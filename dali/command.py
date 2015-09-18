@@ -1,18 +1,11 @@
-"""
-Declaration of base types for dali commands and their responses.
+"""Declaration of base types for dali commands and their responses."""
 
-"""
-
-from . import address
-import logging
+from dali import address
 import struct
 
 
 class CommandTracker(type):
-    """
-    Metaclass keeping track of all the types of Command we understand.
-
-    """
+    """Metaclass keeping track of all the types of Command we understand."""
 
     def __init__(cls, name, bases, attrs):
         if not hasattr(cls, '_commands'):
@@ -25,23 +18,17 @@ class CommandTracker(type):
         """
         :return: List of known commands if there's any
         """
-
         return cls._commands
 
 
 class Response(object):
-    """
-    Some DALI commands cause a response from the addressed devices.
+    """Some DALI commands cause a response from the addressed devices.
     The response is either an 8-bit frame encoding 8-bit data or 0xff
     for "Yes", or a lack of response encoding "No".
-
     """
 
     def __init__(self, val):
-        """
-        If there was no response, call with val=None.
-
-        """
+        """If there was no response, call with val=None."""
         self._value = val
 
     @property
@@ -55,19 +42,16 @@ class Response(object):
 class YesNoResponse(Response):
     @property
     def value(self):
-        return self._value != None
+        return self._value is not None
 
 
 class Command(object):
-    """
-    A standard DALI command defined in IEC-60929 annex E.
+    """A standard DALI command defined in IEC-60929 annex E.
 
     Subclasses must provide a class method "from_bytes" which, when
     passed a (a,b) command tuple returns a new instance of the class
     corresponding to that command, or "None" if there is no match.
-
     """
-
     __metaclass__ = CommandTracker
 
     _isconfig = False
@@ -81,8 +65,7 @@ class Command(object):
 
     @classmethod
     def from_bytes(cls, command, devicetype=0):
-        """
-        If the device type the command is intended for is known
+        """If the device type the command is intended for is known
         (i.e. the previous command was EnableDeviceType(foo)) then
         specify it here.
 
@@ -91,9 +74,7 @@ class Command(object):
 
         :returns: Return a Command instance corresponding to the bytes in
         command.  Returns None if there is no match.
-
         """
-
         Command.check_command_format(command)
 
         if cls != Command:
@@ -113,35 +94,26 @@ class Command(object):
 
     @property
     def command(self):
-        """
-        The bytes to be transmitted over the wire for this
+        """The bytes to be transmitted over the wire for this
         command, as a tuple of integers.
-
         """
         return self._data
 
     @property
     def is_config(self):
-        """
-        Is this a configuration command?  (Does it need repeating to
+        """Is this a configuration command?  (Does it need repeating to
         take effect?)
-
         """
         return self._isconfig
 
     @property
     def is_query(self):
-        """
-        Does this command return a result?
-
-        """
+        """Does this command return a result?"""
         return self._isquery
 
     @property
     def response(self):
-        """
-        If this command returns a result, use this class for the response.
-
+        """If this command returns a result, use this class for the response.
         """
         return self._response
 
@@ -152,9 +124,9 @@ class Command(object):
 
         :param command:
         :return:
-
         """
-        if not isinstance(command, tuple) or len(command) < 2 or len(command) > 4:
+        if not isinstance(command, tuple) \
+                or len(command) < 2 or len(command) > 4:
             raise TypeError("command must be a two to four length tuple")
 
         for digit in command:
@@ -172,16 +144,11 @@ class Command(object):
 
     @property
     def pack(self):
-        """
-        :return: Bytestream of the object
-        """
-
+        """:return: Bytestream of the object"""
         return struct.pack(self._FORMAT_STRING, *self.command)
 
     def __len__(self):
-        """
-        :return: the length of the dali command in bytes
-        """
+        """:return: the length of the dali command in bytes"""
         return struct.calcsize(self._FORMAT_STRING)
 
     @staticmethod
@@ -189,7 +156,6 @@ class Command(object):
         """destination can be a dali.device.Device object with _addressobj
         attribute, a dali.address.Address object with addrbyte attribute,
         or an integer which will be wrapped in a dali.address.Address object.
-
         """
         if hasattr(destination, "_addressobj"):
             destination = destination._addressobj
@@ -201,15 +167,14 @@ class Command(object):
                          "object or dali.address.Address object")
 
     def __unicode__(self):
-        return "({0})".format(type(self)) + u":".join("{:02x}".format(c) for c in self.command)
+        joined = u":".join("{:02x}".format(c) for c in self.command)
+        return "({0}){1}".format(type(self), joined)
 
 
 class GeneralCommand(Command):
-    """
-    A command addressed to broadcast, short address or group, i.e. one
+    """A command addressed to broadcast, short address or group, i.e. one
     with a destination as defined in E.4.3.2 and which is not a direct
     arc power command.
-
     """
     _cmdval = None
     _hasparam = False
@@ -243,7 +208,8 @@ class GeneralCommand(Command):
 
         self.destination = self._check_destination(destination)
 
-        Command.__init__(self, self.destination.addrbyte | 0x01, self._cmdval | param)
+        Command.__init__(
+            self, self.destination.addrbyte | 0x01, self._cmdval | param)
 
     @classmethod
     def from_bytes(cls, command):
@@ -279,19 +245,15 @@ class GeneralCommand(Command):
 
 
 class ConfigCommand(GeneralCommand):
-    """
-    Configuration commands must be transmitted twice within 100ms,
+    """Configuration commands must be transmitted twice within 100ms,
     with no other commands addressing the same ballast being
     transmitted in between.
-
     """
     _isconfig = True
 
 
 class SpecialCommand(Command):
-    """Special commands are broadcast and are received by all devices.
-
-    """
+    """Special commands are broadcast and are received by all devices."""
     _hasparam = False
 
     def __init__(self, *args):
@@ -337,9 +299,7 @@ class SpecialCommand(Command):
 
 
 class ShortAddrSpecialCommand(SpecialCommand):
-    """A special command that has a short address as its parameter.
-
-    """
+    """A special command that has a short address as its parameter."""
 
     def __init__(self, address):
         if not isinstance(address, int):
@@ -354,7 +314,8 @@ class ShortAddrSpecialCommand(SpecialCommand):
 
     @classmethod
     def from_bytes(cls, command):
-        if cls == ShortAddrSpecialCommand: return
+        if cls == ShortAddrSpecialCommand:
+            return
         a, b = command
         if a == cls._cmdval:
             if (b & 0x81) == 0x01:
@@ -365,8 +326,7 @@ class ShortAddrSpecialCommand(SpecialCommand):
 
 
 class QueryCommand(GeneralCommand):
-    """
-    Query commands are answered with "Yes", "No" or 8-bit information.
+    """Query commands are answered with "Yes", "No" or 8-bit information.
 
     "Yes" is encoded as 0xff (255)
     "No" is encoded as no response
@@ -375,7 +335,6 @@ class QueryCommand(GeneralCommand):
     invalid answers as all ballasts addressed will answer.  It may be
     useful to do this to check whether any ballast in a group provides
     a "Yes" response, for example to "QueryLampFailure".
-
     """
     _isquery = True
     _response = Response

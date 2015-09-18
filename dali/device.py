@@ -1,16 +1,12 @@
-from . import command
-from .address import Short
+from dali.address import Short
 
 
-# descriptor classes for DALI device attributes goes here...
-# XXX
-
+# XXX: descriptor classes for DALI device attributes goes here...
 
 
 class Device(object):
     """Any DALI slave device that has been configured with a short
     address.
-
     """
 
     def __init__(self, address, name=None, bus=None):
@@ -19,10 +15,9 @@ class Device(object):
         self.address = address
         self._addressobj = Short(address)
         self.bus = None
-        if bus: self.bind(bus)
+        if bus:
+            self.bind(bus)
 
     def bind(self, bus):
-        """Bind this device object to a particular DALI bus.
-
-        """
+        """Bind this device object to a particular DALI bus."""
         bus.add_device(self)
