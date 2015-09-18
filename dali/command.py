@@ -153,7 +153,7 @@ class Command(object):
 
     @staticmethod
     def _check_destination(destination):
-        """Destination can be a dali.device.Device object with _addressobj
+        """destination can be a dali.device.Device object with _addressobj
         attribute, a dali.address.Address object with addrbyte attribute,
         or an integer which will be wrapped in a dali.address.Address object.
         """
