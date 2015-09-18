@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 
-import sys
-
-from dali.address import *
-from dali.command import *
+from dali.address import Group
+from dali.commands import ArcPower
 from dali.interface import DaliServer
+import sys
 
 if __name__ == "__main__":
     group = int(sys.argv[1])
