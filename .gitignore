@@ -1,7 +1,12 @@
 *.pyc
 *~
-.project
-.pydevproject
-release-tmp/
-.idea
+/.project
+/.pydevproject
+/release-tmp/
+/.idea
+/bin/
+/build/
+/include/
+/lib/
+/local/
 
