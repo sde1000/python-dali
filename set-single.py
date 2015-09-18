@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
-import sys
-
-from dali.address import *
-from dali.command import *
+from dali.address import Broadcast
+from dali.address import Short
+from dali.commands import ArcPower
 from dali.interface import DaliServer
+import sys
 
 if __name__ == "__main__":
     addr = Short(int(sys.argv[1])) if sys.argv[1] != "all" else Broadcast()
