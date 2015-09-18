@@ -1,19 +1,22 @@
 try:
-
-    from dali import command, address, commands
-
+    from dali import address
+    from dali import command
+    from dali import commands
 except:
     # Realign paths, and try import again
     # Since pyCharm's unittest runner fails on relative imports
-
-    import sys
     import os
+    import sys
 
     PACKAGE_PARENT = '..'
-    SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
+    SCRIPT_DIR = os.path.dirname(
+        os.path.realpath(os.path.join(os.getcwd(),
+                         os.path.expanduser(__file__))))
     sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 
-    from dali import command, address, commands
+    from dali import address
+    from dali import command
+    from dali import commands
 
 import unittest
 

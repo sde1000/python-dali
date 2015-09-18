@@ -1,8 +1,5 @@
 class AddressTracker(type):
-    """
-    Metaclass keeping track of all the types of Address we understand.
-
-    """
+    """Metaclass keeping track of all the types of Address we understand."""
 
     def __init__(cls, name, bases, attrs):
         if not hasattr(cls, '_addrtypes'):
@@ -12,32 +9,25 @@ class AddressTracker(type):
 
 
 class Address(object):
-    """
-    An address for one or more ballasts.
-
-    """
+    """An address for one or more ballasts."""
     __metaclass__ = AddressTracker
 
     @classmethod
     def from_byte(cls, a):
-        """
-        Given an address byte (the first of the two bytes in a DALI
+        """Given an address byte (the first of the two bytes in a DALI
         command), return a corresponding Address object or None if the
         byte is for a special command.
-        
         """
         if cls != Address:
             return
         for at in cls._addrtypes:
             r = at.from_byte(a)
-            if r: return r
+            if r:
+                return r
 
     @property
     def addrbyte(self):
-        """
-        The DALI address byte encoding this address.
-
-        """
+        """The DALI address byte encoding this address."""
         return None
 
     def __unicode__(self):
@@ -45,21 +35,17 @@ class Address(object):
 
 
 class Broadcast(Address):
-    """All control gear connected to the network.
-
-    """
+    """All control gear connected to the network."""
 
     @property
     def addrbyte(self):
-        """
-        The DALI address byte for broadcasts.
-
-        """
+        """The DALI address byte for broadcasts."""
         return 0xfe
 
     @classmethod
     def from_byte(cls, a):
-        if a == 0xfe or a == 0xff: return cls()
+        if a == 0xfe or a == 0xff:
+            return cls()
 
     def __eq__(self, other):
         return isinstance(other, Broadcast)
@@ -69,20 +55,17 @@ class Broadcast(Address):
 
 
 class BroadcastUnaddressed(Address):
-    """All control devices in the system that have no short address.
-
-    """
+    """All control devices in the system that have no short address."""
 
     @property
     def addrbyte(self):
-        """The DALI address byte for broadcasts to unaddressed devices.
-
-        """
+        """The DALI address byte for broadcasts to unaddressed devices."""
         return 0xfc
 
     @classmethod
     def from_byte(cls, a):
-        if a == 0xfc or a == 0xfd: return cls()
+        if a == 0xfc or a == 0xfd:
+            return cls()
 
     def __eq__(self, other):
         return isinstance(other, BroadcastUnaddressed)
@@ -92,10 +75,7 @@ class BroadcastUnaddressed(Address):
 
 
 class Group(Address):
-    """
-    All ballasts that are members of the specified group.
-
-    """
+    """All ballasts that are members of the specified group."""
 
     def __init__(self, group):
         if not isinstance(group, int):
@@ -106,10 +86,7 @@ class Group(Address):
 
     @property
     def addrbyte(self):
-        """
-        The DALI address byte for this group.
-
-        """
+        """The DALI address byte for this group."""
         return 0x80 | (self.group << 1)
 
     @classmethod
@@ -125,12 +102,10 @@ class Group(Address):
 
 
 class Short(Address):
-    """
-    The particular ballast that has this address.
+    """The particular ballast that has this address.
 
     In a correctly configured DALI network, no more than one ballast will
     have a particular short address.
-
     """
 
     def __init__(self, address):
@@ -142,10 +117,7 @@ class Short(Address):
 
     @property
     def addrbyte(self):
-        """
-        The DALI address byte for this particular ballast.
-
-        """
+        """The DALI address byte for this particular ballast."""
         return (self.address << 1)
 
     @classmethod
