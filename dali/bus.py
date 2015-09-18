@@ -83,16 +83,16 @@ class Bus(object):
             if sa in self._devices:
                 continue
             response = i.send(
-                command.QueryBallast(address.Short(sa)))
+                commands.QueryBallast(address.Short(sa)))
             if response.value:
                 device.Device(address=sa, bus=self)
         self._bus_scanned = True
 
     def set_search_addr(self, addr):
         i = self.get_interface()
-        i.send(command.SetSearchAddrH((addr >> 16) & 0xff))
-        i.send(command.SetSearchAddrM((addr >> 8) & 0xff))
-        i.send(command.SetSearchAddrL(addr & 0xff))
+        i.send(commands.SetSearchAddrH((addr >> 16) & 0xff))
+        i.send(commands.SetSearchAddrM((addr >> 8) & 0xff))
+        i.send(commands.SetSearchAddrL(addr & 0xff))
 
     def find_next(self, low, high):
         """Find the ballast with the lowest random address.  The caller
@@ -108,11 +108,11 @@ class Bus(object):
         i = self.get_interface()
         self.set_search_addr(high)
         if low == high:
-            response = i.send(command.Compare())
+            response = i.send(commands.Compare())
             if response.value is True:
                 return low
             return None
-        response = i.send(command.Compare())
+        response = i.send(commands.Compare())
         if response.value is True:
             midpoint = (low + high) / 2
             return self.find_next(low, midpoint) \
@@ -127,9 +127,9 @@ class Bus(object):
             self.scan()
         addrs = self.unused_addresses()
         i = self.get_interface()
-        i.send(command.Terminate())
-        i.send(command.Initialise(broadcast=False, address=None))
-        i.send(command.Randomise())
+        i.send(commands.Terminate())
+        i.send(commands.Initialise(broadcast=False, address=None))
+        i.send(commands.Randomise())
         # Randomise may take up to 100ms
         time.sleep(0.1)
         low = 0
@@ -139,14 +139,14 @@ class Bus(object):
             if low is not None:
                 if addrs:
                     new_addr = addrs.pop(0)
-                    i.send(command.ProgramShortAddress(new_addr))
-                    r = i.send(command.VerifyShortAddress(new_addr))
+                    i.send(commands.ProgramShortAddress(new_addr))
+                    r = i.send(commands.VerifyShortAddress(new_addr))
                     if r.value is not True:
                         raise ProgramShortAddressFailure(new_addr)
-                    i.send(command.Withdraw())
+                    i.send(commands.Withdraw())
                     device.Device(address=new_addr, bus=self)
                 else:
-                    i.send(command.Terminate())
+                    i.send(commands.Terminate())
                     raise NoFreeAddress
                 low = low + 1
-        i.send(command.Terminate())
+        i.send(commands.Terminate())
