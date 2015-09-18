@@ -1,9 +1,8 @@
 from __future__ import print_function
-import struct
-import socket
+from dali.command import Command
 import logging
-from .command import Command
-from .command import Response
+import socket
+import struct
 
 
 class CommunicationError(Exception):
@@ -16,7 +15,6 @@ class DaliServer(object):
 
     NB this requires daliserver commit
     90e34a0cd2945dc7a15681f11647e708f858521e or later.
-
     """
 
     def __init__(self, host="localhost", port=55825,
@@ -71,9 +69,8 @@ class DaliServer(object):
         return response
 
     def unpack_response(self, command, result):
-        """
-        Unpack result from the given bytestream and creates the corresponding
-        response object
+        """Unpack result from the given bytestream and creates the
+        corresponding response object
 
         :param command: the command which waiting for it's response
         :param result: the result bytestream which came back
@@ -99,6 +96,5 @@ class DaliServer(object):
                 raise CommunicationError("status was %d" % status)
 
         return response
-
 
 __all__ = ["DaliServer"]
