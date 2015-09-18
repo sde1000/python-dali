@@ -43,7 +43,7 @@ class DaliServer(object):
             s = socket.create_connection(self._target)
 
         assert isinstance(command, Command)
-        message = command.pack
+        message = struct.pack("BB", 2, 0) + command.pack
 
         logging.info(u"command: {}{}".format(
             command, " (twice)" if command._isconfig else ""))
