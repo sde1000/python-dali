@@ -42,7 +42,9 @@ class TestCommands(unittest.TestCase):
                     ts = (a, b)
                     self.assertTrue(
                         isinstance(command.from_bytes(ts, dt).__unicode__(),
-                                   unicode))
+                                   unicode),
+                        "command ({},{}) unicode method didn't return unicode".\
+                        format(a,b))
 
     def test_bad_command(self):
         "command.from_bytes() rejects invalid inputs"

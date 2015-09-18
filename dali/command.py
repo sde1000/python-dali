@@ -168,7 +168,7 @@ class Command(object):
 
     def __unicode__(self):
         joined = u":".join("{:02x}".format(c) for c in self.command)
-        return "({0}){1}".format(type(self), joined)
+        return u"({0}){1}".format(type(self), joined)
 
 
 class GeneralCommand(Command):
