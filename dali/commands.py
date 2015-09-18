@@ -1,5 +1,6 @@
 """DALI commands defined in IEC 62386-102 and IEC 62386-202"""
 
+from __future__ import unicode_literals
 from dali import address
 from dali.command import Command
 from dali.command import ConfigCommand
@@ -64,7 +65,7 @@ class ArcPower(Command):
             power = "MASK"
         else:
             power = self.power
-        return u"ArcPower(%s,%s)" % (self.destination, power)
+        return "ArcPower(%s,%s)" % (self.destination, power)
 
 
 class Off(GeneralCommand):
@@ -342,7 +343,7 @@ class QueryStatusResponse(Response):
         return self._value & 0x43 != 0
 
     def __unicode__(self):
-        return u",".join(self.status)
+        return ",".join(self.status)
 
 
 class QueryStatus(QueryCommand):
@@ -421,13 +422,13 @@ QueryContentDtr = QueryDtr
 
 
 class QueryDeviceTypeResponse(Response):
-    _types = {0: u"fluorescent lamp",
-              1: u"emergency lighting",
-              2: u"HID lamp",
-              3: u"low voltage halogen lamp",
-              4: u"incandescent lamp dimmer",
-              5: u"dc-controlled dimmer",
-              6: u"LED lamp"}
+    _types = {0: "fluorescent lamp",
+              1: "emergency lighting",
+              2: "HID lamp",
+              3: "low voltage halogen lamp",
+              4: "incandescent lamp dimmer",
+              5: "dc-controlled dimmer",
+              6: "LED lamp"}
 
     def __unicode__(self):
         if self.value in self._types:
@@ -525,7 +526,7 @@ class QueryFadeTimeAndRateResponse(Response):
         return self._value & 0x0f
 
     def __unicode__(self):
-        return u"Fade time: {0}; Fade rate: {1}".format(
+        return "Fade time: {0}; Fade rate: {1}".format(
             self.fade_time,
             self.fade_rate
         )
@@ -654,8 +655,8 @@ class Initialise(Command):
 
     def __unicode__(self):
         if self.broadcast:
-            return u"Initialise(broadcast=True)"
-        return u"Initialise(address={})".format(self.address)
+            return "Initialise(broadcast=True)"
+        return "Initialise(address={})".format(self.address)
 
 
 class Randomise(SpecialCommand):
@@ -735,7 +736,7 @@ class DeleteShortAddress(SpecialCommand):
             return cls()
 
     def __unicode__(self):
-        return u"DeleteShortAddress()"
+        return "DeleteShortAddress()"
 
 
 class VerifyShortAddress(ShortAddrSpecialCommand):
@@ -1100,7 +1101,7 @@ class QueryEmergencyModeResponse(Response):
         return ",".join(l)
 
     def __unicode__(self):
-        return u",".join(self.status)
+        return ",".join(self.status)
 
 
 class QueryEmergencyMode(EmergencyLightingQueryCommand):
@@ -1130,7 +1131,7 @@ class QueryEmergencyFeaturesResponse(Response):
         return l
 
     def __unicode__(self):
-        return u",".join(self.status)
+        return ",".join(self.status)
 
 
 class QueryEmergencyFeatures(EmergencyLightingQueryCommand):
@@ -1156,7 +1157,7 @@ class QueryEmergencyFailureStatusResponse(Response):
         return l
 
     def __unicode__(self):
-        return u",".join(self.status)
+        return ",".join(self.status)
 
 
 class QueryEmergencyFailureStatus(EmergencyLightingQueryCommand):
@@ -1182,7 +1183,7 @@ class QueryEmergencyStatusResponse(Response):
         return l
 
     def __unicode__(self):
-        return u",".join(self.status)
+        return ",".join(self.status)
 
 
 class QueryEmergencyStatus(EmergencyLightingQueryCommand):

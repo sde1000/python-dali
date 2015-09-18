@@ -1,5 +1,6 @@
 """Declaration of base types for dali commands and their responses."""
 
+from __future__ import unicode_literals
 from dali import address
 import struct
 
@@ -167,8 +168,8 @@ class Command(object):
                          "object or dali.address.Address object")
 
     def __unicode__(self):
-        joined = u":".join("{:02x}".format(c) for c in self.command)
-        return u"({0}){1}".format(type(self), joined)
+        joined = ":".join("{:02x}".format(c) for c in self.command)
+        return "({0}){1}".format(type(self), joined)
 
 
 class GeneralCommand(Command):
@@ -239,9 +240,9 @@ class GeneralCommand(Command):
 
     def __unicode__(self):
         if self._hasparam:
-            return u"%s(%s,%s)" % (self.__class__.__name__, self.destination,
+            return "%s(%s,%s)" % (self.__class__.__name__, self.destination,
                                    self.param)
-        return u"%s(%s)" % (self.__class__.__name__, self.destination)
+        return "%s(%s)" % (self.__class__.__name__, self.destination)
 
 
 class ConfigCommand(GeneralCommand):
@@ -294,8 +295,8 @@ class SpecialCommand(Command):
 
     def __unicode__(self):
         if self._hasparam:
-            return u"{}({})".format(self.__class__.__name__, self.param)
-        return u"{}()".format(self.__class__.__name__)
+            return "{}({})".format(self.__class__.__name__, self.param)
+        return "{}()".format(self.__class__.__name__)
 
 
 class ShortAddrSpecialCommand(SpecialCommand):
@@ -322,7 +323,7 @@ class ShortAddrSpecialCommand(SpecialCommand):
                 return cls(address=(b >> 1))
 
     def __unicode__(self):
-        return u"{}({})".format(self.__class__.__name__, self.address)
+        return "{}({})".format(self.__class__.__name__, self.address)
 
 
 class QueryCommand(GeneralCommand):
