@@ -1,11 +1,17 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
-import time
-import sys
-
-from dali.commands import *
+from dali.commands import Compare
+from dali.commands import Initialise
+from dali.commands import Randomise
+from dali.commands import SetSearchAddrH
+from dali.commands import SetSearchAddrL
+from dali.commands import SetSearchAddrM
+from dali.commands import Terminate
+from dali.commands import Withdraw
 from dali.interface import DaliServer
+import sys
+import time
 
 
 def set_search_addr(i, addr):

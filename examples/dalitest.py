@@ -1,19 +1,21 @@
 #!/usr/bin/env python
 
-# import logger
-
-from dali.address import *
-from dali.commands import *
+from dali.address import Short
+from dali.commands import EnableDeviceType
+from dali.commands import QueryDeviceType
+from dali.commands import QueryEmergencyFailureStatus
+from dali.commands import QueryEmergencyFeatures
+from dali.commands import QueryEmergencyMode
+from dali.commands import QueryEmergencyStatus
 from dali.interface import DaliServer
+import logging
 
 if __name__ == "__main__":
-
-    logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG)
+    log_format = '%(levelname)s: %(message)s'
+    logging.basicConfig(format=log_format, level=logging.DEBUG)
 
     with DaliServer() as d:
-
         for addr in range(0, 64):
-
             cmd = QueryDeviceType(Short(addr))
             r = d.send(cmd)
 

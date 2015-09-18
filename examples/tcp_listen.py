@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
-__author__ = 'psari'
-
 import socket
+
+__author__ = 'psari'
 
 TCP_IP = '127.0.0.1'
 TCP_PORT = 55825

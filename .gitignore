@@ -1,12 +1,12 @@
 *.pyc
 *~
+/.idea
 /.project
 /.pydevproject
-/release-tmp/
-/.idea
 /bin/
 /build/
 /include/
 /lib/
 /local/
-
+/pip-selfcheck.json
+/release-tmp/
