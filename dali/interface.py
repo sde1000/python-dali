@@ -41,10 +41,10 @@ class DaliServer(object):
             s = socket.create_connection(self._target)
 
         assert isinstance(command, Command)
-        message = struct.pack("BB", 2, 0) + command.pack
+        message = struct.pack("BB", 2, 0) + command.frame.pack
 
         logging.info(u"command: {}{}".format(
-            command, " (twice)" if command._isconfig else ""))
+            command, " (twice)" if command.is_config else ""))
 
         # Set a default result which may be used if the first send fails
         result = "\x02\xff\x00\x00"
@@ -52,7 +52,7 @@ class DaliServer(object):
         try:
             s.send(message)
             result = s.recv(4)
-            if command._isconfig:
+            if command.is_config:
                 s.send(message)
                 result = s.recv(4)
         except:

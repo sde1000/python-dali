@@ -2,6 +2,7 @@ try:
     from dali import address
     from dali import command
     from dali import commands
+    from dali import frame
 except:
     # Realign paths, and try import again
     # Since pyCharm's unittest runner fails on relative imports
@@ -17,6 +18,7 @@ except:
     from dali import address
     from dali import command
     from dali import commands
+    from dali import frame
 
 import unittest
 
@@ -27,24 +29,26 @@ max_devicetype = 10
 
 class TestCommands(unittest.TestCase):
     def test_roundtrip(self):
-        "all two-byte sequences (a,b) survive command.from_bytes()"
+        "all 16-bit frames survive command.from_frame()"
         for dt in xrange(0, max_devicetype):
-            for a in xrange(0, 256):
-                for b in xrange(0, 256):
-                    ts = (a, b)
-                    self.assertEqual(ts, command.from_bytes(ts, dt).command)
+            for d in xrange(0, 0x10000):
+                f = frame.ForwardFrame(16, d)
+                c = command.from_frame(f, dt)
+                nf = c.frame
+                self.assertEqual(
+                    f, nf,"frame {} failed command round-trip; command {} "
+                    "became {}".format(unicode(f), unicode(c), unicode(nf)))
 
     def test_unicode(self):
         "command objects return unicode from their __unicode__ method"
         for dt in xrange(0, max_devicetype):
-            for a in xrange(0, 256):
-                for b in xrange(0, 256):
-                    ts = (a, b)
-                    self.assertTrue(
-                        isinstance(command.from_bytes(ts, dt).__unicode__(),
-                                   unicode),
-                        "command ({},{}) unicode method didn't return unicode".\
-                        format(a,b))
+            for d in xrange(0, 0x10000):
+                f = frame.ForwardFrame(16, d)
+                self.assertTrue(
+                    isinstance(command.from_frame(f, dt).__unicode__(),
+                               unicode),
+                    "command {} unicode method didn't return unicode".\
+                    format(f))
 
     def test_bad_command(self):
         "command.from_bytes() rejects invalid inputs"

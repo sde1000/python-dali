@@ -2,6 +2,7 @@
 
 from __future__ import unicode_literals
 from dali import address
+from dali import frame
 import struct
 
 
@@ -47,11 +48,11 @@ class YesNoResponse(Response):
 
 
 class Command(object):
-    """A standard DALI command defined in IEC-60929 annex E.
+    """A command frame.
 
-    Subclasses must provide a class method "from_bytes" which, when
-    passed a (a,b) command tuple returns a new instance of the class
-    corresponding to that command, or "None" if there is no match.
+    Subclasses must provide a class method "from_frame" which, when
+    passed a Frame returns a new instance of the class corresponding
+    to that command, or "None" if there is no match.
     """
     __metaclass__ = CommandTracker
 
@@ -60,9 +61,38 @@ class Command(object):
     _response = None
     _devicetype = 0
 
-    def __init__(self, *params):
-        self._data = tuple(params)
-        Command.check_command_format(self._data)
+    def __init__(self, f):
+        assert isinstance(f,frame.ForwardFrame)
+        self._data = f
+
+    @classmethod
+    def from_frame(cls, f, devicetype=0):
+        """Return a Command instance corresponding to the supplied frame.
+
+        If the device type the command is intended for is known
+        (i.e. the previous command was EnableDeviceType(foo)) then
+        specify it here.
+
+        :parameter frame: a forward frame
+        :parameter devicetype: type of device frame is intended for
+
+        :returns: Return a Command instance corresponding to the
+        frame.  Returns None if there is no match.
+        """
+        if cls != Command:
+            return
+
+        for dc in cls._commands:
+            if dc._devicetype != devicetype:
+                continue
+            r = dc.from_frame(f)
+            if r:
+                return r
+
+        # At this point we can simply wrap the frame.  We don't know
+        # what kind of command this is (config, query, etc.) so we're
+        # unlikely ever to want to transmit it!
+        return cls(f)
 
     @classmethod
     def from_bytes(cls, command, devicetype=0):
@@ -94,11 +124,16 @@ class Command(object):
         return cls(*command)
 
     @property
+    def frame(self):
+        """The forward frame to be transmitted for this command."""
+        return self._data
+
+    @property
     def command(self):
         """The bytes to be transmitted over the wire for this
         command, as a tuple of integers.
         """
-        return self._data
+        return self.frame.as_byte_sequence
 
     @property
     def is_config(self):
@@ -146,11 +181,11 @@ class Command(object):
     @property
     def pack(self):
         """:return: Bytestream of the object"""
-        return struct.pack(self._FORMAT_STRING, *self.command)
+        return self.frame.pack
 
     def __len__(self):
         """:return: the length of the dali command in bytes"""
-        return struct.calcsize(self._FORMAT_STRING)
+        return len(self.frame.as_byte_sequence)
 
     @staticmethod
     def _check_destination(destination):
@@ -168,17 +203,27 @@ class Command(object):
                          "object or dali.address.Address object")
 
     def __unicode__(self):
-        joined = ":".join("{:02x}".format(c) for c in self.command)
+        joined = ":".join("{:02x}".format(c) for c in self._data.as_byte_sequence)
         return "({0}){1}".format(type(self), joined)
 
 
+# XXX Rename to StandardCommand for consistency with IEC 62386-102?
 class GeneralCommand(Command):
-    """A command addressed to broadcast, short address or group, i.e. one
-    with a destination as defined in E.4.3.2 and which is not a direct
-    arc power command.
+    """A standard command as defined in Table 15 of IEC 62386-102
+
+    A command addressed to control gear that has a destination address
+    and which is not a direct arc power command.  Optionally has a
+    4-bit parameter which is used to specify group or scene as
+    appropriate.
+
+    The commands are declared as subclasses which override _cmdval to
+    specify the opcode byte and override _hasparam to True if the
+    4-bit parameter is to be used as the least significant 4 bits of
+    the opcode byte.
     """
     _cmdval = None
     _hasparam = False
+    _framesize = 16
 
     def __init__(self, destination, *args):
         if self._cmdval is None:
@@ -209,8 +254,38 @@ class GeneralCommand(Command):
 
         self.destination = self._check_destination(destination)
 
-        Command.__init__(
-            self, self.destination.addrbyte | 0x01, self._cmdval | param)
+        f = frame.ForwardFrame(16, 0x100 | self._cmdval | param)
+        self.destination.add_to_frame(f)
+
+        Command.__init__(self, f)
+
+    @classmethod
+    def from_frame(cls, frame):
+        if cls == GeneralCommand:
+            return
+        if len(frame) != 16:
+            return
+        if not frame[8]:
+            # It's a direct arc power control command
+            return
+        b = frame[7:0]
+
+        if cls._hasparam:
+            if b & 0xf0 != cls._cmdval:
+                return
+        else:
+            if b != cls._cmdval:
+                return
+
+        addr = address.from_frame(frame)
+
+        if addr is None:
+            return
+
+        if cls._hasparam:
+            return cls(addr, b & 0x0f)
+
+        return cls(addr)
 
     @classmethod
     def from_bytes(cls, command):
@@ -254,7 +329,9 @@ class ConfigCommand(GeneralCommand):
 
 
 class SpecialCommand(Command):
-    """Special commands are broadcast and are received by all devices."""
+    """A special command as defined in Table 16 of IEC 62386-102.
+
+    Special commands are broadcast and are received by all devices."""
     _hasparam = False
 
     def __init__(self, *args):
@@ -276,6 +353,23 @@ class SpecialCommand(Command):
                         self.__class__.__name__, len(args) + 1))
             param = 0
         self.param = param
+
+    @classmethod
+    def from_frame(cls, frame):
+        if cls == SpecialCommand:
+            return
+        if len(frame) != 16:
+            return
+        if frame[15:8] == cls._cmdval:
+            if cls._hasparam:
+                return cls(frame[7:0])
+            else:
+                if frame[7:0] == 0:
+                    return cls()
+
+    @property
+    def frame(self):
+        return frame.ForwardFrame(16, (self._cmdval, self.param))
 
     @property
     def command(self):
@@ -310,6 +404,20 @@ class ShortAddrSpecialCommand(SpecialCommand):
         self.address = address
 
     @property
+    def frame(self):
+        return frame.ForwardFrame(16, (self._cmdval, (self.address << 1) | 1))
+
+    @classmethod
+    def from_frame(cls, frame):
+        if cls == ShortAddrSpecialCommand:
+            return
+        if len(frame) != 16:
+            return
+        if frame[15:8] == cls._cmdval:
+            if frame[7] is False and frame[0] is True:
+                return cls(frame[6:1])
+
+    @property
     def command(self):
         return (self._cmdval, (self.address << 1) | 1)
 
@@ -342,3 +450,4 @@ class QueryCommand(GeneralCommand):
 
 
 from_bytes = Command.from_bytes
+from_frame = Command.from_frame

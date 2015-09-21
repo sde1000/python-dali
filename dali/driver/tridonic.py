@@ -66,7 +66,7 @@ class DaliUSB(object):
         self._seqnum = self._seqnum+1
         mtype = 0x03
         ecommand = 0
-        a, b = command.command
+        a, b = command.frame.as_byte_sequence
         msg = struct.pack(
             "BBBBBBBB" + (64-8) * 'x',
             direction, seqnum, 0, mtype, 0, ecommand, a, b

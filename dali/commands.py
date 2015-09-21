@@ -2,6 +2,7 @@
 
 from __future__ import unicode_literals
 from dali import address
+from dali import frame
 from dali.command import Command
 from dali.command import ConfigCommand
 from dali.command import GeneralCommand
@@ -43,7 +44,20 @@ class ArcPower(Command):
         self.destination = self._check_destination(destination)
         self.power = power
 
-        Command.__init__(self, self.destination.addrbyte, power)
+        f = frame.ForwardFrame(16, power)
+        self.destination.add_to_frame(f)
+        Command.__init__(self, f)
+
+    @classmethod
+    def from_frame(cls, f):
+        if len(f) != 16:
+            return
+        if f[8]:
+            return
+        addr = address.from_frame(f)
+        if addr is None:
+            return
+        return cls(addr, f[7:0])
 
     @classmethod
     def from_bytes(cls, command):
