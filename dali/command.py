@@ -171,14 +171,6 @@ class Command(object):
         """The forward frame to be transmitted for this command."""
         return self._data
 
-    # XXX deprecated, use frame property instead
-    @property
-    def command(self):
-        """The bytes to be transmitted over the wire for this
-        command, as a tuple of integers.
-        """
-        return self.frame.as_byte_sequence
-
     @property
     def is_config(self):
         """Is this a configuration command?  (Does it need repeating to
@@ -196,17 +188,6 @@ class Command(object):
         """If this command returns a result, use this class for the response.
         """
         return self._response
-
-    # XXX deprecated, use frame property instead
-    @property
-    def pack(self):
-        """:return: Bytestream of the object"""
-        return self.frame.pack
-
-    # XXX deprecated, use frame property instead
-    def __len__(self):
-        """:return: the length of the dali command in bytes"""
-        return len(self.frame.as_byte_sequence)
 
     @staticmethod
     def _check_destination(destination):
