@@ -53,24 +53,6 @@ class Address(object):
     def add_to_frame(self, f):
         raise IncompatibleFrame("Cannot add unknown address to any frame")
 
-    @classmethod
-    def from_byte(cls, a):
-        """Given an address byte (the first of the two bytes in a DALI
-        command), return a corresponding Address object or None if the
-        byte is for a special command.
-        """
-        if cls != Address:
-            return
-        for at in cls._addrtypes:
-            r = at.from_byte(a)
-            if r:
-                return r
-
-    @property
-    def addrbyte(self):
-        """The DALI address byte encoding this address."""
-        return None
-
     def __unicode__(self):
         return "<no address>"
 
@@ -94,16 +76,6 @@ class Broadcast(Address):
             f[23:17] = 0x7f
         else:
             raise _bad_frame_length
-
-    @property
-    def addrbyte(self):
-        """The DALI address byte for broadcasts."""
-        return 0xfe
-
-    @classmethod
-    def from_byte(cls, a):
-        if a == 0xfe or a == 0xff:
-            return cls()
 
     def __eq__(self, other):
         return isinstance(other, Broadcast)
@@ -135,16 +107,6 @@ class BroadcastUnaddressed(Address):
             f[23:17] = 0x7e
         else:
             raise _bad_frame_length
-
-    @property
-    def addrbyte(self):
-        """The DALI address byte for broadcasts to unaddressed devices."""
-        return 0xfc
-
-    @classmethod
-    def from_byte(cls, a):
-        if a == 0xfc or a == 0xfd:
-            return cls()
 
     def __eq__(self, other):
         return isinstance(other, BroadcastUnaddressed)
@@ -184,16 +146,6 @@ class Group(Address):
             f[21:17] = self.group
         else:
             raise _bad_frame_length
-
-    @property
-    def addrbyte(self):
-        """The DALI address byte for this group."""
-        return 0x80 | (self.group << 1)
-
-    @classmethod
-    def from_byte(cls, a):
-        if (a & 0xe0) == 0x80:
-            return cls((a & 0x1e) >> 1)
 
     def __eq__(self, other):
         return isinstance(other, Group) and other.group == self.group
@@ -239,21 +191,10 @@ class Short(Address):
         else:
             raise _bad_frame_length
 
-    @property
-    def addrbyte(self):
-        """The DALI address byte for this particular ballast."""
-        return (self.address << 1)
-
-    @classmethod
-    def from_byte(cls, a):
-        if (a & 0x80) == 0x00:
-            return cls((a & 0x7e) >> 1)
-
     def __eq__(self, other):
         return isinstance(other, Short) and other.address == self.address
 
     def __unicode__(self):
         return "<address %d>" % self.address
 
-from_byte = Address.from_byte
 from_frame = Address.from_frame

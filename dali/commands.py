@@ -59,19 +59,6 @@ class ArcPower(Command):
             return
         return cls(addr, f[7:0])
 
-    @classmethod
-    def from_bytes(cls, command):
-        a, b = command
-        if a & 0x01:
-            return
-
-        addr = address.from_byte(a)
-
-        if addr is None:
-            return
-
-        return cls(addr, b)
-
     def __unicode__(self):
         if self.power == 0:
             power = "OFF"
@@ -647,25 +634,26 @@ class Initialise(Command):
         self.address = address
 
     @property
-    def command(self):
+    def frame(self):
         if self.broadcast:
             b = 0
         elif self.address is None:
             b = 0xff
         else:
             b = (self.address << 1) | 1
-        return (self._cmdval, b)
+        return frame.ForwardFrame(16, (self._cmdval, b))
 
     @classmethod
-    def from_bytes(cls, command):
-        a, b = command
-        if a == cls._cmdval:
-            if b == 0:
+    def from_frame(cls, f):
+        if len(f) != 16:
+            return
+        if f[15:8] == cls._cmdval:
+            if f[7:0] == 0:
                 return cls(broadcast=True)
-            if b == 0xff:
+            if f[7:0] == 0xff:
                 return cls(address=None)
-            if (b & 0x81) == 0x01:
-                return cls(address=(b >> 1))
+            if f[7] is False and f[0] is True:
+                return cls(address=f[6:1])
 
     def __unicode__(self):
         if self.broadcast:
