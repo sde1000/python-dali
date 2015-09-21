@@ -20,30 +20,104 @@ class CommandTracker(type):
         """
         return cls._commands
 
+class MissingResponse(Exception):
+    """Response was absent where a response was expected."""
+
+class ResponseError(Exception):
+    """Response had unexpected framing error."""
 
 class Response(object):
     """Some DALI commands cause a response from the addressed devices.
-    The response is either an 8-bit frame encoding 8-bit data or 0xff
-    for "Yes", or a lack of response encoding "No".
+
+    The response is either an 8-bit backward frame encoding 8-bit data
+    or 0xff for "Yes", or a lack of response encoding "No".  If
+    multiple devices respond at once the backward frame may be
+    received with a framing error; this shall be interpreted as "more
+    than one device answered "Yes".
+
+    Initialise this class by passing a BackwardFrame object, or None
+    if there was no response.
     """
 
+    _expected = False
+    _error_acceptable = False
     def __init__(self, val):
-        """If there was no response, call with val=None."""
+        if val is not None and not isinstance(val, frame.BackwardFrame):
+            raise TypeError("Response must be passed None or a BackwardFrame")
         self._value = val
 
     @property
     def value(self):
+        if self._value is None and self._expected:
+            raise MissingResponse
+        if self._value and self._value.error and not self._error_acceptable:
+            raise ResponseError
         return self._value
 
     def __unicode__(self):
-        return unicode(self.value)
-
+        try:
+            return unicode(self.value)
+        except MissingResponse or ResponseError as e:
+            return unicode(e)
 
 class YesNoResponse(Response):
+    _error_acceptable = True
     @property
     def value(self):
         return self._value is not None
 
+class BitmapResponseBitDict(type):
+    """Metaclass adding dict of status bits."""
+    def __init__(cls, name, bases, attrs):
+        if hasattr(cls, "bits"):
+            bd = {}
+            bit = 0
+            for b in cls.bits:
+                if b:
+                    mangled = b.replace(' ','_').replace('-','')
+                    bd[mangled] = bit
+                bit = bit + 1
+            cls._bit_properties = bd
+
+class BitmapResponse(Response):
+    """A response that consists of several named bits.
+
+    Bits are listed in subclasses with the least-sigificant bit first.
+    """
+    __metaclass__ = BitmapResponseBitDict
+    _expected = True
+    bits = []
+    @property
+    def status(self):
+        if self._value is None:
+            raise MissingResponse
+        if self._value.error:
+            return ["response received with framing error"]
+        v = self._value[7:0]
+        l = []
+        for b in self.bits:
+            if v & 0x01 and b:
+                l.append(b)
+            v = (v >> 1)
+        return l
+    @property
+    def error(self):
+        if self._value is None:
+            return False
+        return self._value.error
+    def __getattr__(self, name):
+        if name in self._bit_properties:
+            if self._value is None:
+                return
+            if self._value.error:
+                return
+            return self._value[self._bit_properties[name]]
+        raise AttributeError
+    def __unicode__(self):
+        try:
+            return ",".join(self.status)
+        except Exception as e:
+            return unicode(e)
 
 class Command(object):
     """A command frame.

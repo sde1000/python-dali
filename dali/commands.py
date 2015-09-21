@@ -11,7 +11,7 @@ from dali.command import Response
 from dali.command import ShortAddrSpecialCommand
 from dali.command import SpecialCommand
 from dali.command import YesNoResponse
-
+from dali.command import BitmapResponse
 
 class ArcPower(Command):
     """A command to set the arc power level directly.
@@ -289,62 +289,17 @@ class StoreDtrAsShortAddress(ConfigCommand):
     _cmdval = 0x80
 
 
-class QueryStatusResponse(Response):
-    bits = ["status", "lamp failure", "arc power on", "limit error",
+class QueryStatusResponse(BitmapResponse):
+    bits = ["ballast status", "lamp failure", "arc power on", "limit error",
             "fade ready", "reset state", "missing short address",
             "power failure"]
-
-    @property
-    def status(self):
-        v = self._value
-        l = []
-        for b in self.bits:
-            if v & 0x01:
-                l.append(b)
-            v = (v >> 1)
-        return l
-
-    @property
-    def ballast_status(self):
-        return self._value & 0x01 != 0
-
-    @property
-    def lamp_failure(self):
-        return self._value & 0x02 != 0
-
-    @property
-    def lamp_arc_power_on(self):
-        return self._value & 0x04 != 0
-
-    @property
-    def limit_error(self):
-        return self._value & 0x08 != 0
-
-    @property
-    def fade_ready(self):
-        return self._value & 0x10 != 0
-
-    @property
-    def reset_state(self):
-        return self._value & 0x20 != 0
-
-    @property
-    def missing_short_address(self):
-        return self._value & 0x40 != 0
-
-    @property
-    def power_failure(self):
-        return self._value & 0x80 != 0
-
     @property
     def error(self):
         """Is the ballast in any kind of error state?
         (Ballast not ok, lamp fail, missing short address)
         """
-        return self._value & 0x43 != 0
-
-    def __unicode__(self):
-        return ",".join(self.status)
+        return self.ballast_status or self.lamp_failure \
+            or self.missing_short_address
 
 
 class QueryStatus(QueryCommand):
@@ -517,14 +472,15 @@ class QueryFailureLevel(QueryCommand):
 
 
 class QueryFadeTimeAndRateResponse(Response):
-
     @property
     def fade_time(self):
-        return self._value >> 4
+        if self._value:
+            return self._value[7:4]
 
     @property
     def fade_rate(self):
-        return self._value & 0x0f
+        if self._value:
+            return self._value[3:0]
 
     def __unicode__(self):
         return "Fade time: {0}; Fade rate: {1}".format(
@@ -1065,36 +1021,17 @@ class QueryRatedDuration(EmergencyLightingQueryCommand):
     _cmdval = 0xf9
 
 
-class QueryEmergencyModeResponse(Response):
+class QueryEmergencyModeResponse(BitmapResponse):
     bits = ["rest mode", "normal mode", "emergency mode",
             "extended emergency mode", "function test", "duration test",
             "hardwired inhibit active", "hardwired switch on"]
-
-    @property
-    def status(self):
-        v = self._value
-        l = []
-        for b in self.bits:
-            if v & 0x01:
-                l.append(b)
-            v = (v >> 1)
-        return l
-
-    @property
-    def hardwired_inhibit(self):
-        return self._value & 0x40 != 0
-
-    @property
-    def hardwired_switch(self):
-        return self._value & 0x80 != 0
-
     @property
     def mode(self):
         """Operating mode of the emergency control gear.  Only one of bits 0-5
         should be set at once, but we support returning a sensible
         response even when multiple bits are set.
         """
-        v = self._value & 0x3f
+        v = self._value[5:0]
         l = []
         for b in self.bits:
             if v & 0x01:
@@ -1102,39 +1039,17 @@ class QueryEmergencyModeResponse(Response):
             v = (v >> 1)
         return ",".join(l)
 
-    def __unicode__(self):
-        return ",".join(self.status)
-
-
 class QueryEmergencyMode(EmergencyLightingQueryCommand):
     """Return the Emergency Mode Information byte."""
     _cmdval = 0xfa
     _response = QueryEmergencyModeResponse
 
 
-class QueryEmergencyFeaturesResponse(Response):
+class QueryEmergencyFeaturesResponse(BitmapResponse):
     bits = ["integral emergency control gear", "maintained control gear",
             "switched maintained control gear", "auto test capability",
             "adjustable emergency level", "hardwired inhibit supported",
             "physical selection supported", "re-light in rest mode supported"]
-
-    @property
-    def auto_test_supported(self):
-        return self._value & 0x08 != 0
-
-    @property
-    def status(self):
-        v = self._value
-        l = []
-        for b in self.bits:
-            if v & 0x01:
-                l.append(b)
-            v = (v >> 1)
-        return l
-
-    def __unicode__(self):
-        return ",".join(self.status)
-
 
 class QueryEmergencyFeatures(EmergencyLightingQueryCommand):
     """Return the Features information byte."""
@@ -1142,25 +1057,11 @@ class QueryEmergencyFeatures(EmergencyLightingQueryCommand):
     _response = QueryEmergencyFeaturesResponse
 
 
-class QueryEmergencyFailureStatusResponse(Response):
+class QueryEmergencyFailureStatusResponse(BitmapResponse):
     bits = ["circuit failure", "battery duration failure", "battery failure",
             "emergency lamp failure", "function test max delay exceeded",
             "duration test max delay exceeded", "function test failed",
             "duration test failed"]
-
-    @property
-    def status(self):
-        v = self._value
-        l = []
-        for b in self.bits:
-            if v & 0x01:
-                l.append(b)
-            v = (v >> 1)
-        return l
-
-    def __unicode__(self):
-        return ",".join(self.status)
-
 
 class QueryEmergencyFailureStatus(EmergencyLightingQueryCommand):
     """Return the Failure Status information byte."""
@@ -1168,25 +1069,11 @@ class QueryEmergencyFailureStatus(EmergencyLightingQueryCommand):
     _response = QueryEmergencyFailureStatusResponse
 
 
-class QueryEmergencyStatusResponse(Response):
+class QueryEmergencyStatusResponse(BitmapResponse):
     bits = ["inhibit mode", "function test done and result valid",
             "duration test done and result valid", "battery fully charged",
             "function test pending", "duration test pending",
             "identification active", "physically selected"]
-
-    @property
-    def status(self):
-        v = self._value
-        l = []
-        for b in self.bits:
-            if v & 0x01:
-                l.append(b)
-            v = (v >> 1)
-        return l
-
-    def __unicode__(self):
-        return ",".join(self.status)
-
 
 class QueryEmergencyStatus(EmergencyLightingQueryCommand):
     """Return the Emergency Status information byte."""

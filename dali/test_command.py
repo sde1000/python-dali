@@ -48,7 +48,7 @@ class TestCommands(unittest.TestCase):
                     isinstance(command.from_frame(f, dt).__unicode__(),
                                unicode),
                     "command {} unicode method didn't return unicode".\
-                    format(f))
+                    format(unicode(f)))
 
     def test_with_integer_destination(self):
         "commands accept integer destination"
@@ -58,6 +58,23 @@ class TestCommands(unittest.TestCase):
         self.assertRaises(ValueError, commands.Off, 64)
         self.assertRaises(ValueError, commands.Off, None)
 
+    def test_response(self):
+        "responses act sensibly"
+        for dt in xrange(0, max_devicetype):
+            for d in xrange(0, 0x10000):
+                f = frame.ForwardFrame(16, d)
+                c = command.from_frame(f, dt)
+                if c._response:
+                    self.assertTrue(
+                        isinstance(c._response(None).__unicode__(), unicode),
+                        "cmd {} unicode(response(None)) didn't return unicode".\
+                        format(unicode(f)))
+                    self.assertRaises(TypeError,lambda: c._response("wibble"))
+                    self.assertTrue(
+                        isinstance(c._response(frame.BackwardFrame(0xff)).\
+                                   __unicode__(), unicode),
+                        "cmd {} unicode(response(0xff)) didn't return unicode".\
+                        format(unicode(f)))
 
 if __name__ == "__main__":
     unittest.main()

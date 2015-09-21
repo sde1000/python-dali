@@ -208,8 +208,7 @@ class BackwardFrame(Frame):
     BackwardFrameError instead.
     """
     def __init__(self, data):
-        Frame.__init__(8, data)
-        self._error = False
+        Frame.__init__(self, 8, data)
 
 class BackwardFrameError(BackwardFrame):
     """A response to a forward frame received with a framing error.
@@ -219,6 +218,6 @@ class BackwardFrameError(BackwardFrame):
     is addressed to a group or broadcast address.  It shall be
     interpreted as "more than one device responded Yes".
     """
-    def __init__(self,data):
-        BackwardFrame.__init__(self,data)
+    def __init__(self, data):
+        BackwardFrame.__init__(self, data)
         self._error = True
