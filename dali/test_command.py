@@ -4,6 +4,7 @@ try:
     from dali import frame
     from dali.gear import general
     from dali.gear import emergency
+    from dali.gear import incandescent
 except:
     # Realign paths, and try import again
     # Since pyCharm's unittest runner fails on relative imports
