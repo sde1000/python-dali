@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
-from dali.commands import Compare
-from dali.commands import Initialise
-from dali.commands import Randomise
-from dali.commands import SetSearchAddrH
-from dali.commands import SetSearchAddrL
-from dali.commands import SetSearchAddrM
-from dali.commands import Terminate
-from dali.commands import Withdraw
+from dali.gear.general import Compare
+from dali.gear.general import Initialise
+from dali.gear.general import Randomise
+from dali.gear.general import SetSearchAddrH
+from dali.gear.general import SetSearchAddrL
+from dali.gear.general import SetSearchAddrM
+from dali.gear.general import Terminate
+from dali.gear.general import Withdraw
 from dali.interface import DaliServer
 import sys
 import time

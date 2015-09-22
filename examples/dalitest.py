@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
 from dali.address import Short
-from dali.commands import EnableDeviceType
-from dali.commands import QueryDeviceType
-from dali.commands import QueryEmergencyFailureStatus
-from dali.commands import QueryEmergencyFeatures
-from dali.commands import QueryEmergencyMode
-from dali.commands import QueryEmergencyStatus
+from dali.gear.general import EnableDeviceType
+from dali.gear.general import QueryDeviceType
+from dali.gear.emergency import QueryEmergencyFailureStatus
+from dali.gear.emergency import QueryEmergencyFeatures
+from dali.gear.emergency import QueryEmergencyMode
+from dali.gear.emergency import QueryEmergencyStatus
 from dali.interface import DaliServer
 import logging
 

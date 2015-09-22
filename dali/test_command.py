@@ -1,8 +1,9 @@
 try:
     from dali import address
     from dali import command
-    from dali import commands
     from dali import frame
+    from dali.gear import general
+    from dali.gear import emergency
 except:
     # Realign paths, and try import again
     # Since pyCharm's unittest runner fails on relative imports
@@ -17,8 +18,9 @@ except:
 
     from dali import address
     from dali import command
-    from dali import commands
     from dali import frame
+    from dali.gear import general
+    from dali.gear import emergency
 
 import unittest
 
@@ -52,11 +54,11 @@ class TestCommands(unittest.TestCase):
 
     def test_with_integer_destination(self):
         "commands accept integer destination"
-        self.assertEqual(commands.ArcPower(5, 100).destination, address.Short(5))
-        self.assertEqual(commands.Off(5).destination, address.Short(5))
-        self.assertRaises(ValueError, commands.Off, -1)
-        self.assertRaises(ValueError, commands.Off, 64)
-        self.assertRaises(ValueError, commands.Off, None)
+        self.assertEqual(general.DAPC(5, 100).destination, address.Short(5))
+        self.assertEqual(general.Off(5).destination, address.Short(5))
+        self.assertRaises(ValueError, general.Off, -1)
+        self.assertRaises(ValueError, general.Off, 64)
+        self.assertRaises(ValueError, general.Off, None)
 
     def test_response(self):
         "responses act sensibly"

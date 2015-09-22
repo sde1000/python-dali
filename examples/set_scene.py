@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from dali.address import Broadcast
-from dali.commands import GoToScene
+from dali.gear.general import GoToScene
 from dali.interface import DaliServer
 import sys
 

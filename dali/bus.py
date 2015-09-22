@@ -1,6 +1,6 @@
 from dali import address
-from dali import commands
 from dali import device
+import dali.gear.general as gear
 import sets
 import time
 
@@ -83,16 +83,16 @@ class Bus(object):
             if sa in self._devices:
                 continue
             response = i.send(
-                commands.QueryBallast(address.Short(sa)))
+                gear.QueryControlGearPresent(address.Short(sa)))
             if response.value:
                 device.Device(address=sa, bus=self)
         self._bus_scanned = True
 
     def set_search_addr(self, addr):
         i = self.get_interface()
-        i.send(commands.SetSearchAddrH((addr >> 16) & 0xff))
-        i.send(commands.SetSearchAddrM((addr >> 8) & 0xff))
-        i.send(commands.SetSearchAddrL(addr & 0xff))
+        i.send(gear.SetSearchAddrH((addr >> 16) & 0xff))
+        i.send(gear.SetSearchAddrM((addr >> 8) & 0xff))
+        i.send(gear.SetSearchAddrL(addr & 0xff))
 
     def find_next(self, low, high):
         """Find the ballast with the lowest random address.  The caller
@@ -108,11 +108,11 @@ class Bus(object):
         i = self.get_interface()
         self.set_search_addr(high)
         if low == high:
-            response = i.send(commands.Compare())
+            response = i.send(gear.Compare())
             if response.value is True:
                 return low
             return None
-        response = i.send(commands.Compare())
+        response = i.send(gear.Compare())
         if response.value is True:
             midpoint = (low + high) / 2
             return self.find_next(low, midpoint) \
@@ -127,9 +127,9 @@ class Bus(object):
             self.scan()
         addrs = self.unused_addresses()
         i = self.get_interface()
-        i.send(commands.Terminate())
-        i.send(commands.Initialise(broadcast=False, address=None))
-        i.send(commands.Randomise())
+        i.send(gear.Terminate())
+        i.send(gear.Initialise(broadcast=False, address=None))
+        i.send(gear.Randomise())
         # Randomise may take up to 100ms
         time.sleep(0.1)
         low = 0
@@ -139,14 +139,14 @@ class Bus(object):
             if low is not None:
                 if addrs:
                     new_addr = addrs.pop(0)
-                    i.send(commands.ProgramShortAddress(new_addr))
-                    r = i.send(commands.VerifyShortAddress(new_addr))
+                    i.send(gear.ProgramShortAddress(new_addr))
+                    r = i.send(gear.VerifyShortAddress(new_addr))
                     if r.value is not True:
                         raise ProgramShortAddressFailure(new_addr)
-                    i.send(commands.Withdraw())
+                    i.send(gear.Withdraw())
                     device.Device(address=new_addr, bus=self)
                 else:
-                    i.send(commands.Terminate())
+                    i.send(gear.Terminate())
                     raise NoFreeAddress
                 low = low + 1
-        i.send(commands.Terminate())
+        i.send(gear.Terminate())
