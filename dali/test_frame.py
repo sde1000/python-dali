@@ -1,6 +1,6 @@
 try:
     from dali import frame
-except:
+except ImportError:
     import os
     import sys
 

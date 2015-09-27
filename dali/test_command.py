@@ -5,7 +5,7 @@ try:
     from dali.gear import general
     from dali.gear import emergency
     from dali.gear import incandescent
-except:
+except ImportError:
     # Realign paths, and try import again
     # Since pyCharm's unittest runner fails on relative imports
     import os
