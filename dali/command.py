@@ -7,13 +7,19 @@ from dali.compat import add_metaclass
 
 
 class CommandTracker(type):
-    """Metaclass keeping track of all the types of Command we understand."""
+    """Metaclass keeping track of all the types of Command we understand.
+
+    Commands that have names starting with '_' are treated as abstract
+    base classes that will never be instantiated because they do not
+    correspond to a DALI frame.
+    """
 
     def __init__(cls, name, bases, attrs):
         if not hasattr(cls, '_commands'):
             cls._commands = []
         else:
-            cls._commands.append(cls)
+            if cls.__name__[0] != '_':
+                cls._commands.append(cls)
 
     @classmethod
     def commands(cls):
