@@ -3,6 +3,7 @@
 from __future__ import unicode_literals
 from dali import address
 from dali import frame
+from dali.compat import add_metaclass
 
 
 class CommandTracker(type):
@@ -88,12 +89,12 @@ class BitmapResponseBitDict(type):
             cls._bit_properties = bd
 
 
+@add_metaclass(BitmapResponseBitDict)
 class BitmapResponse(Response):
     """A response that consists of several named bits.
 
     Bits are listed in subclasses with the least-sigificant bit first.
     """
-    __metaclass__ = BitmapResponseBitDict
     _expected = True
     bits = []
 
@@ -133,6 +134,7 @@ class BitmapResponse(Response):
             return unicode(e)
 
 
+@add_metaclass(CommandTracker)
 class Command(object):
     """A command frame.
 
@@ -140,7 +142,6 @@ class Command(object):
     passed a Frame returns a new instance of the class corresponding
     to that command, or "None" if there is no match.
     """
-    __metaclass__ = CommandTracker
 
     # Override this as appropriate
     _framesize = 0

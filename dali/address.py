@@ -15,6 +15,7 @@ Addressing for event messages is described in IEC 62386-103 section
 """
 
 from __future__ import unicode_literals
+from dali.compat import add_metaclass
 
 
 class IncompatibleFrame(Exception):
@@ -34,9 +35,9 @@ class AddressTracker(type):
             cls._addrtypes.append(cls)
 
 
+@add_metaclass(AddressTracker)
 class Address(object):
     """An address for one or more ballasts."""
-    __metaclass__ = AddressTracker
 
     @classmethod
     def from_frame(cls, f):
