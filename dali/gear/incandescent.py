@@ -8,11 +8,13 @@ from dali.gear.general import _StandardCommand
 class _IncandescentCommand(_StandardCommand):
     _devicetype = 4
 
+
 class _IncandescentConfigCommand(_IncandescentCommand):
     """An incandescent lighting configuration command as defined in
     section 11.3.4.1 of IEC 62386-205:2009.
     """
     _sendtwice = True
+
 
 ###############################################################################
 # Commands from IEC 62386-205 section 11.3.4.1
@@ -32,6 +34,7 @@ class ReferenceSystemPower(_IncandescentConfigCommand):
     """
     _cmdval = 0xe0
 
+
 class SelectDimmingCurve(_IncandescentConfigCommand):
     """Select Dimming Curve
 
@@ -44,6 +47,7 @@ class SelectDimmingCurve(_IncandescentConfigCommand):
     cleared by the Reset command.
     """
     _cmdval = 0xe1
+
 
 ###############################################################################
 # Commands from IEC 62386-205 section 11.3.4.2
@@ -58,15 +62,18 @@ class QueryDimmingCurve(_IncandescentCommand):
     _cmdval = 0xee
     _response = command.Response
 
+
 class DimmerStatusResponse(command.BitmapResponse):
     bits = ["leading edge mode running", "trailing edge mode running",
             "reference measurement running", None,
             "non-logarithmic dimming curve active"]
 
+
 class QueryDimmerStatus(_IncandescentCommand):
     """Query Dimmer Status"""
     _cmdval = 0xef
     _response = DimmerStatusResponse
+
 
 class FeaturesByte1Response(command.BitmapResponse):
     bits = ["load over-current shutdown can be queried",
@@ -78,6 +85,7 @@ class FeaturesByte1Response(command.BitmapResponse):
             "thermal overload with output level reduction can be queried",
             "physical selection supported"]
 
+
 class FeaturesByte2Response(command.BitmapResponse):
     bits = ["temperature can be queried",
             "supply voltage can be queried",
@@ -88,16 +96,19 @@ class FeaturesByte2Response(command.BitmapResponse):
             "load rating can be queried",
             "load current overload with output level reduction can be queried"]
 
+
 class FeaturesByte3Response(command.BitmapResponse):
     bits = [None, None, None,
             "non-logarithmic dimming curve can be selected",
             None, None, None, "load unsuitable can be queried"]
     _dimming_methods = ["leading & trailing", "leading only",
                         "trailing only", "sine wave"]
+
     @property
     def dimming_method(self):
         if self._value:
             return self._dimming_methods[self._value[1:0]]
+
 
 class QueryFeatures(_IncandescentCommand):
     """Query Features
@@ -111,6 +122,7 @@ class QueryFeatures(_IncandescentCommand):
     _uses_dtr1 = True
     _response = FeaturesByte1Response
 
+
 class FailureStatusByte1Response(command.BitmapResponse):
     bits = ["load over-current shutdown",
             "open circuit detected",
@@ -121,12 +133,14 @@ class FailureStatusByte1Response(command.BitmapResponse):
             "thermal overload with output level reduction",
             "reference measurement failed"]
 
+
 class FailureStatusByte2Response(command.BitmapResponse):
     bits = ["load not suitable for selected dimming method",
             "supply voltage out of limits",
             "supply frequency out of limits",
             "load voltage out of limits",
             "load current overload with output level reduction"]
+
 
 class QueryFailureStatus(_IncandescentCommand):
     """Query Failure Status
@@ -146,6 +160,7 @@ class QueryFailureStatus(_IncandescentCommand):
     _uses_dtr1 = True
     _response = FailureStatusByte1Response
 
+
 class QueryDimmerTemperature(_IncandescentCommand):
     """Query Dimmer Temperature
 
@@ -160,8 +175,10 @@ class QueryDimmerTemperature(_IncandescentCommand):
     # XXX add a temperature response class?
     _response = command.Response
 
+
 class VoltageResponse(command.Response):
     pass
+
 
 class QueryRMSSupplyVoltage(_IncandescentCommand):
     """Query RMS Supply Voltage
@@ -175,6 +192,7 @@ class QueryRMSSupplyVoltage(_IncandescentCommand):
     _cmdval = 0xf3
     _response = VoltageResponse
 
+
 class QuerySupplyFrequency(_IncandescentCommand):
     """Query Supply Frequency
 
@@ -187,6 +205,7 @@ class QuerySupplyFrequency(_IncandescentCommand):
     _cmdval = 0xf4
     _response = command.Response
 
+
 class QueryRMSLoadVoltage(_IncandescentCommand):
     """Query RMS Load Voltage
 
@@ -198,6 +217,7 @@ class QueryRMSLoadVoltage(_IncandescentCommand):
     """
     _cmdval = 0xf5
     _response = VoltageResponse
+
 
 class QueryRMSLoadCurrent(_IncandescentCommand):
     """Query RMS Load Current
@@ -212,6 +232,7 @@ class QueryRMSLoadCurrent(_IncandescentCommand):
     """
     _cmdval = 0xf6
     _response = command.Response
+
 
 class QueryRealLoadPower(_IncandescentCommand):
     """Query Real Load Power
@@ -228,6 +249,7 @@ class QueryRealLoadPower(_IncandescentCommand):
     _uses_dtr0 = True
     _response = command.Response
 
+
 class QueryLoadRating(_IncandescentCommand):
     """Query Load Rating
 
@@ -240,6 +262,7 @@ class QueryLoadRating(_IncandescentCommand):
     _cmdval = 0xf8
     _response = command.Response
 
+
 class QueryReferenceRunning(_IncandescentCommand):
     """Query Reference Running
 
@@ -247,6 +270,7 @@ class QueryReferenceRunning(_IncandescentCommand):
     """
     _cmdval = 0xf9
     _response = command.YesNoResponse
+
 
 class QueryReferenceMeasurementFailed(_IncandescentCommand):
     """Query Reference Measurement Failed

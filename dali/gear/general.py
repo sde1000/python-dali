@@ -12,8 +12,10 @@ from dali import command
 from dali import address
 from dali import frame
 
+
 class _GearCommand(command.Command):
     _framesize = 16
+
 
 ###############################################################################
 # Commands from Table 15 start here
@@ -99,8 +101,11 @@ class _StandardCommand(_GearCommand):
 
     def __unicode__(self):
         if self._hasparam:
-            return "%s(%s,%s)" % (self.__class__.__name__, self.destination,
-                                   self.param)
+            return "%s(%s,%s)" % (
+                self.__class__.__name__,
+                self.destination,
+                self.param
+            )
         return "%s(%s)" % (self.__class__.__name__, self.destination)
 
 
@@ -518,6 +523,7 @@ class QueryStatusResponse(command.BitmapResponse):
     bits = ["ballast status", "lamp failure", "arc power on", "limit error",
             "fade ready", "reset state", "missing short address",
             "power failure"]
+
     @property
     def error(self):
         """Is the ballast in any kind of error state?
@@ -591,7 +597,7 @@ class QueryVersionNumber(_StandardCommand):
     software and hardware of the ballast.  The high four bits of the
     answer represent the version number of the standard.  IEC-60929 is
     version number 0.
-    
+
     The answer shall be the content of memory bank 0 location 0x16.
     """
     _cmdval = 0x97
@@ -958,6 +964,7 @@ class _SpecialCommand(_GearCommand):
             return "{}({})".format(self.__class__.__name__, self.param)
         return "{}()".format(self.__class__.__name__)
 
+
 class _ShortAddrSpecialCommand(_SpecialCommand):
     """A special command that has a short address as its parameter."""
 
@@ -1115,6 +1122,7 @@ class SearchaddrM(_SpecialCommand):
     _hasparam = True
 
 SetSearchAddrM = SearchaddrM
+
 
 class SearchaddrL(_SpecialCommand):
     """Set the low 8 bits of the search address."""

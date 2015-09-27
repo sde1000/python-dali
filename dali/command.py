@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 from dali import address
 from dali import frame
 
+
 class CommandTracker(type):
     """Metaclass keeping track of all the types of Command we understand."""
 
@@ -20,11 +21,14 @@ class CommandTracker(type):
         """
         return cls._commands
 
+
 class MissingResponse(Exception):
     """Response was absent where a response was expected."""
 
+
 class ResponseError(Exception):
     """Response had unexpected framing error."""
+
 
 class Response(object):
     """Some DALI commands cause a response from the addressed devices.
@@ -38,9 +42,9 @@ class Response(object):
     Initialise this class by passing a BackwardFrame object, or None
     if there was no response.
     """
-
     _expected = False
     _error_acceptable = False
+
     def __init__(self, val):
         if val is not None and not isinstance(val, frame.BackwardFrame):
             raise TypeError("Response must be passed None or a BackwardFrame")
@@ -60,24 +64,29 @@ class Response(object):
         except MissingResponse or ResponseError as e:
             return unicode(e)
 
+
 class YesNoResponse(Response):
     _error_acceptable = True
+
     @property
     def value(self):
         return self._value is not None
 
+
 class BitmapResponseBitDict(type):
     """Metaclass adding dict of status bits."""
+
     def __init__(cls, name, bases, attrs):
         if hasattr(cls, "bits"):
             bd = {}
             bit = 0
             for b in cls.bits:
                 if b:
-                    mangled = b.replace(' ','_').replace('-','')
+                    mangled = b.replace(' ', '_').replace('-', '')
                     bd[mangled] = bit
                 bit = bit + 1
             cls._bit_properties = bd
+
 
 class BitmapResponse(Response):
     """A response that consists of several named bits.
@@ -87,6 +96,7 @@ class BitmapResponse(Response):
     __metaclass__ = BitmapResponseBitDict
     _expected = True
     bits = []
+
     @property
     def status(self):
         if self._value is None:
@@ -100,11 +110,13 @@ class BitmapResponse(Response):
                 l.append(b)
             v = (v >> 1)
         return l
+
     @property
     def error(self):
         if self._value is None:
             return False
         return self._value.error
+
     def __getattr__(self, name):
         if name in self._bit_properties:
             if self._value is None:
@@ -113,11 +125,13 @@ class BitmapResponse(Response):
                 return
             return self._value[self._bit_properties[name]]
         raise AttributeError
+
     def __unicode__(self):
         try:
             return ",".join(self.status)
         except Exception as e:
             return unicode(e)
+
 
 class Command(object):
     """A command frame.
@@ -150,7 +164,7 @@ class Command(object):
     _devicetype = 0
 
     def __init__(self, f):
-        assert isinstance(f,frame.ForwardFrame)
+        assert isinstance(f, frame.ForwardFrame)
         self._data = f
 
     @classmethod
@@ -225,7 +239,8 @@ class Command(object):
                          "object or dali.address.Address object")
 
     def __unicode__(self):
-        joined = ":".join("{:02x}".format(c) for c in self._data.as_byte_sequence)
+        byte_sequence = self._data.as_byte_sequence
+        joined = ":".join("{:02x}".format(c) for c in byte_sequence)
         return "({0}){1}".format(type(self), joined)
 
 from_frame = Command.from_frame

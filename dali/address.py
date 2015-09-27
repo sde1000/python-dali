@@ -16,11 +16,13 @@ Addressing for event messages is described in IEC 62386-103 section
 
 from __future__ import unicode_literals
 
+
 class IncompatibleFrame(Exception):
     """Cannot set destination address in supplied frame"""
     pass
 
 _bad_frame_length = IncompatibleFrame("Unsupported frame size")
+
 
 class AddressTracker(type):
     """Metaclass keeping track of all the types of Address we understand."""

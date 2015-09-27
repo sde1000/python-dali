@@ -16,7 +16,7 @@ class DaliUSB(object):
 
     id_list = [(0x17b5, 0x0020)]
 
-    def __init__(self,address=None,serial=None):
+    def __init__(self, address=None, serial=None):
         """Find a DALI-USB device to drive.  The first device found is driven.
         The arguments, if given, restrict the search:
 

@@ -22,6 +22,7 @@ except:
     from dali import frame
     from dali.gear import general
     from dali.gear import emergency
+    from dali.gear import incandescent
 
 import unittest
 
@@ -31,6 +32,7 @@ max_devicetype = 10
 
 
 class TestCommands(unittest.TestCase):
+
     def test_roundtrip(self):
         "all 16-bit frames survive command.from_frame()"
         for dt in xrange(0, max_devicetype):
@@ -39,7 +41,7 @@ class TestCommands(unittest.TestCase):
                 c = command.from_frame(f, dt)
                 nf = c.frame
                 self.assertEqual(
-                    f, nf,"frame {} failed command round-trip; command {} "
+                    f, nf, "frame {} failed command round-trip; command {} "
                     "became {}".format(unicode(f), unicode(c), unicode(nf)))
 
     def test_unicode(self):
@@ -72,7 +74,7 @@ class TestCommands(unittest.TestCase):
                         isinstance(c._response(None).__unicode__(), unicode),
                         "cmd {} unicode(response(None)) didn't return unicode".\
                         format(unicode(f)))
-                    self.assertRaises(TypeError,lambda: c._response("wibble"))
+                    self.assertRaises(TypeError, lambda: c._response("wibble"))
                     self.assertTrue(
                         isinstance(c._response(frame.BackwardFrame(0xff)).\
                                    __unicode__(), unicode),

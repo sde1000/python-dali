@@ -284,6 +284,7 @@ class QueryEmergencyModeResponse(command.BitmapResponse):
     bits = ["rest mode", "normal mode", "emergency mode",
             "extended emergency mode", "function test", "duration test",
             "hardwired inhibit active", "hardwired switch on"]
+
     @property
     def mode(self):
         """Operating mode of the emergency control gear.  Only one of bits 0-5
@@ -298,6 +299,7 @@ class QueryEmergencyModeResponse(command.BitmapResponse):
             v = (v >> 1)
         return ",".join(l)
 
+
 class QueryEmergencyMode(_EmergencyLightingQueryCommand):
     """Return the Emergency Mode Information byte."""
     _cmdval = 0xfa
@@ -309,6 +311,7 @@ class QueryEmergencyFeaturesResponse(command.BitmapResponse):
             "switched maintained control gear", "auto test capability",
             "adjustable emergency level", "hardwired inhibit supported",
             "physical selection supported", "re-light in rest mode supported"]
+
 
 class QueryEmergencyFeatures(_EmergencyLightingQueryCommand):
     """Return the Features information byte."""
@@ -322,6 +325,7 @@ class QueryEmergencyFailureStatusResponse(command.BitmapResponse):
             "duration test max delay exceeded", "function test failed",
             "duration test failed"]
 
+
 class QueryEmergencyFailureStatus(_EmergencyLightingQueryCommand):
     """Return the Failure Status information byte."""
     _cmdval = 0xfc
@@ -333,6 +337,7 @@ class QueryEmergencyStatusResponse(command.BitmapResponse):
             "duration test done and result valid", "battery fully charged",
             "function test pending", "duration test pending",
             "identification active", "physically selected"]
+
 
 class QueryEmergencyStatus(_EmergencyLightingQueryCommand):
     """Return the Emergency Status information byte."""
