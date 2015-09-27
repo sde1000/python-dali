@@ -239,8 +239,8 @@ class Command(object):
                          "object or dali.address.Address object")
 
     def __unicode__(self):
-        byte_sequence = self._data.as_byte_sequence
-        joined = ":".join("{:02x}".format(c) for c in byte_sequence)
+        joined = ":".join(
+            "{:02x}".format(c) for c in self._data.as_byte_sequence)
         return "({0}){1}".format(type(self), joined)
 
 from_frame = Command.from_frame
