@@ -7,21 +7,38 @@ from dali.gear.emergency import QueryEmergencyFailureStatus
 from dali.gear.emergency import QueryEmergencyFeatures
 from dali.gear.emergency import QueryEmergencyMode
 from dali.gear.emergency import QueryEmergencyStatus
-from dali.interface import DaliServer
+from dali.driver.daliserver import DaliServer
+from dali.driver.uart import DaliUART
 import logging
+
+import time
 
 if __name__ == "__main__":
     log_format = '%(levelname)s: %(message)s'
     logging.basicConfig(format=log_format, level=logging.DEBUG)
 
-    with DaliServer() as d:
+    d = DaliServer()
+    #d = DaliUART('COM4')
+
+    with d:
+
+        """
+        while True:
+            for i in range(0, 254, 10):
+                d.send(ArcPower(Broadcast(), i))
+                time.sleep(0.300)
+            for i in range(254, 0, 10):
+                d.send(ArcPower(Broadcast(), i))
+                time.sleep(0.300)
+        """
+
         for addr in range(0, 64):
             cmd = QueryDeviceType(Short(addr))
             r = d.send(cmd)
 
             logging.info("[%d]: resp: %s" % (addr, r))
 
-            if r.value == 1:
+            if r and r.value is 1:
                 d.send(EnableDeviceType(1))
                 r = d.send(QueryEmergencyMode(Short(addr)))
                 logging.info(" -- {0}".format(r))
@@ -37,3 +54,4 @@ if __name__ == "__main__":
                 d.send(EnableDeviceType(1))
                 r = d.send(QueryEmergencyStatus(Short(addr)))
                 logging.info(" -- {0}".format(r))
+
