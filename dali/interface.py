@@ -10,18 +10,21 @@ class CommunicationError(Exception):
 class ParameterError(Exception):
     pass
 
-class DriverInterface(object):
+
+class InterfaceSimpleRawDriver(object):
     """
-    Driver interface class
-    Contains the common definition of functions for variousdrivers
+    Interface to create a low-level raw driver to communicate with devices using
+    various protocols, using one method. Does not support async communication and
+    not event-driven. 
     """
 
     def send(self):
         """
-        Send command, and returns its response
+        Sends a command, and wait for it's answer if it was a query using
+        a protocol implemented it's children classes.
         :return:
         """
-        raise RuntimeError("Not implemented method")
+        raise NotImplemented()
 
     @staticmethod
     def _unpack_response(command, result):

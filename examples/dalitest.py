@@ -8,7 +8,7 @@ from dali.gear.emergency import QueryEmergencyFeatures
 from dali.gear.emergency import QueryEmergencyMode
 from dali.gear.emergency import QueryEmergencyStatus
 from dali.driver.daliserver import DaliServer
-from dali.driver.uart import DaliUART
+from dali.driver.uart import DaliGenericUART
 import logging
 
 import time
@@ -18,7 +18,7 @@ if __name__ == "__main__":
     logging.basicConfig(format=log_format, level=logging.DEBUG)
 
     d = DaliServer()
-    #d = DaliUART('COM4')
+    # d = DaliGenericUART('COM4')
 
     with d:
 
@@ -54,4 +54,3 @@ if __name__ == "__main__":
                 d.send(EnableDeviceType(1))
                 r = d.send(QueryEmergencyStatus(Short(addr)))
                 logging.info(" -- {0}".format(r))
-

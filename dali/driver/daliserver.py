@@ -10,10 +10,10 @@ import socket
 import logging
 from dali.command import Command
 
-from dali.interface import DriverInterface
+from dali.interface import InterfaceSimpleRawDriver
 
 
-class DaliServer(DriverInterface):
+class DaliServer(InterfaceSimpleRawDriver):
     """
     Communicate with daliserver
     (https://github.com/onitake/daliserver)
@@ -35,7 +35,6 @@ class DaliServer(DriverInterface):
         return self
 
     def __exit__(self, *vpass):
-        # print(vpass)
         if self._multiple_frames_per_connection:
             self._s.close()
             self._s = None

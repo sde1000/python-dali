@@ -7,12 +7,21 @@ import logging
 import serial
 import struct
 from dali.command import Command
-from dali.interface import DriverInterface, ParameterError
+from dali.interface import InterfaceSimpleRawDriver, ParameterError
+
+__author__ = 'caiwan'
 
 
-class DaliUART(DriverInterface):
+class DaliGenericUART(InterfaceSimpleRawDriver):
     """
-    Uart driver for DALI
+    Communicates with a custom controller though a given serial port.
+    It uses a geneirc, raw protocoll for sending and recieving data.
+    Data is sent and recieved ing 8-bit binary format.
+
+    Package format:
+        - 1 byte : length of the package
+        - n byte : dali message
+        - 1 byte : XOR crc of the data
     """
     
     def __init__(self, com, baud=115200):
@@ -20,6 +29,7 @@ class DaliUART(DriverInterface):
         :param:com port name
         :param:baud baud rate - 11520 default
         """
+
         self._s = None
         self._uart = (com, baud)
 
@@ -42,13 +52,7 @@ class DaliUART(DriverInterface):
     def send(self, command):
         """
         Send a DALI command, and recv. response if there's any expected
-
-        Data format:
-            Data is sent and recieved in binary format.
-
-            - 1 byte : length of the package
-            - n byte : data of the package
-            - 1 byte : XOR crc of the data
+        For data format see class' docstring.
 
         :param command: Command object
 
@@ -56,6 +60,7 @@ class DaliUART(DriverInterface):
 
         :raise ParameterError: when the recv data is not matching or timeot occured
         """
+
         assert isinstance(command, Command)
         assert self._s is not None
         assert isinstance(self._s, serial.Serial)
@@ -64,7 +69,7 @@ class DaliUART(DriverInterface):
         response = None
 
         try:
-            #
+            # calculate CRC
             crc = 0
             for c in list(command.pack):
                 crc ^= ord(c)
@@ -102,7 +107,7 @@ class DaliUART(DriverInterface):
                     logging.info(u"  -> {0}".format(response))
 
         except:
-            # nothing to do here yet
+            # TODO hanlde errors, or raise expeptions if needed.
             raise
 
         # no need to clean up connection here
