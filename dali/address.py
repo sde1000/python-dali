@@ -6,9 +6,15 @@ Forward frames can be addressed to one of 64 short addresses, one of
 a short address assigned.
 
 Addressing for control devices is described in IEC 62386-103 section
-7.2.1.  Command frames can be addressed to one of 64 short addresses,
-one of 32 group addresses, to all devices, or to all devices that do
-not have a short address assigned.
+7.2.1.2.  Command frames can be addressed to one of 64 short
+addresses, one of 32 group addresses, to all devices, or to all
+devices that do not have a short address assigned.
+
+Addressing for control device instances is described in IEC 62386-103
+section 7.2.1.3.  Command frames can be addressed to one of 32
+instance numbers, one of 32 instance groups, one of 32 instance types,
+or to all instances (broadcast).  For all those types of address,
+command frames can also be addressed to features.
 
 Addressing for event messages is described in IEC 62386-103 section
 7.2.2.  Decoding of event messages is currently not implemented.
@@ -24,6 +30,9 @@ class IncompatibleFrame(Exception):
 
 _bad_frame_length = IncompatibleFrame("Unsupported frame size")
 
+###############################################################################
+# Address bytes
+###############################################################################
 
 class AddressTracker(type):
     """Metaclass keeping track of all the types of Address we understand."""
@@ -200,4 +209,132 @@ class Short(Address):
     def __unicode__(self):
         return "<address %d>" % self.address
 
+
 from_frame = Address.from_frame
+
+
+###############################################################################
+# Instance bytes
+###############################################################################
+
+class Instance(object):
+    def __init__(self):
+        raise NotImplementedError
+
+    def add_to_frame(self, f):
+        raise NotImplementedError
+
+class ReservedInstance(Instance):
+    """A reserved instance byte."""
+
+    def __init__(self, value):
+        self._value = value
+
+    def add_to_frame(self, f):
+        if len(f) != 24:
+            raise _bad_frame_length
+        f[15:8] = self._value
+
+    def __unicode__(self):
+        return "ReservedInstance({:02x})".format(self._value)
+
+class _AddressedInstance(Instance):
+    _flags = None
+    def __init__(self, value):
+        if not isinstance(value, int):
+            raise ValueError("value must be an integer")
+        if value < 0 or value > 31:
+            raise ValueError("value must be in the range 0..31")
+        self._value = value
+
+    def add_to_frame(self, f):
+        if len(f) != 24:
+            raise _bad_frame_length
+        f[15:8] = self._flags | self._value
+
+    def __unicode__(self):
+        return "{}({})".format(self.__class__.__name__, self._value)
+
+
+class _UnaddressedInstance(Instance):
+    _val = None
+
+    def __init__(self):
+        pass
+
+    def add_to_frame(self, f):
+        if len(f) != 24:
+            raise _bad_frame_length
+        f[15:8] = self._val
+
+    def __unicode__(self):
+        return "{}()".format(self.__class__.__name__)
+
+
+class InstanceNumber(_AddressedInstance):
+    _flags = 0x00
+
+
+class InstanceGroup(_AddressedInstance):
+    _flags = 0x80
+
+
+class InstanceType(_AddressedInstance):
+    _flags = 0xc0
+
+
+class FeatureInstanceNumber(_AddressedInstance):
+    _flags = 0x20
+
+
+class FeatureInstanceGroup(_AddressedInstance):
+    _flags = 0xa0
+
+
+class FeatureInstanceType(_AddressedInstance):
+    _flags = 0x60
+
+
+class FeatureInstanceBroadcast(_UnaddressedInstance):
+    _val = 0xfd
+
+
+class InstanceBroadcast(_UnaddressedInstance):
+    _val = 0xff
+
+
+class FeatureDevice(_UnaddressedInstance):
+    _val = 0xfc
+
+
+class Device(_UnaddressedInstance):
+    _val = 0xfe
+
+
+def instance_from_frame(f):
+    if len(f) != 24:
+        return
+    flags = f[15:13]
+    p = f[12:8]
+    b = f[15:8]
+    if flags == 0:
+        return InstanceNumber(p)
+    elif flags == 4:
+        return InstanceGroup(p)
+    elif flags == 6:
+        return InstanceType(p)
+    elif flags == 1:
+        return FeatureInstanceNumber(p)
+    elif flags == 5:
+        return FeatureInstanceGroup(p)
+    elif flags == 3:
+        return FeatureInstanceType(p)
+    elif b == 0xfd:
+        return FeatureInstanceBroadcast()
+    elif b == 0xff:
+        return InstanceBroadcast()
+    elif b == 0xfc:
+        return FeatureDevice()
+    elif b == 0xfe:
+        return Device()
+    return ReservedInstance(b)
