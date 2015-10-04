@@ -5,6 +5,7 @@ try:
     from dali.gear import general as generalgear
     from dali.gear import emergency
     from dali.gear import incandescent
+    from dali.gear import led
     from dali.device import general as generaldevice
 except ImportError:
     # Realign paths, and try import again
@@ -24,6 +25,7 @@ except ImportError:
     from dali.gear import general as generalgear
     from dali.gear import emergency
     from dali.gear import incandescent
+    from dali.gear import led
     from dali.device import general as generaldevice
 import unittest
 
