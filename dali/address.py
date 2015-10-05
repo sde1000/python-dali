@@ -180,8 +180,10 @@ class Short(Address):
     def __init__(self, address):
         if not isinstance(address, int):
             raise ValueError("address must be an integer")
+
         if address < 0 or address > 63:
             raise ValueError("address must be in the range 0..63")
+
         self.address = address
 
     @classmethod
