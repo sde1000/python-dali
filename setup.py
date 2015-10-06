@@ -9,5 +9,10 @@ setup(
     author='Stephen Early',
     author_email='steve@greenend.org.uk',
     url='https://github.com/sde1000/python-dali',
-    packages=['dali'],
+    packages=[
+        'dali',
+        'dali.device',
+        'dali.driver',
+        'dali.gear'
+    ],
 )

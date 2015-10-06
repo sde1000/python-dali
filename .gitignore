@@ -5,8 +5,11 @@
 /.pydevproject
 /bin/
 /build/
+/dist/
 /include/
 /lib/
 /local/
-/pip-selfcheck.json
 /release-tmp/
+/MANIFEST
+/pip-selfcheck.json
+
