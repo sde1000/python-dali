@@ -1,5 +1,6 @@
 from __future__ import print_function
 from dali.command import Command
+import dali.frame
 import logging
 import socket
 import struct
@@ -86,12 +87,12 @@ class DaliServer(object):
             if status == 0:
                 response = command._response(None)
             elif status == 1:
-                response = command._response(rval)
+                response = command._response(dali.frame.BackwardFrame(rval))
             elif status == 255:
                 # This is "failure" - daliserver seems to be reporting
                 # this for a garbled response when several ballasts
                 # reply.  It should be interpreted as "Yes".
-                response = command._response(255)
+                response = command._response(dali.frame.BackwardFrameError(255))
             else:
                 raise CommunicationError("status was %d" % status)
 
