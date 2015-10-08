@@ -29,7 +29,6 @@ class DaliServer(object):
         return self
 
     def __exit__(self, *vpass):
-        print(vpass)
         if self._multiple_frames_per_connection:
             self._s.close()
             self._s = None
