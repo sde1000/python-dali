@@ -37,15 +37,15 @@ Library structure
     * command.py - command registry, interface to command decoding
     * gear/ - control gear
         * general.py - commands from part 102
-        * fluorescent.py - commands from part 201
+        * fluorescent.py - commands from part 201 (not yet implemented)
         * emergency.py - commands from part 202
         * incandescent.py - commands from part 205
         * led.py - commands from part 207
     * device/ - control devices and events from them
         * general.py - commands and events from part 103
     * interface/
-        * daliserver.py - interface to https://github.com/onitake/daliserver
-        * tridonic.py - driver for Tridonic DALI-USB device
+        * daliserver.py - interface to https://github.com/onitake/daliserver (not yet implemented - currently lives in dali.interfaces module directly)
+        * tridonic.py - driver for Tridonic DALI-USB device (prototype - needs love)
 
 Copyright
 ---------
