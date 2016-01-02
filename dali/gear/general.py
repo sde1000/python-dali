@@ -621,8 +621,8 @@ class QueryDeviceTypeResponse(command.Response):
               6: "LED lamp"}
 
     def __unicode__(self):
-        if self.value in self._types:
-            return self._types[self.value]
+        if self.value and self.value.as_integer in self._types:
+            return self._types[self.value.as_integer]
 
         return unicode(self.value)
 
