@@ -1,1 +1,1 @@
-__all__ = ["tridonic"]
+__all__ = ["tridonic","hasseb"]
