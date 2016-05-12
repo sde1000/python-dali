@@ -1,20 +1,21 @@
 from __future__ import unicode_literals
+from dali.command import from_frame
 from dali.driver.base import DALIDriver
+from dali.frame import BackwardFrame
+# from dali.frame import BackwardFrameError
+from dali.frame import ForwardFrame
 import logging
 import struct
 
 
-logger = logging.getLogger('dali')
-
-
-DALI_USB_DIRECTION_DALI = 0x11,
-DALI_USB_DIRECTION_USB = 0x12,
-DALI_USB_TYPE_16BIT = 0x03,
-DALI_USB_TYPE_24BIT = 0x04,
-DALI_USB_TYPE_NO_RESPONSE = 0x71,
-DALI_USB_TYPE_RESPONSE = 0x72,
-DALI_USB_TYPE_COMPLETE = 0x73,
-DALI_USB_TYPE_BROADCAST = 0x74,
+DALI_USB_DIRECTION_DALI = 0x11
+DALI_USB_DIRECTION_USB = 0x12
+DALI_USB_TYPE_16BIT = 0x03
+DALI_USB_TYPE_24BIT = 0x04
+DALI_USB_TYPE_NO_RESPONSE = 0x71
+DALI_USB_TYPE_RESPONSE = 0x72
+DALI_USB_TYPE_COMPLETE = 0x73
+DALI_USB_TYPE_BROADCAST = 0x74
 
 
 class TridonicDALIUSBDriver(DALIDriver):
@@ -25,6 +26,7 @@ class TridonicDALIUSBDriver(DALIDriver):
     """
     # debug logging
     debug = True
+    logger = logging.getLogger('TridonicDALIUSBDriver')
     # transaction mapping
     _transactions = dict()
     # next sequence number
@@ -64,59 +66,54 @@ class TridonicDALIUSBDriver(DALIDriver):
         if dr == DALI_USB_DIRECTION_DALI:
             if ty == DALI_USB_TYPE_COMPLETE:
                 if self.debug:
-                    logger.info('DALI -> DALI (TYPE_COMPLETE)')
-                # DaliFramePtr frame = daliframe_new(in.address, in.command);
-                # dali->bcast_callback(USBDALI_SUCCESS, frame, in.status, dali->bcast_arg);
-                # XXX: how to construct?
-                frame = ForwardFrame() # ?
+                    msg = 'DALI -> DALI (TYPE_COMPLETE): {}'.format(sn)
+                    self.logger.info(msg)
+                frame = ForwardFrame(16, [ad, cm])
                 self._handle_dispatch(frame)
                 return
             elif ty == DALI_USB_TYPE_BROADCAST:
                 if self.debug:
-                    logger.info('DALI -> DALI (TYPE_BROADCAST)')
-                # DaliFramePtr frame = daliframe_enew(in.ecommand, in.address, in.command);
-                # dali->bcast_callback(USBDALI_SUCCESS, frame, in.status, dali->bcast_arg);
-                # XXX: how to construct?
-                frame = ForwardFrame() # ?
+                    msg = 'DALI -> DALI (TYPE_BROADCAST): {}'.format(sn)
+                    self.logger.info(msg)
+                frame = ForwardFrame(16, [ad, cm])
                 self._handle_dispatch(frame)
                 return
+            elif ty == DALI_USB_TYPE_RESPONSE:
+                if self.debug:
+                    msg = 'DALI -> DALI (TYPE_RESPONSE): {}'.format(sn)
+                    self.logger.info(msg)
+                # request not from us, ignore response
+                return
             else:
-                msg = 'Unknown type received: {}'.format(hex(ty))
-                raise ValueError(msg)
+                msg = 'DALI -> DALI | Unknown type received: {}'.format(hex(ty))
+                self.logger.warning(msg)
         # USB -> DALI
         elif dr == DALI_USB_DIRECTION_USB:
             if ty == DALI_USB_TYPE_NO_RESPONSE:
                 if self.debug:
-                    logger.info('USB -> DALI (TYPE_NO_RESPONSE)')
-                # DaliFramePtr frame = daliframe_new(in.address, in.command);
-                # dali->req_callback(USBDALI_SUCCESS, frame, 0xff, in.status, dali->transaction->arg);
-                # XXX: what's the difference between NO_RESPONSE and RESPONSE?
-                #      same handling as RESPONSE? -> In daliserver actually
-                #      it looks like this is the BackwardFrameError case, right?
-                # XXX: how to construct?
-                frame = BackwardFrameError() # ?
-                self._handle_response(sn, frame)
+                    msg = 'USB -> DALI (TYPE_NO_RESPONSE): {}'.format(sn)
+                    self.logger.info(msg)
+                self._handle_response(sn, None)
                 return
             elif ty == DALI_USB_TYPE_RESPONSE:
                 if self.debug:
-                    logger.info('USB -> DALI (TYPE_RESPONSE)')
-                # DaliFramePtr frame = daliframe_new(in.address, in.command);
-                # dali->req_callback(USBDALI_RESPONSE, frame, in.command, in.status, dali->transaction->arg);
-                # XXX: how to construct?
-                frame = BackwardFrame() # ?
+                    msg = 'USB -> DALI (TYPE_RESPONSE): {}'.format(sn)
+                    self.logger.info(msg)
+                frame = BackwardFrame(cm)
                 self._handle_response(sn, frame)
                 return
             elif ty == DALI_USB_TYPE_COMPLETE:
                 if self.debug:
-                    logger.info('USB -> DALI (TYPE_COMPLETE)')
+                    msg = 'USB -> DALI (TYPE_COMPLETE): {}'.format(sn)
+                    self.logger.info(msg)
                 # XXX: When does this happen? What should happen here?
                 return
             else:
-                msg = 'Unknown type received: {}'.format(hex(ty))
-                raise ValueError(msg)
+                msg = 'USB -> DALI | Unknown type received: {}'.format(hex(ty))
+                self.logger.warning(msg)
         # Unknown direction
         msg = 'Unknown direction received: {}'.format(hex(dr))
-        raise ValueError(msg)
+        self.logger.warning(msg)
 
     def send(self, command, callback=None, **kw):
         """Data expected by DALI USB:
@@ -167,24 +164,26 @@ class TridonicDALIUSBDriver(DALIDriver):
     def _handle_dispatch(self, frame):
         command = from_frame(frame)
         if self.debug:
-            logger.info(str(command))
+            self.logger.info(str(command))
         if self.dispatcher is None:
-            msg = 'Ignore received command: {}'.format(command)
-            logger.warning(msg)
-        else:
-            self.dispatcher(command)
+            if self.debug:
+                msg = 'Ignore received command: {}'.format(command)
+                self.logger.info(msg)
+            return
+        self.dispatcher(command)
 
     def _handle_response(self, sn, frame):
         request = self._transactions.get(sn)
         if not request:
-            msg = 'Received response to unknown request: {}'.format(sn)
-            logger.error(msg)
+            if self.debug:
+                msg = 'Received response to unknown request: {}'.format(sn)
+                self.logger.error(msg)
             return
         del self._transactions[sn]
         callback = request['callback']
         if not callback:
             if self.debug:
-                logger.info('No callback given for received response')
+                self.logger.info('No callback given for received response')
             return
         command = request['command']
         if command.response:
