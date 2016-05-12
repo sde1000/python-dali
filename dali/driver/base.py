@@ -198,7 +198,7 @@ class USBListener(USBBackend, Listener):
     """Listener implementation for communicating with USB devices.
     """
 
-    def __init__(self, vendor, product, bus=None,
+    def __init__(self, driver, vendor, product, bus=None,
                  port_numbers=None, interface=0):
         super(USBListener, self).__init__(
             vendor,
@@ -207,6 +207,7 @@ class USBListener(USBBackend, Listener):
             port_numbers=port_numbers,
             interface=interface
         )
+        self.driver = driver
         # flag whether actually disconnecting from device
         self._disconnecting = False
         # event to stop listening

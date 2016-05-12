@@ -229,6 +229,7 @@ class AsyncTridonicDALIUSBDriver(TridonicDALIUSBDriver):
 
     def __init__(self, bus=None, port_numbers=None, interface=0):
         self.backend = USBListener(
+            self,
             DALI_USB_VENDOR,
             DALI_USB_PRODUCT,
             bus=bus,
