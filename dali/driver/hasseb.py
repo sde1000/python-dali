@@ -5,6 +5,10 @@ import struct
 from time import sleep
 import logging
 
+
+# XXX: Adopt to new API
+
+
 class HassebUsb(object):
     """ Creates a server object which is able to communicate to the Hasseb DALI 
     Master device from http://hasseb.fi/ based on a NXP LPC1343 ARM microprocesor

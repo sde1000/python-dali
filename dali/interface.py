@@ -6,6 +6,9 @@ import socket
 import struct
 
 
+# XXX: This should got into ``dali.driver.daliserver``
+
+
 class CommunicationError(Exception):
     pass
 
