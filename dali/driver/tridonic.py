@@ -8,6 +8,9 @@ import logging
 import struct
 
 
+DALI_USB_VENDOR = 0x17b5
+DALI_USB_PRODUCT = 0x0020
+
 DALI_USB_DIRECTION_DALI = 0x11
 DALI_USB_DIRECTION_USB = 0x12
 DALI_USB_TYPE_16BIT = 0x03
@@ -195,23 +198,43 @@ class TridonicDALIUSBDriver(DALIDriver):
         return sn
 
 
-class SyncTridonicDALIUSBDriverBase(TridonicDALIUSBDriver):
+class SyncTridonicDALIUSBDriver(TridonicDALIUSBDriver):
+    """Synchronous ``DALIDriver`` implementation for Tridonic DALI USB device.
+    """
+
+    def __init__(self, bus=None, port_numbers=None, interface=0):
+        self.backend = USBBackend(
+            DALI_USB_VENDOR,
+            DALI_USB_PRODUCT,
+            bus=bus,
+            port_numbers=port_numbers,
+            interface=interface
+        )
 
     def send(self, command, timeout=None):
         self.backend.write(self.construct(command))
         frame = self.extract(self.backend.read(timeout=timeout))
-        if isinstance(frame, ForwardFrame):
-            return from_frame(frame)
-        elif isinstance(frame, BackwardFrame):
+        if isinstance(frame, BackwardFrame):
             if command.response:
                 return command.response(frame)
             return frame
         return DALI_USB_NO_RESPONSE
 
 
-class AsyncTridonicDALIUSBDriverBase(TridonicDALIUSBDriver):
+class AsyncTridonicDALIUSBDriver(TridonicDALIUSBDriver):
+    """Asynchronous ``DALIDriver`` implementation for Tridonic DALI USB device.
+    """
     # transaction mapping
     _transactions = dict()
+
+    def __init__(self, bus=None, port_numbers=None, interface=0):
+        self.backend = USBListener(
+            DALI_USB_VENDOR,
+            DALI_USB_PRODUCT,
+            bus=bus,
+            port_numbers=port_numbers,
+            interface=interface
+        )
 
     def send(self, command, callback=None, **kw):
         self._transactions[sn] = {
@@ -231,11 +254,6 @@ class AsyncTridonicDALIUSBDriverBase(TridonicDALIUSBDriver):
             self._handle_response(sn, frame)
         elif frame is DALI_USB_NO_RESPONSE:
             self._handle_response(sn, None)
-
-    def write(self):
-        """Write data to Gateway."""
-        raise NotImplementedError(
-            'Abstract ``TridonicDALIUSBDriver`` does not implement ``write``')
 
     def _handle_dispatch(self, frame):
         command = from_frame(frame)
