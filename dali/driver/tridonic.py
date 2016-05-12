@@ -196,7 +196,7 @@ class TridonicDALIUSBDriver(DALIDriver):
         """Get next sequence number."""
         sn = self._next_sn
         if sn > 255:
-            self._next_sn = 0
+            sn = self._next_sn = 0
         else:
             self._next_sn += 1
         return sn
