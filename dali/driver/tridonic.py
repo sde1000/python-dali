@@ -19,11 +19,11 @@ DALI_USB_TYPE_BROADCAST = 0x74
 
 
 # debug logging related
-DRIVER_SEND = 0x0
-DRIVER_RECEIVE = 0x1
-_sr_str = {
-    DRIVER_SEND: 'SEND',
-    DRIVER_RECEIVE: 'RECEIVE',
+DRIVER_CONSTRUCT = 0x0
+DRIVER_EXTRACT = 0x1
+_exco_str = {
+    DRIVER_CONSTRUCT: 'CONSTRUCT',
+    DRIVER_EXTRACT: 'EXTRACT',
 }
 _dr_str = {
     DALI_USB_DIRECTION_DALI: 'DALI -> DALI',
@@ -39,7 +39,7 @@ _ty_str = {
 }
 
 
-def _log_frame(logger, sr, dr, ty, ec, ad, cm, st, sn):
+def _log_frame(logger, exco, dr, ty, ec, ad, cm, st, sn):
     msg = (
         '{}\n'
         '    Direction: {}\n'
@@ -51,7 +51,7 @@ def _log_frame(logger, sr, dr, ty, ec, ad, cm, st, sn):
         '    Seqnum: {}\n'
     )
     logger.info(msg.format(
-        _sr_str[sr],
+        _exco_str[exco],
         _dr_str.get(dr, 'UNKNOWN'),
         _ty_str.get(ty, 'UNKNOWN'),
         hex(ec),
@@ -60,6 +60,17 @@ def _log_frame(logger, sr, dr, ty, ec, ad, cm, st, sn):
         st is not None and st or 'NONE',
         hex(sn),
     ))
+
+
+class TridonicDALIUSBNoResponse(object):
+
+    def __repr__(self):
+        return 'NO_RESPONSE'
+
+    __str__ = __repr__
+
+
+DALI_USB_NO_RESPONSE = TridonicDALIUSBNoResponse()
 
 
 class TridonicDALIUSBDriver(DALIDriver):
@@ -71,13 +82,50 @@ class TridonicDALIUSBDriver(DALIDriver):
     # debug logging
     debug = True
     logger = logging.getLogger('TridonicDALIUSBDriver')
-    # transaction mapping
-    _transactions = dict()
     # next sequence number
     _next_sn = 0
 
-    def receive(self, data):
-        """Data received from DALI USB:
+    def construct(self, command):
+        """Data expected by DALI USB:
+
+        dr sn ?? ty ?? ec ad cm .. .. .. .. .. .. .. ..
+        12 1d 00 03 00 00 ff 08 00 00 00 00 00 00 00 00
+
+        dr: direction
+            0x12 = USB side
+        sn: seqnum
+        ty: type
+            0x03 = 16bit
+            0x04 = 24bit
+        ec: ecommand
+        ad: address
+        cm: command
+        """
+        dr = DALI_USB_DIRECTION_USB
+        sn = self._get_sn()
+        frame = command.frame
+        ty = data = None
+        ec = 0x0
+        if len(frame) == 16:
+            ty = DALI_USB_TYPE_16BIT
+            ad, cm = frame.as_byte_sequence
+            data = struct.pack(
+                "BBBBBBBB" + (64 - 8) * 'x',
+                dr, sn, 0x0, ty, 0x0, ec, ad, cm
+            )
+        elif len(frame) == 24:
+            ty = DALI_USB_TYPE_24BIT
+            # XXX: not yet
+            raise ValueError('24 Bit frames not yet')
+        else:
+            raise ValueError('Unknown frame length: {}'.format(len(frame)))
+        if self.debug:
+            _log_frame(
+                self.logger, DRIVER_CONSTRUCT, dr, ty, ec, ad, cm, None, sn)
+        return data
+
+    def extract(self, data):
+        """Raw data received from DALI USB:
 
         dr ty ?? ec ad cm st st sn .. .. .. .. .. .. ..
         11 73 00 00 ff 93 ff ff 00 00 00 00 00 00 00 00
@@ -108,17 +156,13 @@ class TridonicDALIUSBDriver(DALIDriver):
         st = struct.unpack('>H', data[6:8])
         sn = data[8]
         if self.debug:
-            _log_frame(self.logger, DRIVER_RECEIVE, dr, ty, ec, ad, cm, st, sn)
+            _log_frame(self.logger, DRIVER_EXTRACT, dr, ty, ec, ad, cm, st, sn)
         # DALI -> DALI
         if dr == DALI_USB_DIRECTION_DALI:
             if ty == DALI_USB_TYPE_COMPLETE:
-                frame = ForwardFrame(16, [ad, cm])
-                self._handle_dispatch(frame)
-                return
+                return ForwardFrame(16, [ad, cm])
             elif ty == DALI_USB_TYPE_BROADCAST:
-                frame = ForwardFrame(16, [ad, cm])
-                self._handle_dispatch(frame)
-                return
+                return ForwardFrame(16, [ad, cm])
             elif ty == DALI_USB_TYPE_RESPONSE:
                 # request not from us, ignore response
                 return
@@ -128,12 +172,9 @@ class TridonicDALIUSBDriver(DALIDriver):
         # USB -> DALI
         elif dr == DALI_USB_DIRECTION_USB:
             if ty == DALI_USB_TYPE_NO_RESPONSE:
-                self._handle_response(sn, None)
-                return
+                return DALI_USB_NO_RESPONSE
             elif ty == DALI_USB_TYPE_RESPONSE:
-                frame = BackwardFrame(cm)
-                self._handle_response(sn, frame)
-                return
+                return BackwardFrame(cm)
             elif ty == DALI_USB_TYPE_COMPLETE:
                 # XXX: When does this happen? What should happen here?
                 return
@@ -144,49 +185,52 @@ class TridonicDALIUSBDriver(DALIDriver):
         msg = 'Unknown direction received: {}'.format(hex(dr))
         self.logger.warning(msg)
 
-    def send(self, command, callback=None, **kw):
-        """Data expected by DALI USB:
-
-        dr sn ?? ty ?? ec ad cm .. .. .. .. .. .. .. ..
-        12 1d 00 03 00 00 ff 08 00 00 00 00 00 00 00 00
-
-        dr: direction
-            0x12 = USB side
-        sn: seqnum
-        ty: type
-            0x03 = 16bit
-            0x04 = 24bit
-        ec: ecommand
-        ad: address
-        cm: command
-        """
-        dr = DALI_USB_DIRECTION_USB
-        sn = self._get_sn()
-        frame = command.frame
-        ty = data = None
-        ec = 0x0
-        if len(frame) == 16:
-            ty = DALI_USB_TYPE_16BIT
-            ad, cm = frame.as_byte_sequence
-            data = struct.pack(
-                "BBBBBBBB" + (64 - 8) * 'x',
-                dr, sn, 0x0, ty, 0x0, ec, ad, cm
-            )
-            if self.debug:
-                _log_frame(
-                    self.logger, DRIVER_SEND, dr, ty, ec, ad, cm, None, sn)
-        elif len(frame) == 24:
-            ty = DALI_USB_TYPE_24BIT
-            # XXX: not yet
-            raise ValueError('24 Bit frames not yet')
+    def _get_sn(self):
+        """Get next sequence number."""
+        sn = self._next_sn
+        if sn > 255:
+            sn = self._next_sn = 0
         else:
-            raise ValueError('Unknown frame length: {}'.format(len(frame)))
+            self._next_sn += 1
+        return sn
+
+
+class SyncTridonicDALIUSBDriverBase(TridonicDALIUSBDriver):
+
+    def send(self, command, timeout=None):
+        self.backend.write(self.construct(command))
+        frame = self.extract(self.backend.read(timeout=timeout))
+        if isinstance(frame, ForwardFrame):
+            return from_frame(frame)
+        elif isinstance(frame, BackwardFrame):
+            if command.response:
+                return command.response(frame)
+            return frame
+        return DALI_USB_NO_RESPONSE
+
+
+class AsyncTridonicDALIUSBDriverBase(TridonicDALIUSBDriver):
+    # transaction mapping
+    _transactions = dict()
+
+    def send(self, command, callback=None, **kw):
         self._transactions[sn] = {
             'command': command,
             'callback': callback,
             'kw': kw
         }
-        self.write(data)
+        data = self.construct(command)
+        self.backend.write(data)
+
+    def receive(self, data):
+        frame = self.extract(data)
+        sn = data[8]
+        if isinstance(frame, ForwardFrame):
+            self._handle_dispatch(frame)
+        elif isinstance(frame, BackwardFrame):
+            self._handle_response(sn, frame)
+        elif frame is DALI_USB_NO_RESPONSE:
+            self._handle_response(sn, None)
 
     def write(self):
         """Write data to Gateway."""
@@ -222,12 +266,3 @@ class TridonicDALIUSBDriver(DALIDriver):
             callback(command._response(frame), **request['kw'])
         else:
             callback(frame, **request['kw'])
-
-    def _get_sn(self):
-        """Get next sequence number."""
-        sn = self._next_sn
-        if sn > 255:
-            sn = self._next_sn = 0
-        else:
-            self._next_sn += 1
-        return sn

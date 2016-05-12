@@ -15,15 +15,8 @@ class DaliDriver(object):
     communicate with a DALI bus.
     """
 
-    def extract(self, data):
-        """Extract and return DALI Frame from data which has been received
-        from DALI driver.
-
-        @param data: Raw data received from gateway.
-        @return frame: Returns ``dali.frame.Frame`` deriving object.
-        """
-        raise NotImplementedError(
-            'Abstract ``DaliDriver`` does not implement ``extract``')
+    backend = None
+    """``Backend`` instance used for reading and writing."""
 
     def construct(self, command):
         """Construct raw data containing the packed DALI frame from command
@@ -34,6 +27,16 @@ class DaliDriver(object):
         """
         raise NotImplementedError(
             'Abstract ``DaliDriver`` does not implement ```construct`')
+
+    def extract(self, data):
+        """Extract and return DALI Frame from data which has been received
+        from DALI driver.
+
+        @param data: Raw data received from gateway.
+        @return frame: Returns ``dali.frame.Frame`` deriving object.
+        """
+        raise NotImplementedError(
+            'Abstract ``DaliDriver`` does not implement ``extract``')
 
 
 class SyncDALIDriver(DaliDriver):
@@ -53,13 +56,24 @@ class SyncDALIDriver(DaliDriver):
 
 
 class AsyncDALIDriver(DaliDriver):
-    """Object for asynchronously handling data received from and sent to
+    """Object for asynchronously handling data sent to and received from
     DALI drivers.
     """
 
     dispatcher = None
     """Callable used for dispatching incoming forward frames.
     """
+
+    def send(self, command, callback=None, **kw):
+        """Send command to gateway.
+
+        @param command: DALI command to send.
+        @param callback: Function which gets called with received response.
+        @param **kw: Optional keyword arguments which get passed to response
+                     callback
+        """
+        raise NotImplementedError(
+            'Abstract ``AsyncDALIDriver`` does not implement ``send``')
 
     def receive(self, frame):
         """Receive DALI Frame.
@@ -74,17 +88,6 @@ class AsyncDALIDriver(DaliDriver):
         """
         raise NotImplementedError(
             'Abstract ``AsyncDALIDriver`` does not implement ``receive``')
-
-    def send(self, command, callback=None, **kw):
-        """Send command to gateway.
-
-        @param command: DALI command to send.
-        @param callback: Function which gets called with received response.
-        @param **kw: Optional keyword arguments which get passed to response
-                     callback
-        """
-        raise NotImplementedError(
-            'Abstract ``AsyncDALIDriver`` does not implement ``send``')
 
 
 ###############################################################################
@@ -206,7 +209,7 @@ class USBListener(USBBackend, Listener):
         )
         # flag whether actually disconnecting from device
         self._disconnecting = False
-        # event for stop listening
+        # event to stop listening
         self._stop_listening = threading.Event()
         # create and start listener thread
         self._listener = threading.Thread(target=self.listen)
