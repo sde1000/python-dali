@@ -18,6 +18,50 @@ DALI_USB_TYPE_COMPLETE = 0x73
 DALI_USB_TYPE_BROADCAST = 0x74
 
 
+# debug logging related
+DRIVER_SEND = 0x0
+DRIVER_RECEIVE = 0x1
+_sr_str = {
+    DRIVER_SEND: 'SEND',
+    DRIVER_RECEIVE: 'RECEIVE',
+}
+_dr_str = {
+    DALI_USB_DIRECTION_DALI: 'DALI -> DALI',
+    DALI_USB_DIRECTION_USB: 'USB -> DALI',
+}
+_ty_str = {
+    DALI_USB_TYPE_COMPLETE: 'TYPE_COMPLETE',
+    DALI_USB_TYPE_BROADCAST: 'TYPE_BROADCAST',
+    DALI_USB_TYPE_RESPONSE: 'TYPE_RESPONSE',
+    DALI_USB_TYPE_NO_RESPONSE: 'TYPE_NO_RESPONSE',
+    DALI_USB_TYPE_16BIT: 'TYPE_16BIT',
+    DALI_USB_TYPE_24BIT: 'TYPE_24BIT',
+}
+
+
+def _log_frame(logger, sr, dr, ty, ec, ad, cm, st, sn):
+    msg = (
+        '{}\n'
+        '    Direction: {}\n'
+        '    Type: {}\n'
+        '    Ecommand: {}\n'
+        '    Address: {}\n'
+        '    Command: {}\n'
+        '    Status: {}\n'
+        '    Seqnum: {}\n'
+    )
+    logger.info(msg.format(
+        _sr_str[sr],
+        _dr_str.get(dr, 'UNKNOWN'),
+        _ty_str.get(ty, 'UNKNOWN'),
+        hex(ec),
+        hex(ad),
+        hex(cm),
+        st is not None and st or 'NONE',
+        hex(sn),
+    ))
+
+
 class TridonicDALIUSBDriver(DALIDriver):
     """``DALIDriver`` implementation for Tridonic DALI USB device.
 
@@ -60,28 +104,22 @@ class TridonicDALIUSBDriver(DALIDriver):
         ec = data[3]
         ad = data[4]
         cm = data[5]
-        st = struct.unpack('h', data[6:8])
+        # XXX: why is unpacked value tuple?
+        st = struct.unpack('>H', data[6:8])
         sn = data[8]
+        if self.debug:
+            _log_frame(self.logger, DRIVER_RECEIVE, dr, ty, ec, ad, cm, st, sn)
         # DALI -> DALI
         if dr == DALI_USB_DIRECTION_DALI:
             if ty == DALI_USB_TYPE_COMPLETE:
-                if self.debug:
-                    msg = 'DALI -> DALI (TYPE_COMPLETE): {}'.format(sn)
-                    self.logger.info(msg)
                 frame = ForwardFrame(16, [ad, cm])
                 self._handle_dispatch(frame)
                 return
             elif ty == DALI_USB_TYPE_BROADCAST:
-                if self.debug:
-                    msg = 'DALI -> DALI (TYPE_BROADCAST): {}'.format(sn)
-                    self.logger.info(msg)
                 frame = ForwardFrame(16, [ad, cm])
                 self._handle_dispatch(frame)
                 return
             elif ty == DALI_USB_TYPE_RESPONSE:
-                if self.debug:
-                    msg = 'DALI -> DALI (TYPE_RESPONSE): {}'.format(sn)
-                    self.logger.info(msg)
                 # request not from us, ignore response
                 return
             else:
@@ -90,22 +128,13 @@ class TridonicDALIUSBDriver(DALIDriver):
         # USB -> DALI
         elif dr == DALI_USB_DIRECTION_USB:
             if ty == DALI_USB_TYPE_NO_RESPONSE:
-                if self.debug:
-                    msg = 'USB -> DALI (TYPE_NO_RESPONSE): {}'.format(sn)
-                    self.logger.info(msg)
                 self._handle_response(sn, None)
                 return
             elif ty == DALI_USB_TYPE_RESPONSE:
-                if self.debug:
-                    msg = 'USB -> DALI (TYPE_RESPONSE): {}'.format(sn)
-                    self.logger.info(msg)
                 frame = BackwardFrame(cm)
                 self._handle_response(sn, frame)
                 return
             elif ty == DALI_USB_TYPE_COMPLETE:
-                if self.debug:
-                    msg = 'USB -> DALI (TYPE_COMPLETE): {}'.format(sn)
-                    self.logger.info(msg)
                 # XXX: When does this happen? What should happen here?
                 return
             else:
@@ -131,20 +160,23 @@ class TridonicDALIUSBDriver(DALIDriver):
         ad: address
         cm: command
         """
-        dr = 0x12
+        dr = DALI_USB_DIRECTION_USB
         sn = self._get_sn()
         frame = command.frame
         ty = data = None
         ec = 0x0
         if len(frame) == 16:
-            ty = 0x03
+            ty = DALI_USB_TYPE_16BIT
             ad, cm = frame.as_byte_sequence
             data = struct.pack(
                 "BBBBBBBB" + (64 - 8) * 'x',
                 dr, sn, 0x0, ty, 0x0, ec, ad, cm
             )
+            if self.debug:
+                _log_frame(
+                    self.logger, DRIVER_SEND, dr, ty, ec, ad, cm, None, sn)
         elif len(frame) == 24:
-            ty = 0x04
+            ty = DALI_USB_TYPE_24BIT
             # XXX: not yet
             raise ValueError('24 Bit frames not yet')
         else:
