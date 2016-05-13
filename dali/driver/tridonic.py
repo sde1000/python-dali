@@ -1,8 +1,13 @@
+from __future__ import print_function
 from __future__ import unicode_literals
 from dali.command import from_frame
+from dali.driver.base import AsyncDALIDriver
 from dali.driver.base import DALIDriver
+from dali.driver.base import SyncDALIDriver
+from dali.driver.base import USBBackend
+from dali.driver.base import USBListener
 from dali.frame import BackwardFrame
-# from dali.frame import BackwardFrameError
+from dali.frame import BackwardFrameError
 from dali.frame import ForwardFrame
 import logging
 import struct
@@ -83,7 +88,7 @@ class TridonicDALIUSBDriver(DALIDriver):
     (https://github.com/onitake/daliserver). Thanks to Gregor Riepl.
     """
     # debug logging
-    debug = True
+    debug = False
     logger = logging.getLogger('TridonicDALIUSBDriver')
     # next sequence number
     _next_sn = 0
@@ -156,7 +161,7 @@ class TridonicDALIUSBDriver(DALIDriver):
         ad = data[4]
         cm = data[5]
         # XXX: why is unpacked value tuple?
-        st = struct.unpack('>H', data[6:8])
+        st = struct.unpack('H', data[6:8])[0]
         sn = data[8]
         if self.debug:
             _log_frame(self.logger, DRIVER_EXTRACT, dr, ty, ec, ad, cm, st, sn)
@@ -198,7 +203,7 @@ class TridonicDALIUSBDriver(DALIDriver):
         return sn
 
 
-class SyncTridonicDALIUSBDriver(TridonicDALIUSBDriver):
+class SyncTridonicDALIUSBDriver(TridonicDALIUSBDriver, SyncDALIDriver):
     """Synchronous ``DALIDriver`` implementation for Tridonic DALI USB device.
     """
 
@@ -221,7 +226,7 @@ class SyncTridonicDALIUSBDriver(TridonicDALIUSBDriver):
         return DALI_USB_NO_RESPONSE
 
 
-class AsyncTridonicDALIUSBDriver(TridonicDALIUSBDriver):
+class AsyncTridonicDALIUSBDriver(TridonicDALIUSBDriver, AsyncDALIDriver):
     """Asynchronous ``DALIDriver`` implementation for Tridonic DALI USB device.
     """
     # transaction mapping
@@ -238,12 +243,13 @@ class AsyncTridonicDALIUSBDriver(TridonicDALIUSBDriver):
         )
 
     def send(self, command, callback=None, **kw):
+        data = self.construct(command)
+        sn = struct.unpack('B', data[1])[0]
         self._transactions[sn] = {
             'command': command,
             'callback': callback,
             'kw': kw
         }
-        data = self.construct(command)
         self.backend.write(data)
 
     def receive(self, data):
@@ -285,3 +291,64 @@ class AsyncTridonicDALIUSBDriver(TridonicDALIUSBDriver):
             callback(command._response(frame), **request['kw'])
         else:
             callback(frame, **request['kw'])
+
+
+def _test_sync(logger, command):
+    print('Test sync driver')
+    driver = SyncTridonicDALIUSBDriver()
+    driver.logger = logger
+    driver.debug = True
+
+    print('Response: {}'.format(driver.send(command)))
+    driver.backend.close()
+
+
+def _test_async(logger, command):
+    print('Test async driver')
+    driver = AsyncTridonicDALIUSBDriver()
+    driver.logger = logger
+    driver.debug = True
+
+    # async response callback
+    def response_received(response):
+        print('Response received: {}'.format(response))
+
+    driver.send(command, callback=response_received)
+
+    # exit callback
+    def signal_handler(signal, frame):
+        driver.backend.close()
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, signal_handler)
+    print('Press Ctrl+C')
+    signal.pause()
+
+
+if __name__ == '__main__':
+    """Usage: python tridonic.py sync|async address value
+    """
+    from dali.gear.general import DAPC
+    import signal
+    import sys
+    import time
+
+    # setup console logging
+    logger = logging.getLogger('TridonicDALIDriver')
+    logger.setLevel(logging.DEBUG)
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.DEBUG)
+    handler.setFormatter(logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    ))
+    logger.addHandler(handler)
+
+    # command to send
+    command = DAPC(int(sys.argv[2]), int(sys.argv[3]))
+
+    # sync interface
+    if sys.argv[1] == 'sync':
+        _test_sync(logger, command)
+    # async interface
+    elif sys.argv[1] == 'async':
+        _test_async(logger, command)

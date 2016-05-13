@@ -7,7 +7,7 @@ import usb
 # driver contracts
 ###############################################################################
 
-class DaliDriver(object):
+class DALIDriver(object):
     """Object for handling wrapped DALI frames sent to and received from
     DALI drivers.
 
@@ -39,7 +39,7 @@ class DaliDriver(object):
             'Abstract ``DaliDriver`` does not implement ``extract``')
 
 
-class SyncDALIDriver(DaliDriver):
+class SyncDALIDriver(DALIDriver):
     """Object for synchronously sending data to DALI drivers immediately
     expecting and returning a result.
     """
@@ -55,7 +55,7 @@ class SyncDALIDriver(DaliDriver):
             'Abstract ``SyncDALIDriver`` does not implement ``send``')
 
 
-class AsyncDALIDriver(DaliDriver):
+class AsyncDALIDriver(DALIDriver):
     """Object for asynchronously handling data sent to and received from
     DALI drivers.
     """
@@ -221,7 +221,7 @@ class USBListener(USBBackend, Listener):
         """
         while not self._stop_listening.is_set():
             try:
-                self.driver.received(self.read())
+                self.driver.receive(self.read())
             except usb.core.USBError, e:
                 # read timeout
                 if e.errno == 110:
