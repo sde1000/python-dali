@@ -91,7 +91,7 @@ class TridonicDALIUSBDriver(DALIDriver):
     debug = False
     logger = logging.getLogger('TridonicDALIUSBDriver')
     # next sequence number
-    _next_sn = 0
+    _next_sn = 1
 
     def construct(self, command):
         """Data expected by DALI USB:
@@ -184,8 +184,11 @@ class TridonicDALIUSBDriver(DALIDriver):
             elif ty == DALI_USB_TYPE_RESPONSE:
                 return BackwardFrame(cm)
             elif ty == DALI_USB_TYPE_COMPLETE:
-                # XXX: When does this happen? What should happen here?
-                return
+                # XXX: Happens e.g after sending a DAPC command before
+                #      receiving a response. What should we do with it?
+                #      dispatch as ordinary forward frame?
+                # return ForwardFrame(16, [ad, cm])
+                pass
             else:
                 msg = 'USB -> DALI | Unknown type received: {}'.format(hex(ty))
                 self.logger.warning(msg)
@@ -197,7 +200,7 @@ class TridonicDALIUSBDriver(DALIDriver):
         """Get next sequence number."""
         sn = self._next_sn
         if sn > 255:
-            sn = self._next_sn = 0
+            sn = self._next_sn = 1
         else:
             self._next_sn += 1
         return sn
@@ -218,11 +221,17 @@ class SyncTridonicDALIUSBDriver(TridonicDALIUSBDriver, SyncDALIDriver):
 
     def send(self, command, timeout=None):
         self.backend.write(self.construct(command))
-        frame = self.extract(self.backend.read(timeout=timeout))
-        if isinstance(frame, BackwardFrame):
-            if command.response:
-                return command.response(frame)
-            return frame
+        frame = None
+        # For now read up to 2 frames. This may not be reliable if forward
+        # frames are passed between request and response from DALI side.
+        # though this may not happen at all due to DALI USB implementation
+        # details.
+        for i in range(2):
+            frame = self.extract(self.backend.read(timeout=timeout))
+            if isinstance(frame, BackwardFrame):
+                if command.response:
+                    return command.response(frame)
+                return frame
         return DALI_USB_NO_RESPONSE
 
 
