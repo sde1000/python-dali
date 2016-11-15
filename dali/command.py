@@ -1,9 +1,11 @@
 """Declaration of base types for dali commands and their responses."""
 
 from __future__ import unicode_literals
+from __future__ import division
+from __future__ import absolute_import
 from dali import address
 from dali import frame
-from dali.compat import add_metaclass
+from dali.compat import add_metaclass, python_2_unicode_compatible
 
 
 class CommandTracker(type):
@@ -37,6 +39,7 @@ class ResponseError(Exception):
     """Response had unexpected framing error."""
 
 
+@python_2_unicode_compatible
 class Response(object):
     """Some DALI commands cause a response from the addressed devices.
 
@@ -65,11 +68,11 @@ class Response(object):
             raise ResponseError
         return self._value
 
-    def __unicode__(self):
+    def __str__(self):
         try:
-            return unicode(self.value)
+            return "{}".format(self.value)
         except MissingResponse or ResponseError as e:
-            return unicode(e)
+            return "{}".format(e)
 
 
 class YesNoResponse(Response):
@@ -95,6 +98,7 @@ class BitmapResponseBitDict(type):
             cls._bit_properties = bd
 
 
+@python_2_unicode_compatible
 @add_metaclass(BitmapResponseBitDict)
 class BitmapResponse(Response):
     """A response that consists of several named bits.
@@ -133,13 +137,14 @@ class BitmapResponse(Response):
             return self._value[self._bit_properties[name]]
         raise AttributeError
 
-    def __unicode__(self):
+    def __str__(self):
         try:
             return ",".join(self.status)
         except Exception as e:
-            return unicode(e)
+            return "{}".format(e)
 
 
+@python_2_unicode_compatible
 @add_metaclass(CommandTracker)
 class Command(object):
     """A command frame.
@@ -245,7 +250,7 @@ class Command(object):
         raise ValueError("destination must be an integer, dali.device.Device "
                          "object or dali.address.Address object")
 
-    def __unicode__(self):
+    def __str__(self):
         joined = ":".join(
             "{:02x}".format(c) for c in self._data.as_byte_sequence)
         return "({0}){1}".format(type(self), joined)

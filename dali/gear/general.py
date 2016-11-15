@@ -8,9 +8,12 @@ or DTR0, the abbreviation has been kept in capitals.
 """
 
 from __future__ import unicode_literals
+from __future__ import division
+from __future__ import absolute_import
 from dali import command
 from dali import address
 from dali import frame
+from dali.compat import python_2_unicode_compatible
 
 
 class _GearCommand(command.Command):
@@ -21,6 +24,7 @@ class _GearCommand(command.Command):
 # Commands from Table 15 start here
 ###############################################################################
 
+@python_2_unicode_compatible
 class _StandardCommand(_GearCommand):
     """A standard command as defined in Table 15 of IEC 62386-102
 
@@ -99,7 +103,7 @@ class _StandardCommand(_GearCommand):
 
         return cls(addr)
 
-    def __unicode__(self):
+    def __str__(self):
         if self._hasparam:
             return "%s(%s,%s)" % (
                 self.__class__.__name__,
@@ -109,6 +113,7 @@ class _StandardCommand(_GearCommand):
         return "%s(%s)" % (self.__class__.__name__, self.destination)
 
 
+@python_2_unicode_compatible
 class DAPC(_GearCommand):
     """Direct Arc Power Control
 
@@ -154,7 +159,7 @@ class DAPC(_GearCommand):
             return
         return cls(addr, f[7:0])
 
-    def __unicode__(self):
+    def __str__(self):
         if self.power == 0:
             power = "OFF"
         elif self.power == 255:
@@ -611,6 +616,7 @@ class QueryContentDTR0(_StandardCommand):
     _response = command.Response
 
 
+@python_2_unicode_compatible
 class QueryDeviceTypeResponse(command.Response):
     _types = {0: "fluorescent lamp",
               1: "emergency lighting",
@@ -620,11 +626,11 @@ class QueryDeviceTypeResponse(command.Response):
               5: "dc-controlled dimmer",
               6: "LED lamp"}
 
-    def __unicode__(self):
+    def __str__(self):
         if self.value and self.value.as_integer in self._types:
             return self._types[self.value.as_integer]
 
-        return unicode(self.value)
+        return "{}".format(self.value)
 
 
 class QueryDeviceType(_StandardCommand):
@@ -758,6 +764,7 @@ class QuerySystemFailureLevel(_StandardCommand):
     _response = command.Response
 
 
+@python_2_unicode_compatible
 class QueryFadeTimeAndRateResponse(command.Response):
     @property
     def fade_time(self):
@@ -769,7 +776,7 @@ class QueryFadeTimeAndRateResponse(command.Response):
         if self._value:
             return self._value[3:0]
 
-    def __unicode__(self):
+    def __str__(self):
         return "Fade time: {0}; Fade rate: {1}".format(
             self.fade_time,
             self.fade_rate
@@ -915,6 +922,7 @@ class QueryExtendedVersionNumber(_StandardCommand):
 # Commands from Table 16 start here
 ###############################################################################
 
+@python_2_unicode_compatible
 class _SpecialCommand(_GearCommand):
     """A special command as defined in Table 16 of IEC 62386-102.
 
@@ -959,12 +967,13 @@ class _SpecialCommand(_GearCommand):
     def frame(self):
         return frame.ForwardFrame(16, (self._cmdval, self.param))
 
-    def __unicode__(self):
+    def __str__(self):
         if self._hasparam:
             return "{}({})".format(self.__class__.__name__, self.param)
         return "{}()".format(self.__class__.__name__)
 
 
+@python_2_unicode_compatible
 class _ShortAddrSpecialCommand(_SpecialCommand):
     """A special command that has a short address as its parameter."""
 
@@ -995,7 +1004,7 @@ class _ShortAddrSpecialCommand(_SpecialCommand):
             if frame[7] is False and frame[0] is True:
                 return cls(frame[6:1])
 
-    def __unicode__(self):
+    def __str__(self):
         return "{}({})".format(self.__class__.__name__, self.address)
 
 
@@ -1011,6 +1020,7 @@ class DTR0(_SpecialCommand):
     _uses_dtr0 = True
 
 
+@python_2_unicode_compatible
 class Initialise(command.Command):
     """This command shall start or re-trigger a timer for 15 minutes; the
     addressing commands shall only be processed within this period.
@@ -1064,7 +1074,7 @@ class Initialise(command.Command):
             if f[7] is False and f[0] is True:
                 return cls(address=f[6:1])
 
-    def __unicode__(self):
+    def __str__(self):
         if self.broadcast:
             return "Initialise(broadcast=True)"
         return "Initialise(address={})".format(self.address)

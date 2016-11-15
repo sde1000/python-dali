@@ -42,9 +42,12 @@ members of up to three instance groups.
 """
 
 from __future__ import unicode_literals
+from __future__ import division
+from __future__ import absolute_import
 from dali import command
 from dali import address
 from dali import frame
+from dali.compat import python_2_unicode_compatible
 
 
 class _DeviceCommand(command.Command):
@@ -56,6 +59,7 @@ class _DeviceCommand(command.Command):
 # Commands from Table 21 start here
 ###############################################################################
 
+@python_2_unicode_compatible
 class _StandardDeviceCommand(_DeviceCommand):
     """A standard command addressed to a control device.
 
@@ -95,7 +99,7 @@ class _StandardDeviceCommand(_DeviceCommand):
 
         return cls(addr)
 
-    def __unicode__(self):
+    def __str__(self):
         return "%s(%s)" % (self.__class__.__name__, self.destination)
 
 
@@ -415,6 +419,7 @@ class QueryResetState(_StandardDeviceCommand):
     _opcode = 0x48
 
 
+@python_2_unicode_compatible
 class _StandardInstanceCommand(_DeviceCommand):
     """A standard command addressed to a control device instance."""
     _opcode = None
@@ -453,7 +458,7 @@ class _StandardInstanceCommand(_DeviceCommand):
 
         return cls(addr, instance)
 
-    def __unicode__(self):
+    def __str__(self):
         return "{}({}, {})".format(
             self.__class__.__name__, self.destination, self.instance)
 
@@ -623,6 +628,7 @@ QueryEventFilterH = QueryEventFilterSixteenToTwentyThree
 # Commands from Table 22 start here
 ###############################################################################
 
+@python_2_unicode_compatible
 class _SpecialDeviceCommand(_DeviceCommand):
     _addr = None
     _instance = None
@@ -645,10 +651,11 @@ class _SpecialDeviceCommand(_DeviceCommand):
            and frame[7:0] == 0x00:
             return cls()
 
-    def __unicode__(self):
+    def __str__(self):
         return "{}()".format(self.__class__.__name__)
 
 
+@python_2_unicode_compatible
 class _SpecialDeviceCommandOneParam(_SpecialDeviceCommand):
     def __init__(self, param):
         if not isinstance(param, int):
@@ -667,10 +674,11 @@ class _SpecialDeviceCommandOneParam(_SpecialDeviceCommand):
         if frame[23:16] == cls._addr and frame[15:8] == cls._instance:
             return cls(frame[7:0])
 
-    def __unicode__(self):
+    def __str__(self):
         return "{}({:02x})".format(self.__class__.__name__, self._opcode)
 
 
+@python_2_unicode_compatible
 class _SpecialDeviceCommandTwoParam(_SpecialDeviceCommand):
     def __init__(self, a, b):
         if not isinstance(a, int) or not isinstance(b, int):
@@ -690,7 +698,7 @@ class _SpecialDeviceCommandTwoParam(_SpecialDeviceCommand):
         if frame[23:16] == cls._addr:
             return cls(frame[15:8], frame[7:0])
 
-    def __unicode__(self):
+    def __str__(self):
         return "{}({:02x}, {:02x})".format(
             self.__class__.__name__, self._instance, self._opcode)
 
