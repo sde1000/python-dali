@@ -1,11 +1,21 @@
 from __future__ import unicode_literals
+from __future__ import division
+from __future__ import absolute_import
 
 import struct
+import sys
+
+if sys.version_info < (3,):
+    _integer_types = (int, long)
+else:
+    _integer_types = (int,)
 
 _bad_init_data = TypeError(
     "data must be a sequence of integers all in the range 0..255 or an integer")
 
+from dali.compat import python_2_unicode_compatible
 
+@python_2_unicode_compatible
 class Frame(object):
     """A DALI frame.
 
@@ -29,7 +39,7 @@ class Frame(object):
             raise ValueError(
                 "Frames must contain at least 1 data bit")
         self._bits = bits
-        if isinstance(data, int) or isinstance(data, long):
+        if isinstance(data, _integer_types):
             self._data = data
         else:
             d = 0
@@ -122,7 +132,7 @@ class Frame(object):
         """
         if isinstance(key, slice):
             hi, lo = self._readslice(key)
-            if not (isinstance(value, int) or isinstance(value, long)):
+            if not isinstance(value, _integer_types):
                 raise TypeError("value must be an integer")
             if value.bit_length() > (hi + 1 - lo):
                 raise ValueError("value will not fit in supplied slice")
@@ -191,7 +201,7 @@ class Frame(object):
         s = self.as_byte_sequence
         return struct.pack("B" * len(s), *s)
 
-    def __unicode__(self):
+    def __str__(self):
         return "{}({},{})".format(self.__class__.__name__, len(self),
                                   self.as_byte_sequence)
 
