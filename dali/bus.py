@@ -1,3 +1,5 @@
+from __future__ import division
+
 from dali import address
 from dali import device
 import dali.gear.general as gear
@@ -45,7 +47,7 @@ class ProgramShortAddressFailure(Exception):
 
 class Bus(object):
     """A DALI bus."""
-    _all_addresses = sets.ImmutableSet(xrange(64))
+    _all_addresses = sets.ImmutableSet(range(64))
 
     def __init__(self, name=None, interface=None):
         self._devices = {}
@@ -114,7 +116,7 @@ class Bus(object):
             return None
         response = i.send(gear.Compare())
         if response.value is True:
-            midpoint = (low + high) / 2
+            midpoint = (low + high) // 2
             return self.find_next(low, midpoint) \
                 or self.find_next(midpoint + 1, high)
 

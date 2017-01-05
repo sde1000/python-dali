@@ -21,7 +21,9 @@ Addressing for event messages is described in IEC 62386-103 section
 """
 
 from __future__ import unicode_literals
-from dali.compat import add_metaclass
+from __future__ import division
+from __future__ import absolute_import
+from dali.compat import add_metaclass, python_2_unicode_compatible
 
 
 class IncompatibleFrame(Exception):
@@ -44,6 +46,7 @@ class AddressTracker(type):
             cls._addrtypes.append(cls)
 
 
+@python_2_unicode_compatible
 @add_metaclass(AddressTracker)
 class Address(object):
     """An address for one or more ballasts."""
@@ -65,10 +68,11 @@ class Address(object):
     def add_to_frame(self, f):
         raise IncompatibleFrame("Cannot add unknown address to any frame")
 
-    def __unicode__(self):
+    def __str__(self):
         return "<no address>"
 
 
+@python_2_unicode_compatible
 class Broadcast(Address):
     """All control gear or devices connected to the network."""
 
@@ -92,10 +96,11 @@ class Broadcast(Address):
     def __eq__(self, other):
         return isinstance(other, Broadcast)
 
-    def __unicode__(self):
+    def __str__(self):
         return "<broadcast>"
 
 
+@python_2_unicode_compatible
 class BroadcastUnaddressed(Address):
     """All unaddressed control gear or devices
 
@@ -123,10 +128,11 @@ class BroadcastUnaddressed(Address):
     def __eq__(self, other):
         return isinstance(other, BroadcastUnaddressed)
 
-    def __unicode__(self):
+    def __str__(self):
         return "<broadcast unaddressed>"
 
 
+@python_2_unicode_compatible
 class Group(Address):
     """All control gear or devices that are members of the specified group."""
 
@@ -162,10 +168,11 @@ class Group(Address):
     def __eq__(self, other):
         return isinstance(other, Group) and other.group == self.group
 
-    def __unicode__(self):
+    def __str__(self):
         return "<group %d>" % self.group
 
 
+@python_2_unicode_compatible
 class Short(Address):
     """The control gear or device that has this address.
 
@@ -206,7 +213,7 @@ class Short(Address):
     def __eq__(self, other):
         return isinstance(other, Short) and other.address == self.address
 
-    def __unicode__(self):
+    def __str__(self):
         return "<address %d>" % self.address
 
 
@@ -224,6 +231,7 @@ class Instance(object):
     def add_to_frame(self, f):
         raise NotImplementedError
 
+@python_2_unicode_compatible
 class ReservedInstance(Instance):
     """A reserved instance byte."""
 
@@ -235,9 +243,10 @@ class ReservedInstance(Instance):
             raise _bad_frame_length
         f[15:8] = self._value
 
-    def __unicode__(self):
+    def __str__(self):
         return "ReservedInstance({:02x})".format(self._value)
 
+@python_2_unicode_compatible
 class _AddressedInstance(Instance):
     _flags = None
     def __init__(self, value):
@@ -252,10 +261,11 @@ class _AddressedInstance(Instance):
             raise _bad_frame_length
         f[15:8] = self._flags | self._value
 
-    def __unicode__(self):
+    def __str__(self):
         return "{}({})".format(self.__class__.__name__, self._value)
 
 
+@python_2_unicode_compatible
 class _UnaddressedInstance(Instance):
     _val = None
 
@@ -267,7 +277,7 @@ class _UnaddressedInstance(Instance):
             raise _bad_frame_length
         f[15:8] = self._val
 
-    def __unicode__(self):
+    def __str__(self):
         return "{}()".format(self.__class__.__name__)
 
 

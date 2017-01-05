@@ -13,3 +13,8 @@
 /release-tmp/
 /MANIFEST
 /pip-selfcheck.json
+/.pybuild
+/debian/debhelper-build-stamp
+/debian/files
+/debian/python-dali*
+/debian/python3-dali*

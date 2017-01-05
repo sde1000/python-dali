@@ -28,6 +28,10 @@ except ImportError:
     from dali.gear import led
     from dali.device import general as generaldevice
 import unittest
+import sys
+
+if sys.version_info[0] == 3:
+    xrange = range
 
 # Only test device types up to this number - if we went all the way to
 # 255 the tests would take unnecessarily long!
@@ -75,17 +79,23 @@ class TestCommands(unittest.TestCase):
             nf = c.frame
             self.assertEqual(
                 f, nf, "frame {} failed command round-trip; command {} "
-                "became {}".format(unicode(f), unicode(c), unicode(nf)))
+                "became {}".format(str(f), str(c), str(nf)))
 
     def test_unicode(self):
         "command objects return unicode from their __unicode__ method"
+        # Python 2 only
+        if sys.version_info[0] == 2:
+            for fs, d, dt in _test_pattern():
+                f = frame.ForwardFrame(fs, d)
+                self.assertIsInstance(command.from_frame(f, dt).__unicode__(),
+                                      unicode)
+
+    def test_str(self):
+        "command objects can be converted to strings"
         for fs, d, dt in _test_pattern():
             f = frame.ForwardFrame(fs, d)
-            self.assertTrue(
-                isinstance(command.from_frame(f, dt).__unicode__(),
-                           unicode),
-                "command {} unicode method didn't return unicode".\
-                format(unicode(f)))
+            self.assertIsInstance(str(command.from_frame(f, dt)),
+                                  str)
 
     def test_with_integer_destination(self):
         "commands accept integer destination"
@@ -101,16 +111,12 @@ class TestCommands(unittest.TestCase):
             f = frame.ForwardFrame(fs, d)
             c = command.from_frame(f, dt)
             if c._response:
-                self.assertTrue(
-                    isinstance(c._response(None).__unicode__(), unicode),
-                    "cmd {} unicode(response(None)) didn't return unicode".\
-                    format(unicode(f)))
+                if sys.version_info[0] == 2:
+                    self.assertIsInstance(c._response(None).__unicode__(), unicode)
                 self.assertRaises(TypeError, lambda: c._response("wibble"))
-                self.assertTrue(
-                    isinstance(c._response(frame.BackwardFrame(0xff)).\
-                               __unicode__(), unicode),
-                    "cmd {} unicode(response(0xff)) didn't return unicode".\
-                    format(unicode(f)))
+                if sys.version_info[0] == 2:
+                    self.assertIsInstance(c._response(frame.BackwardFrame(0xff))\
+                                          .__unicode__(), unicode)
 
 if __name__ == "__main__":
     unittest.main()

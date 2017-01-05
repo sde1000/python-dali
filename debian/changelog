@@ -1,3 +1,9 @@
+python-dali (0.3) unstable; urgency=low
+
+  * Python 3 support.
+
+ -- Stephen Early <steve@assorted.org.uk>  Tue, 15 Nov 2016 14:35:00 +0000
+
 python-dali (0.2) unstable; urgency=low
 
   * Introduce basic sync and async drivers.

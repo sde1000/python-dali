@@ -1,5 +1,8 @@
 #!/usr/bin/make -f
 # -*- makefile -*-
 
+export PYBUILD_NAME = dali
+#export PYBUILD_DISABLE = test
+
 %:
-	dh --with=python2 $@
+	dh $@ --with=python2,python3 --buildsystem=pybuild

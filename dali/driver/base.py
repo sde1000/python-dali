@@ -222,7 +222,7 @@ class USBListener(USBBackend, Listener):
         while not self._stop_listening.is_set():
             try:
                 self.driver.receive(self.read())
-            except usb.core.USBError, e:
+            except usb.core.USBError as e:
                 # read timeout
                 if e.errno == 110:
                     continue

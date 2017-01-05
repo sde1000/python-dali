@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
+from __future__ import division
+
 from dali.gear.general import Compare
 from dali.gear.general import Initialise
 from dali.gear.general import Randomise
@@ -41,7 +43,7 @@ def find_next(i, low, high):
     response = i.send(Compare())
 
     if response.value is True:
-        midpoint = (low + high) / 2
+        midpoint = (low + high) // 2
         return find_next(i, low, midpoint) or find_next(i, midpoint + 1, high)
 
 

@@ -1,5 +1,10 @@
+from __future__ import unicode_literals
+from __future__ import division
+from __future__ import absolute_import
+
 try:
     from dali import frame
+
 except ImportError:
     import os
     import sys
@@ -13,7 +18,7 @@ except ImportError:
     from dali import frame
 
 import unittest
-
+import sys
 
 class TestFrame(unittest.TestCase):
 
@@ -112,23 +117,23 @@ class TestFrame(unittest.TestCase):
             f[7:4] = -2
 
     def test_add(self):
-        self.assertEquals(frame.Frame(16, 0x1234) + frame.Frame(16, 0x5678),
+        self.assertEqual(frame.Frame(16, 0x1234) + frame.Frame(16, 0x5678),
                           frame.Frame(32, 0x12345678))
         self.assertRaises(TypeError, lambda: frame.Frame(8, 0xff) + 1)
         self.assertRaises(TypeError, lambda: 1 + frame.Frame(8, 0xff))
 
     def test_as_integer(self):
-        self.assertEquals(frame.Frame(32, 0x12345678).as_integer, 0x12345678)
+        self.assertEqual(frame.Frame(32, 0x12345678).as_integer, 0x12345678)
 
     def test_as_byte_sequence(self):
         f = frame.Frame(29, 0x12345678)
-        self.assertEquals(frame.Frame(29, f.as_byte_sequence), f)
+        self.assertEqual(frame.Frame(29, f.as_byte_sequence), f)
 
     def test_pack(self):
         f = frame.Frame(28, 0x2345678)
-        self.assertEquals(f.pack, b'\x02\x34\x56\x78')
+        self.assertEqual(f.pack, b'\x02\x34\x56\x78')
         f = frame.Frame(16, 0xaa55)
-        self.assertEquals(f.pack, b'\xaa\x55')
+        self.assertEqual(f.pack, b'\xaa\x55')
 
     def test_contains(self):
         "frame __contains__ method works as expected"
@@ -140,9 +145,17 @@ class TestFrame(unittest.TestCase):
 
     def test_unicode(self):
         "frame objects return unicode from their __unicode__ method"
-        self.assertTrue(
-            isinstance(frame.Frame(123, 0x12345).__unicode__(),
-                       unicode))
+        # This test applies to python 2 only
+        if sys.version_info[0] == 2:
+            self.assertIsInstance(
+                frame.Frame(123, 0x12345).__unicode__(),
+                unicode)
+
+    def test_str(self):
+        "frame objects can be converted to strings"
+        self.assertIsInstance(
+            str(frame.Frame(123, 0x12345)),
+            str)
 
 if __name__ == "__main__":
     unittest.main()
