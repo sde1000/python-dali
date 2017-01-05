@@ -24,7 +24,7 @@ DALI_USB_TYPE_NO_RESPONSE = 0x71
 DALI_USB_TYPE_RESPONSE = 0x72
 DALI_USB_TYPE_COMPLETE = 0x73
 DALI_USB_TYPE_BROADCAST = 0x74
-
+# XXX: DALI_USB_TYPE_???? = 0x77
 
 # debug logging related
 DRIVER_CONSTRUCT = 0x0
@@ -177,6 +177,7 @@ class TridonicDALIUSBDriver(DALIDriver):
             else:
                 msg = 'DALI -> DALI | Unknown type received: {}'.format(hex(ty))
                 self.logger.warning(msg)
+            return
         # USB -> DALI
         elif dr == DALI_USB_DIRECTION_USB:
             if ty == DALI_USB_TYPE_NO_RESPONSE:
@@ -192,6 +193,7 @@ class TridonicDALIUSBDriver(DALIDriver):
             else:
                 msg = 'USB -> DALI | Unknown type received: {}'.format(hex(ty))
                 self.logger.warning(msg)
+            return
         # Unknown direction
         msg = 'Unknown direction received: {}'.format(hex(dr))
         self.logger.warning(msg)
