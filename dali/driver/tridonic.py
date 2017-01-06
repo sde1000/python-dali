@@ -26,6 +26,7 @@ DALI_USB_TYPE_COMPLETE = 0x73
 DALI_USB_TYPE_BROADCAST = 0x74
 # DALI_USB_TYPE_UNKNOWN = 0x77
 
+
 # debug logging related
 DRIVER_CONSTRUCT = 0x0
 DRIVER_EXTRACT = 0x1
@@ -160,7 +161,6 @@ class TridonicDALIUSBDriver(DALIDriver):
         ec = data[3]
         ad = data[4]
         cm = data[5]
-        # XXX: why is unpacked value tuple?
         st = struct.unpack('H', data[6:8])[0]
         sn = data[8]
         if self.debug:
