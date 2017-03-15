@@ -15,4 +15,5 @@ setup(
         'dali.driver',
         'dali.gear'
     ],
+    license='GPL3',
 )
