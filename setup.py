@@ -30,6 +30,6 @@ setup(
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 3',
     ],
-    license='GPL3',
+    license='LGPL3+',
     keywords='lighting DALI development',
 )
