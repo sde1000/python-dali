@@ -17,11 +17,11 @@ class CommandTracker(type):
     """
 
     def __init__(cls, name, bases, attrs):
-        if not hasattr(cls, '_commands'):
-            cls._commands = []
+        if not hasattr(cls.__class__, '_commands'):
+            cls.__class__._commands = []
         else:
             if cls.__name__[0] != '_':
-                cls._commands.append(cls)
+                cls.__class__._commands.append(cls)
 
     @classmethod
     def commands(cls):

@@ -1,32 +1,28 @@
-try:
-    from dali import address
-    from dali import command
-    from dali import frame
-    from dali.gear import general as generalgear
-    from dali.gear import emergency
-    from dali.gear import incandescent
-    from dali.gear import led
-    from dali.device import general as generaldevice
-except ImportError:
-    # Realign paths, and try import again
-    # Since pyCharm's unittest runner fails on relative imports
-    import os
-    import sys
+"""
+Unittest for commands
+"""
 
-    PACKAGE_PARENT = '..'
-    SCRIPT_DIR = os.path.dirname(
-        os.path.realpath(os.path.join(os.getcwd(),
-                         os.path.expanduser(__file__))))
-    sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
+# Realign paths, and try import again
+# Since pyCharm's unittest runner fails on relative imports
+import os
+import sys
 
-    from dali import address
-    from dali import command
-    from dali import frame
-    from dali.gear import general as generalgear
-    from dali.gear import emergency
-    from dali.gear import incandescent
-    from dali.gear import led
-    from dali.device import general as generaldevice
+PACKAGE_PARENT = '..'
+SCRIPT_DIR = os.path.dirname(
+    os.path.realpath(os.path.join(os.getcwd(),
+                                  os.path.expanduser(__file__))))
+sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
+
+from dali import address
+from dali import command
+from dali import frame
+from dali.gear import general as generalgear
+from dali.gear import emergency
+from dali.gear import incandescent
+from dali.gear import led
+from dali.device import general as generaldevice
+from dali.command import Command, CommandTracker
+
 import unittest
 import sys
 
@@ -117,6 +113,12 @@ class TestCommands(unittest.TestCase):
                 if sys.version_info[0] == 2:
                     self.assertIsInstance(c._response(frame.BackwardFrame(0xff))\
                                           .__unicode__(), unicode)
+
+    def test_command_tracker(self):
+        "Test accessibility of commands through CommandTracker"
+        for cmd in CommandTracker.commands():
+            self.assertTrue(issubclass(cmd, Command))
+
 
 if __name__ == "__main__":
     unittest.main()
