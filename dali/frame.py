@@ -166,6 +166,9 @@ class Frame(object):
         except:
             raise TypeError("Frame can only be added to another Frame")
 
+    def __hash__(self):
+        return hash(self._data)
+
     @property
     def as_integer(self):
         """The contents of the frame represented as an integer."""
