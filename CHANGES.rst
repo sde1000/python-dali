@@ -1,6 +1,18 @@
 Changes
 =======
 
+0.4
+---
+
+- PyPI support
+  [dgomes]
+
+0.3
+---
+
+- Python 3 support
+  [sde1000]
+
 0.2
 ---
 

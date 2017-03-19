@@ -6,7 +6,7 @@
 /bin/
 /build/
 /dist/
-/dali.egg-info/
+/python_dali.egg-info/
 /include/
 /lib/
 /local/

@@ -1,3 +1,9 @@
+python-dali (0.4) unstable; urgency=low
+
+  * PyPI support; rename package from dali to python-dali to avoid clash
+
+ -- Stephen Early <steve@assorted.org.uk>  Sun, 19 Mar 2017 19:33:00 +0000
+
 python-dali (0.3) unstable; urgency=low
 
   * Python 3 support.
