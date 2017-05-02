@@ -41,7 +41,7 @@ Library structure
   - ``device`` - Control devices and events from them
     - ``general`` - Commands and events from part 103
 
-  - ``driver`` - Objects to communicate with physical DALI gateways or services.
+  - ``driver`` - Objects to communicate with physical DALI gateways or services
     - ``base`` - General driver contracts
     - ``hasseb`` - Driver for Hasseb DALI Master (needs to be adopted to dali.driver.base API)
     - ``tridonic`` - Driver for Tridonic DALI USB
