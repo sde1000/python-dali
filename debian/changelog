@@ -1,3 +1,11 @@
+python-dali (0.5) unstable; urgency=low
+
+  * Add ``dali.exceptions`` module and move all DALI related exceptions to it.
+  * Move ``dali.interfaces`` to ``dali.drivers.daliserver``.
+  * Update Package structure documentation.
+
+ -- Robert Niederreiter <rnix@squarewave.at>  Tue, 02 May 2017 12:50:08 +0200
+
 python-dali (0.4) unstable; urgency=low
 
   * PyPI support; rename package from dali to python-dali to avoid clash
