@@ -1,52 +1,20 @@
 from __future__ import division
-
 from dali import address
 from dali import device
+from dali.exceptions import BadDevice
+from dali.exceptions import DeviceAlreadyBound
+from dali.exceptions import DuplicateDevice
+from dali.exceptions import NoFreeAddress
+from dali.exceptions import NotConnected
+from dali.exceptions import ProgramShortAddressFailure
 import dali.gear.general as gear
 import sets
 import time
 
 
-class DuplicateDevice(Exception):
-    """Attempt to add more than one device with the same short address
-    to a bus.
-    """
-    pass
-
-
-class BadDevice(Exception):
-    """Device with invalid attributes."""
-    pass
-
-
-class DeviceAlreadyBound(Exception):
-    """Attempt to add a device to a bus that is already bound to a
-    different bus.
-    """
-    pass
-
-
-class NotConnected(Exception):
-    """A connection to the DALI bus is required to complete this
-    operation, but the bus is not connected.
-    """
-    pass
-
-
-class NoFreeAddress(Exception):
-    """An unused short address was required but none was available."""
-    pass
-
-
-class ProgramShortAddressFailure(Exception):
-    """A device did not accept programming of its short address."""
-
-    def __init__(self, address):
-        self.address = address
-
-
 class Bus(object):
     """A DALI bus."""
+
     _all_addresses = sets.ImmutableSet(range(64))
 
     def __init__(self, name=None, interface=None):
@@ -57,7 +25,7 @@ class Bus(object):
 
     def get_interface(self):
         if not self._interface:
-            raise NotConnected
+            raise NotConnected()
         return self._interface
 
     def add_device(self, device):
@@ -149,6 +117,6 @@ class Bus(object):
                     device.Device(address=new_addr, bus=self)
                 else:
                     i.send(gear.Terminate())
-                    raise NoFreeAddress
+                    raise NoFreeAddress()
                 low = low + 1
         i.send(gear.Terminate())

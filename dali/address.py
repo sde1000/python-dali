@@ -23,14 +23,13 @@ Addressing for event messages is described in IEC 62386-103 section
 from __future__ import unicode_literals
 from __future__ import division
 from __future__ import absolute_import
-from dali.compat import add_metaclass, python_2_unicode_compatible
+from dali.compat import add_metaclass
+from dali.compat import python_2_unicode_compatible
+from dali.exceptions import IncompatibleFrame
 
-
-class IncompatibleFrame(Exception):
-    """Cannot set destination address in supplied frame"""
-    pass
 
 _bad_frame_length = IncompatibleFrame("Unsupported frame size")
+
 
 ###############################################################################
 # Address bytes
@@ -231,6 +230,7 @@ class Instance(object):
     def add_to_frame(self, f):
         raise NotImplementedError
 
+
 @python_2_unicode_compatible
 class ReservedInstance(Instance):
     """A reserved instance byte."""
@@ -245,6 +245,7 @@ class ReservedInstance(Instance):
 
     def __str__(self):
         return "ReservedInstance({:02x})".format(self._value)
+
 
 @python_2_unicode_compatible
 class _AddressedInstance(Instance):

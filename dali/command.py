@@ -5,7 +5,10 @@ from __future__ import division
 from __future__ import absolute_import
 from dali import address
 from dali import frame
-from dali.compat import add_metaclass, python_2_unicode_compatible
+from dali.compat import add_metaclass
+from dali.compat import python_2_unicode_compatible
+from dali.exceptions import MissingResponse
+from dali.exceptions import ResponseError
 
 
 class CommandTracker(type):
@@ -29,14 +32,6 @@ class CommandTracker(type):
         :return: List of known commands if there's any
         """
         return cls._commands
-
-
-class MissingResponse(Exception):
-    """Response was absent where a response was expected."""
-
-
-class ResponseError(Exception):
-    """Response had unexpected framing error."""
 
 
 @python_2_unicode_compatible
@@ -63,9 +58,9 @@ class Response(object):
     @property
     def value(self):
         if self._value is None and self._expected:
-            raise MissingResponse
+            raise MissingResponse()
         if self._value and self._value.error and not self._error_acceptable:
-            raise ResponseError
+            raise ResponseError()
         return self._value
 
     def __str__(self):
@@ -111,7 +106,7 @@ class BitmapResponse(Response):
     @property
     def status(self):
         if self._value is None:
-            raise MissingResponse
+            raise MissingResponse()
         if self._value.error:
             return ["response received with framing error"]
         v = self._value[7:0]
@@ -140,6 +135,7 @@ class BitmapResponse(Response):
     def __str__(self):
         try:
             return ",".join(self.status)
+        # XXX: be more explicit which exception to catch
         except Exception as e:
             return "{}".format(e)
 

@@ -1,19 +1,21 @@
 #!/usr/bin/env python
-
 from setuptools import setup
 import unittest
+
 
 def readme():
     with open('README.rst') as f:
         return f.read()
 
+
 def test_suite():
     test_loader = unittest.TestLoader()
     return test_loader.discover('dali')
 
+
 setup(
     name='python-dali',
-    version='0.4',
+    version='0.5.dev0',
     description='Interface to DALI lighting systems',
     long_description=readme(),
     author='Stephen Early',

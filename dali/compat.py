@@ -4,8 +4,10 @@
 import sys
 PY2 = sys.version_info[0] == 2
 
+
 def add_metaclass(metaclass):
     """Class decorator for creating a class with a metaclass."""
+
     def wrapper(cls):
         orig_vars = cls.__dict__.copy()
         orig_vars.pop('__dict__', None)
@@ -19,9 +21,9 @@ def add_metaclass(metaclass):
         return metaclass(cls.__name__, cls.__bases__, orig_vars)
     return wrapper
 
+
 def python_2_unicode_compatible(klass):
-    """
-    A decorator that defines __unicode__ and __str__ methods under Python 2.
+    """A decorator that defines __unicode__ and __str__ methods under Python 2.
     Under Python 3 it does nothing.
 
     To support Python 2 and 3 with a single code base, define a __str__ method

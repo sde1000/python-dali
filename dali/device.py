@@ -1,7 +1,9 @@
 from dali.address import Short
 
 
-# XXX: descriptor classes for DALI device attributes goes here...
+###############################################################################
+# XXX: There exists a package names device. so this module is a relict???
+###############################################################################
 
 
 class Device(object):

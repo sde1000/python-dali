@@ -1,16 +1,15 @@
 from __future__ import print_function
 from dali.command import Command
+from dali.exceptions import CommunicationError
 import dali.frame
 import logging
 import socket
 import struct
 
 
-# XXX: This should got into ``dali.driver.daliserver``
-
-
-class CommunicationError(Exception):
-    pass
+###############################################################################
+# XXX: Adopt API to ``dali.driver.base``
+###############################################################################
 
 
 class DaliServer(object):

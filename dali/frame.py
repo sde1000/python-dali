@@ -1,19 +1,20 @@
 from __future__ import unicode_literals
 from __future__ import division
 from __future__ import absolute_import
-
+from dali.compat import python_2_unicode_compatible
 import struct
 import sys
+
 
 if sys.version_info < (3,):
     _integer_types = (int, long)
 else:
     _integer_types = (int,)
 
+
 _bad_init_data = TypeError(
     "data must be a sequence of integers all in the range 0..255 or an integer")
 
-from dali.compat import python_2_unicode_compatible
 
 @python_2_unicode_compatible
 class Frame(object):

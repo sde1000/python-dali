@@ -28,33 +28,41 @@ fairly expensive to obtain.  The library is designed to be extensible;
 adding support for the other parts ought to be easy and
 self-contained.
 
+
 Library structure
 -----------------
 
-- dali/
+- ``dali``
+  - ``address`` - Device addressing
+  - ``bus`` - DALI bus object
+  - ``command`` - Command registry, interface to command decoding
+  - ``compat`` - Compatibility code for Python 2 and 3
+  - ``device`` - Control devices and events from them
+    - ``general`` - Commands and events from part 103
+  - ``driver`` - Objects to communicate with physical DALI gateways or services.
+    - ``base`` - General driver contracts
+    - ``hasseb`` - Driver for Hasseb DALI Master (needs to be adopted to dali.driver.base API)
+    - ``tridonic`` - Driver for Tridonic DALI USB
+    - ``daliserver`` - Driver for https://github.com/onitake/daliserver (needs to be adopted to dali.driver.base API)
+  - ``exceptions`` - DALI related exceptions
+  - ``frame`` - Forward and backward frames
+  - ``gear`` - Control gear
+     - ``emergency`` - Commands from part 202
+     - ``general`` - Commands from part 102
+     - ``incandescent`` - Commands from part 205
+     - ``fluorescent`` - Commands from part 201 (not yet implemented)
+     - ``led`` - Commands from part 207
 
-  - exceptions.py (not yet implemented - some exceptions defined in-place)
-  - frame.py - forward and backward frames
-  - command.py - command registry, interface to command decoding
-  - gear/ - control gear
 
-     - general.py - commands from part 102
-     - fluorescent.py - commands from part 201 (not yet implemented)
-     - emergency.py - commands from part 202
-     - incandescent.py - commands from part 205
-     - led.py - commands from part 207
+Contributors
+------------
 
-  - device/ - control devices and events from them
+- Stephen Early (Autor)
+- Robert Niederreiter
+- Diogo Gomes
+- Caiwan
+- Boldie
 
-    - general.py - commands and events from part 103
-
-  - interface/
-
-     - daliserver.py - interface to
-       https://github.com/onitake/daliserver (not yet implemented -
-       currently lives in dali.interfaces module directly)
-     - tridonic.py - driver for Tridonic DALI-USB device (prototype -
-       needs love)
 
 Copyright
 ---------

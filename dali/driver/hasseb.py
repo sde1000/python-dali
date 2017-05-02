@@ -1,12 +1,14 @@
 from dali.command import Command
-import dali.frame
-import usb.core
-import struct
 from time import sleep
+import dali.frame
 import logging
+import struct
+import usb.core
 
 
-# XXX: Adopt to new API
+###############################################################################
+# XXX: Adopt API to ``dali.driver.base``
+###############################################################################
 
 
 class HassebUsb(object):
