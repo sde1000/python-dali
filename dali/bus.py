@@ -1,6 +1,7 @@
 from __future__ import division
+from __future__ import unicode_literals
 from dali import address
-from dali import device
+from dali.address import Short
 from dali.exceptions import BadDevice
 from dali.exceptions import DeviceAlreadyBound
 from dali.exceptions import DuplicateDevice
@@ -10,6 +11,23 @@ from dali.exceptions import ProgramShortAddressFailure
 import dali.gear.general as gear
 import sets
 import time
+
+
+class Device(object):
+    """Any DALI slave device that has been configured with a short address."""
+
+    def __init__(self, address, name=None, bus=None):
+        if not isinstance(address, int) or address < 0 or address > 63:
+            raise ValueError("address must be an integer in the range 0..63")
+        self.address = address
+        self._addressobj = Short(address)
+        self.bus = None
+        if bus:
+            self.bind(bus)
+
+    def bind(self, bus):
+        """Bind this device object to a particular DALI bus."""
+        bus.add_device(self)
 
 
 class Bus(object):
@@ -55,7 +73,7 @@ class Bus(object):
             response = i.send(
                 gear.QueryControlGearPresent(address.Short(sa)))
             if response.value:
-                device.Device(address=sa, bus=self)
+                Device(address=sa, bus=self)
         self._bus_scanned = True
 
     def set_search_addr(self, addr):
@@ -114,7 +132,7 @@ class Bus(object):
                     if r.value is not True:
                         raise ProgramShortAddressFailure(new_addr)
                     i.send(gear.Withdraw())
-                    device.Device(address=new_addr, bus=self)
+                    Device(address=new_addr, bus=self)
                 else:
                     i.send(gear.Terminate())
                     raise NoFreeAddress()

@@ -232,7 +232,7 @@ class Command(object):
     def _check_destination(destination):
         """Check that a valid destination has been specified.
 
-        destination can be a dali.device.Device object with
+        destination can be a dali.bus.Device object with
         _addressobj attribute, a dali.address.Address object with
         add_to_frame method, or an integer which will be wrapped in a
         dali.address.Address object.
@@ -243,7 +243,7 @@ class Command(object):
             destination = address.Short(destination)
         if hasattr(destination, "add_to_frame"):
             return destination
-        raise ValueError("destination must be an integer, dali.device.Device "
+        raise ValueError("destination must be an integer, dali.bus.Device "
                          "object or dali.address.Address object")
 
     def __str__(self):
