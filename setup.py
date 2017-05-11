@@ -8,11 +8,6 @@ def readme():
         return f.read()
 
 
-def test_suite():
-    test_loader = unittest.TestLoader()
-    return test_loader.discover('dali')
-
-
 setup(
     name='python-dali',
     version='0.5.dev0',
@@ -37,5 +32,5 @@ setup(
     ],
     license='LGPL3+',
     keywords='lighting DALI development',
-    test_suite='setup.test_suite',
+    test_suite='dali.tests',
 )

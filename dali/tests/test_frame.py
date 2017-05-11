@@ -1,29 +1,30 @@
-from __future__ import unicode_literals
 from __future__ import division
-from __future__ import absolute_import
+from __future__ import unicode_literals
+import os
+import sys
+import unittest
+
 
 try:
-    from dali import frame
-
+    import dali
 except ImportError:
-    import os
-    import sys
+    # Realign paths, and try import again
+    # Since pyCharm's unittest runner fails on relative imports
+    path = os.path
+    PACKAGE_PARENT = '../..'
+    SCRIPT_DIR = path.dirname(
+        path.realpath(path.join(os.getcwd(), path.expanduser(__file__)))
+    )
+    sys.path.append(path.normpath(path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 
-    PACKAGE_PARENT = '..'
-    SCRIPT_DIR = os.path.dirname(
-        os.path.realpath(os.path.join(os.getcwd(),
-                         os.path.expanduser(__file__))))
-    sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 
-    from dali import frame
+from dali import frame
 
-import unittest
-import sys
 
 class TestFrame(unittest.TestCase):
 
     def test_frame_bits(self):
-        "frames can only be initialised with an appropriate number of bits"
+        """frames can only be initialised with an appropriate number of bits"""
         self.assertRaises(TypeError, frame.Frame, None)
         self.assertRaises(TypeError, frame.Frame, "wibble")
         self.assertRaises(TypeError, frame.Frame, 16.0)
@@ -34,7 +35,7 @@ class TestFrame(unittest.TestCase):
         self.assertEqual(len(frame.Frame(256, 1 << 255)), 256)
 
     def test_frame_init_data(self):
-        "frames can be initialised with integer or iterable data"
+        """frames can be initialised with integer or iterable data"""
         self.assertEqual(
             frame.Frame(16, 0xffff),
             frame.Frame(16, (0xff, 0xff))
@@ -45,7 +46,7 @@ class TestFrame(unittest.TestCase):
         )
 
     def test_comparisons(self):
-        "frame comparisons"
+        """frame comparisons"""
         self.assertNotEqual(frame.Frame(24, 1), 1)
         self.assertNotEqual(frame.Frame(24, 1), frame.Frame(16, 1))
         self.assertEqual(frame.Frame(1), frame.Frame(1))
@@ -53,7 +54,7 @@ class TestFrame(unittest.TestCase):
         self.assertEqual(frame.Frame(1) != frame.Frame(2), True)
 
     def test_read(self):
-        "frames return correct values when read using index"
+        """frames return correct values when read using index"""
         # Frame will be 0001 0010 0011 0100 0101 0110
         # Index:        3210 9876 5432 1098 7654 3210
         f = frame.Frame(24, (0x12, 0x34, 0x56))
@@ -62,7 +63,7 @@ class TestFrame(unittest.TestCase):
         self.assertEqual(f[20], True)
         self.assertRaises(IndexError, lambda: f[24])
         self.assertRaises(IndexError, lambda: f[-1])
-        self.assertRaises(TypeError, lambda: f["wibble"])
+        self.assertRaises(TypeError, lambda: f['wibble'])
         self.assertRaises(TypeError, lambda: f[3:0:2])
         self.assertRaises(IndexError, lambda: f[24:20])
         self.assertEqual(f[3:0], 6)
@@ -76,6 +77,7 @@ class TestFrame(unittest.TestCase):
         self.assertEqual(f[17:10], int("10001101", 2))
 
     def test_write(self):
+        """writing to frames works correctly using indices and slices"""
         f = frame.Frame(24)
         f[1] = True
         self.assertEqual(f[23:0], 2)
@@ -83,7 +85,7 @@ class TestFrame(unittest.TestCase):
         self.assertEqual(f[23:0], 6)
         f[1] = False
         self.assertEqual(f[23:0], 4)
-        f[0] = "yes"
+        f[0] = 'yes'
         self.assertEqual(f[23:0], 5)
         f[2] = 0
         self.assertEqual(f[23:0], 1)
@@ -92,7 +94,7 @@ class TestFrame(unittest.TestCase):
         with self.assertRaises(IndexError):
             f[-24] = True
         with self.assertRaises(TypeError):
-            f["wobble"] = False
+            f['wobble'] = False
         with self.assertRaises(TypeError):
             f[4:3:2] = 2
         # Test large frame that stores data as a long
@@ -110,41 +112,47 @@ class TestFrame(unittest.TestCase):
         with self.assertRaises(ValueError):
             f[3:0] = 0x10
         with self.assertRaises(TypeError):
-            f[20:20] = "wibble"
+            f[20:20] = 'wibble'
         with self.assertRaises(IndexError):
             f[24:20] = 10
         with self.assertRaises(ValueError):
             f[7:4] = -2
 
     def test_add(self):
-        self.assertEqual(frame.Frame(16, 0x1234) + frame.Frame(16, 0x5678),
-                          frame.Frame(32, 0x12345678))
+        """frame concatenation works as expected"""
+        self.assertEqual(
+            frame.Frame(16, 0x1234) + frame.Frame(16, 0x5678),
+            frame.Frame(32, 0x12345678)
+        )
         self.assertRaises(TypeError, lambda: frame.Frame(8, 0xff) + 1)
         self.assertRaises(TypeError, lambda: 1 + frame.Frame(8, 0xff))
 
     def test_as_integer(self):
+        """returning frame as integer works as expected"""
         self.assertEqual(frame.Frame(32, 0x12345678).as_integer, 0x12345678)
 
     def test_as_byte_sequence(self):
+        """constructing frames from byte sequence works as expected"""
         f = frame.Frame(29, 0x12345678)
         self.assertEqual(frame.Frame(29, f.as_byte_sequence), f)
 
     def test_pack(self):
+        """frame packing return expected byte strings"""
         f = frame.Frame(28, 0x2345678)
         self.assertEqual(f.pack, b'\x02\x34\x56\x78')
         f = frame.Frame(16, 0xaa55)
         self.assertEqual(f.pack, b'\xaa\x55')
 
     def test_contains(self):
-        "frame __contains__ method works as expected"
+        """frame __contains__ method works as expected"""
         self.assertTrue(True in frame.Frame(16, 0xaa55))
         self.assertTrue(False in frame.Frame(16, 0xaa55))
         self.assertFalse(True in frame.Frame(16, 0))
         self.assertFalse(False in frame.Frame(16, 0xffff))
-        self.assertFalse("wibble" in frame.Frame(16))
+        self.assertFalse('wibble' in frame.Frame(16))
 
     def test_unicode(self):
-        "frame objects return unicode from their __unicode__ method"
+        """frame objects return unicode from their __unicode__ method"""
         # This test applies to python 2 only
         if sys.version_info[0] == 2:
             self.assertIsInstance(
@@ -152,10 +160,11 @@ class TestFrame(unittest.TestCase):
                 unicode)
 
     def test_str(self):
-        "frame objects can be converted to strings"
+        """frame objects can be converted to strings"""
         self.assertIsInstance(
             str(frame.Frame(123, 0x12345)),
             str)
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     unittest.main()

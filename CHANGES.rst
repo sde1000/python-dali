@@ -4,6 +4,9 @@ Changes
 0.5 (unreleased)
 ----------------
 
+- Move tests to dedicated package.
+  [rnix]
+
 - Rename ``dali.device.Device._addressobj`` to
   ``dali.device.Device.address_obj`` since it is used as API in
   ``dali.command.Command``.
