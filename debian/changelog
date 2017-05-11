@@ -1,5 +1,10 @@
 python-dali (0.5) unstable; urgency=low
 
+  * Rename ``dali.device.Device._addressobj`` to
+    ``dali.device.Device.address_obj`` since it is used as API in
+    ``dali.command.Command``.
+  * Move ``dali.device.Device`` class to ``dali.bus``, ``dali.device`` module
+    has been removed which conflicted with ``dali.device`` package.
   * Add ``dali.exceptions`` module and move all DALI related exceptions to it.
   * Move ``dali.interfaces`` to ``dali.drivers.daliserver``.
   * Update Package structure documentation.

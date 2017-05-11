@@ -4,6 +4,15 @@ Changes
 0.5 (unreleased)
 ----------------
 
+- Rename ``dali.device.Device._addressobj`` to
+  ``dali.device.Device.address_obj`` since it is used as API in
+  ``dali.command.Command``.
+  [rnix]
+
+- Move ``dali.device.Device`` class to ``dali.bus``, ``dali.device`` module
+  has been removed which conflicted with ``dali.device`` package.
+  [rnix]
+
 - Add ``dali.exceptions`` module and move all DALI related exceptions to it.
   [rnix]
 

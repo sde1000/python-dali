@@ -20,7 +20,7 @@ class Device(object):
         if not isinstance(address, int) or address < 0 or address > 63:
             raise ValueError("address must be an integer in the range 0..63")
         self.address = address
-        self._addressobj = Short(address)
+        self.address_obj = Short(address)
         self.bus = None
         if bus:
             self.bind(bus)
