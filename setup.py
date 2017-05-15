@@ -10,7 +10,7 @@ def readme():
 
 setup(
     name='python-dali',
-    version='0.5',
+    version='0.6.dev0',
     description='Interface to DALI lighting systems',
     long_description=readme(),
     author='Stephen Early',
