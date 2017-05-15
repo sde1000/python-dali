@@ -1,7 +1,7 @@
 Changes
 =======
 
-0.5 (unreleased)
+0.5 (2017-05-15)
 ----------------
 
 - Move tests to dedicated package.
@@ -26,8 +26,8 @@ Changes
   [rnix]
 
 
-0.4
----
+0.4 (2017-03-19)
+----------------
 
 - PyPI support
   [dgomes]
