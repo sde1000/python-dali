@@ -843,7 +843,7 @@ class QueryControlGearFailure(_StandardCommand):
     The answer shall be YES if controlGearFailure is TRUE and NO
     otherwise.
     """
-    _cmdval = 0xaa
+    _cmdval = 0xa9
     _response = command.YesNoResponse
 
 
