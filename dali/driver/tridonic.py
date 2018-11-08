@@ -255,7 +255,7 @@ class AsyncTridonicDALIUSBDriver(TridonicDALIUSBDriver, AsyncDALIDriver):
 
     def send(self, command, callback=None, **kw):
         data = self.construct(command)
-        sn = struct.unpack('B', data[1])[0]
+        sn = struct.unpack_from('B', data, 1)[0]
         self._transactions[sn] = {
             'command': command,
             'callback': callback,
