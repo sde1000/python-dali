@@ -7,10 +7,9 @@ def readme():
     with open('README.rst') as f:
         return f.read()
 
-
 setup(
     name='python-dali',
-    version='0.6.dev0',
+    version='0.6',
     description='Interface to DALI lighting systems',
     long_description=readme(),
     author='Stephen Early',

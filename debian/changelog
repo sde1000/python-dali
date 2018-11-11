@@ -1,3 +1,10 @@
+python-dali (0.6) unstable; urgency=low
+
+  * Python 3 fix in async Tridonic driver
+  * Updated Hasseb driver
+
+ -- Stephen Early <steve@assorted.org.uk>  Sun, 11 Nov 2018 17:48:00 +0000
+
 python-dali (0.5) unstable; urgency=low
 
   * Move tests to dedicated package.
