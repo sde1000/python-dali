@@ -50,7 +50,7 @@ Library structure
 
     - ``base`` - General driver contracts
 
-    - ``hasseb`` - Driver for Hasseb DALI Master (needs to be adopted to dali.driver.base API)
+    - ``hasseb`` - Driver for Hasseb DALI Master
 
     - ``tridonic`` - Driver for Tridonic DALI USB
 
