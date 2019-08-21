@@ -56,6 +56,8 @@ Library structure
 
     - ``daliserver`` - Driver for https://github.com/onitake/daliserver (needs to be adopted to dali.driver.base API)
 
+    - ``hid`` - asyncio-based drivers for Tridonic DALI USB and hasseb DALI Master
+
   - ``exceptions`` - DALI related exceptions
 
   - ``frame`` - Forward and backward frames
@@ -88,7 +90,7 @@ Contributors
 Copyright
 ---------
 
-python-dali is Copyright (C) 2013–2017 Stephen Early <steve@assorted.org.uk>
+python-dali is Copyright (C) 2013–2019 Stephen Early <steve@assorted.org.uk>
 
 It is distributed under the terms of the GNU Lesser General Public
 License as published by the Free Software Foundation, either version 3
