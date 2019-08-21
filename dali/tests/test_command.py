@@ -60,6 +60,11 @@ def _test_pattern():
 
 
 class TestCommands(unittest.TestCase):
+    def assertHasAttr(self, obj, intendedAttr):
+        testBool = hasattr(obj, intendedAttr)
+
+        self.assertTrue(testBool, msg='obj lacking an attribute. obj: %s, '
+                        'intendedAttr: %s' % (obj, intendedAttr))
 
     def test_test_coverage(self):
         """all command classes are covered by test pattern"""
@@ -127,6 +132,8 @@ class TestCommands(unittest.TestCase):
                         c._response(frame.BackwardFrame(0xff)).__unicode__(),
                         unicode
                     )
+                self.assertHasAttr(
+                    c._response(None), 'raw_value')
 
 
 if __name__ == '__main__':

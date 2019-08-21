@@ -56,6 +56,10 @@ class Response(object):
         self._value = val
 
     @property
+    def raw_value(self):
+        return self._value
+
+    @property
     def value(self):
         if self._value is None and self._expected:
             raise MissingResponse()
@@ -69,6 +73,24 @@ class Response(object):
         except MissingResponse or ResponseError as e:
             return "{}".format(e)
 
+class NumericResponse(Response):
+    _expected = True
+
+    @property
+    def value(self):
+        if self._value is None:
+            return "(missing)"
+        if self._value and self._value.error:
+            return "(framing error)"
+        return self._value.as_integer
+
+class NumericResponseMask(NumericResponse):
+    @property
+    def value(self):
+        v = super(NumericResponseMask, self).value
+        if v == 255:
+            return "MASK"
+        return v
 
 class YesNoResponse(Response):
     _error_acceptable = True
