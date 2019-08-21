@@ -44,6 +44,10 @@ class TestFrame(unittest.TestCase):
             frame.Frame(16, 0xffff),
             frame.Frame(16, (0xff, 0xfe))
         )
+        self.assertEqual(
+            frame.Frame(16, 0xffff),
+            frame.Frame(16, (0, 0, 0xff, 0xff))
+        )
 
     def test_comparisons(self):
         """frame comparisons"""
@@ -142,6 +146,17 @@ class TestFrame(unittest.TestCase):
         self.assertEqual(f.pack, b'\x02\x34\x56\x78')
         f = frame.Frame(16, 0xaa55)
         self.assertEqual(f.pack, b'\xaa\x55')
+
+    def test_pack_len(self):
+        """frame packing with length returns expected byte strings"""
+        f = frame.Frame(28, 0x2345678)
+        self.assertRaises(ValueError, lambda: f.pack_len(3))
+        self.assertEqual(f.pack_len(4), b'\x02\x34\x56\x78')
+        self.assertEqual(f.pack_len(5), b'\x00\x02\x34\x56\x78')
+        f = frame.Frame(16, 0xaa55)
+        self.assertRaises(ValueError, lambda: f.pack_len(0))
+        self.assertEqual(f.pack_len(2), b'\xaa\x55')
+        self.assertEqual(f.pack_len(4), b'\x00\x00\xaa\x55')
 
     def test_contains(self):
         """frame __contains__ method works as expected"""

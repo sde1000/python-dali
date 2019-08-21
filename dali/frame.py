@@ -202,6 +202,21 @@ class Frame(object):
         s = self.as_byte_sequence
         return struct.pack("B" * len(s), *s)
 
+    def pack_len(self, l):
+        """The contents of the frame represented as a fixed length byte string.
+
+        The least significant bit of the frame is aligned to the end
+        of the byte string.  The start of the byte string is padded with zeroes.
+
+        If the frame will not fit in the byte string, raises ValueError.
+        """
+        s = self.as_byte_sequence
+        if len(s) > l:
+            raise ValueError("Frame length {} will not fit in {} bytes".format(
+                len(self), l))
+        s = [0] * (l - len(s)) + s
+        return struct.pack("B" * l, *s)
+
     def __str__(self):
         return "{}({},{})".format(self.__class__.__name__, len(self),
                                   self.as_byte_sequence)
@@ -242,6 +257,8 @@ class BackwardFrame(Frame):
     def __init__(self, data):
         Frame.__init__(self, 8, data)
 
+    def __str__(self):
+        return "{}({})".format(self.__class__.__name__, self._data)
 
 class BackwardFrameError(BackwardFrame):
     """A response to a forward frame received with a framing error.
