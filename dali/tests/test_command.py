@@ -21,10 +21,7 @@ from dali import address
 from dali import command
 from dali import frame
 from dali.device import general as generaldevice
-from dali.gear import emergency
 from dali.gear import general as generalgear
-from dali.gear import incandescent
-from dali.gear import led
 
 
 if sys.version_info[0] == 3:
