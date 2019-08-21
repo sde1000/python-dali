@@ -89,3 +89,7 @@ class DriverError(DALIError):
 class CommunicationError(DriverError):
     """Exception raised in case of communication error with backend.
     """
+
+class UnsupportedFrameTypeError(DriverError):
+    """Device driver does not support this type of frame
+    """
