@@ -211,6 +211,7 @@ class QueryBatteryCharge(_EmergencyLightingQueryCommand):
     successful duration test.
     """
     _cmdval = 0xf1
+    _response = command.NumericResponseMask
 
 
 class QueryTestTiming(_EmergencyLightingQueryCommand):
@@ -237,6 +238,7 @@ class QueryDurationTestResult(_EmergencyLightingQueryCommand):
     the maximum value or longer.
     """
     _cmdval = 0xf3
+    _response = command.NumericResponse
 
 
 class QueryLampEmergencyTime(_EmergencyLightingQueryCommand):
@@ -244,6 +246,7 @@ class QueryLampEmergencyTime(_EmergencyLightingQueryCommand):
     power source in hours.  255 means the maximum value or longer.
     """
     _cmdval = 0xf4
+    _response = command.NumericResponse
 
 
 class QueryLampTotalOperationTime(_EmergencyLightingQueryCommand):
@@ -256,21 +259,25 @@ class QueryLampTotalOperationTime(_EmergencyLightingQueryCommand):
     time the lamp is operated by the other control device.
     """
     _cmdval = 0xf5
+    _response = command.NumericResponse
 
 
 class QueryEmergencyLevel(_EmergencyLightingQueryCommand):
     """Return the Emergency Level, or MASK (255) if it is unknown."""
     _cmdval = 0xf6
+    _response = command.NumericResponseMask
 
 
 class QueryEmergencyMinLevel(_EmergencyLightingQueryCommand):
     """Return the Emergency Min Level, or MASK (255) if it is unknown."""
     _cmdval = 0xf7
+    _response = command.NumericResponseMask
 
 
 class QueryEmergencyMaxLevel(_EmergencyLightingQueryCommand):
     """Return the Emergency Max Level, or MASK (255) if it is unknown."""
     _cmdval = 0xf8
+    _response = command.NumericResponseMask
 
 
 class QueryRatedDuration(_EmergencyLightingQueryCommand):
@@ -278,6 +285,7 @@ class QueryRatedDuration(_EmergencyLightingQueryCommand):
     longer.
     """
     _cmdval = 0xf9
+    _response = command.NumericResponse
 
 
 class QueryEmergencyModeResponse(command.BitmapResponse):

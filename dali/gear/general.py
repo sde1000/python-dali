@@ -606,14 +606,14 @@ class QueryVersionNumber(_StandardCommand):
     The answer shall be the content of memory bank 0 location 0x16.
     """
     _cmdval = 0x97
-    _response = command.Response
+    _response = command.NumericResponse
 
 
 class QueryContentDTR0(_StandardCommand):
     """Return the contents of DTR0."""
     _cmdval = 0x98
     _uses_dtr0 = True
-    _response = command.Response
+    _response = command.NumericResponse
 
 
 @python_2_unicode_compatible
@@ -624,7 +624,9 @@ class QueryDeviceTypeResponse(command.Response):
               3: "low voltage halogen lamp",
               4: "incandescent lamp dimmer",
               5: "dc-controlled dimmer",
-              6: "LED lamp"}
+              6: "LED lamp",
+              254: "none / end",
+              255: "multiple"}
 
     def __str__(self):
         if self.value and self.value.as_integer in self._types:
@@ -666,7 +668,7 @@ class QueryDeviceType(_StandardCommand):
 class QueryPhysicalMinimum(_StandardCommand):
     """Return the physical minimum level for this device."""
     _cmdval = 0x9a
-    _response = command.Response
+    _response = command.NumericResponseMask
 
 
 class QueryPowerFailure(_StandardCommand):
@@ -681,20 +683,20 @@ class QueryContentDTR1(_StandardCommand):
     """Return the contents of DTR1."""
     _cmdval = 0x9c
     _uses_dtr1 = True
-    _response = command.Response
+    _response = command.NumericResponse
 
 
 class QueryContentDTR2(_StandardCommand):
     """Return the contents of DTR2."""
     _cmdval = 0x9d
     _uses_dtr2 = True
-    _response = command.Response
+    _response = command.NumericResponse
 
 
 class QueryOperatingMode(_StandardCommand):
     """Query Operating Mode"""
     _cmdval = 0x9e
-    _response = command.Response
+    _response = command.NumericResponse
 
 
 class QueryLightSourceType(_StandardCommand):
@@ -729,7 +731,7 @@ class QueryLightSourceType(_StandardCommand):
     _uses_dtr0 = True
     _uses_dtr1 = True
     _uses_dtr2 = True
-    _response = command.Response
+    _response = command.NumericResponseMask
 
 
 class QueryActualLevel(_StandardCommand):
@@ -737,35 +739,35 @@ class QueryActualLevel(_StandardCommand):
     lamp error occurs the answer will be 0xff ("MASK").
     """
     _cmdval = 0xa0
-    _response = command.Response
+    _response = command.NumericResponseMask
 
 
 class QueryMaxLevel(_StandardCommand):
     """Return "MAX LEVEL"."""
     _cmdval = 0xa1
-    _response = command.Response
+    _response = command.NumericResponseMask
 
 
 class QueryMinLevel(_StandardCommand):
     """Return "MIN LEVEL"."""
     _cmdval = 0xa2
-    _response = command.Response
+    _response = command.NumericResponseMask
 
 
 class QueryPowerOnLevel(_StandardCommand):
     """Return "POWER ON LEVEL"."""
     _cmdval = 0xa3
-    _response = command.Response
+    _response = command.NumericResponseMask
 
 
 class QuerySystemFailureLevel(_StandardCommand):
     """Return "SYSTEM FAILURE LEVEL"."""
     _cmdval = 0xa4
-    _response = command.Response
+    _response = command.NumericResponseMask
 
 
 @python_2_unicode_compatible
-class QueryFadeTimeAndRateResponse(command.Response):
+class QueryFadeTimeAndRateResponse(command.NumericResponse):
     @property
     def fade_time(self):
         if self._value:
@@ -824,7 +826,7 @@ class QueryNextDeviceType(_StandardCommand):
     QueryDeviceType,QueryNextDeviceType,... as a transaction.
     """
     _cmdval = 0xa7
-    _response = command.Response
+    _response = QueryDeviceTypeResponse
 
 
 class QueryExtendedFadeTime(_StandardCommand):
@@ -853,7 +855,7 @@ class QuerySceneLevel(_StandardCommand):
     """
     _cmdval = 0xb0
     _hasparam = True
-    _response = command.Response
+    _response = command.NumericResponseMask
 
 
 class QueryGroupsZeroToSeven(_StandardCommand):
@@ -915,7 +917,7 @@ class QueryExtendedVersionNumber(_StandardCommand):
     device type as an 8-bit number.
     """
     _cmdval = 0xff
-    _response = command.Response
+    _response = command.NumericResponse
 
 
 ###############################################################################
@@ -1176,7 +1178,7 @@ class QueryShortAddress(_SpecialCommand):
     address stored.
     """
     _cmdval = 0xbb
-    _response = command.Response
+    _response = command.NumericResponseMask
 
 
 class EnableDeviceType(_SpecialCommand):
