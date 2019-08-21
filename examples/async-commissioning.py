@@ -61,7 +61,10 @@ async def main(args, loop):
     d = driver(args.device, loop=loop)
     if args.debug:
         d.bus_traffic.register(print_command_and_response)
-    d.connect()
+    if not d.connect():
+        log.error("Unable to open device %s with %s driver", args.device, args.driver)
+        d.disconnect()
+        return
     await d.connected.wait()
     log.info("Connected to device %s with %s driver", args.device, args.driver)
 

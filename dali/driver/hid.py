@@ -103,9 +103,18 @@ class hid:
 
         Attempts to open the device.  If this fails, schedules a
         reconnection attempt.
+
+        Returns True if opening the device file succeded immediately,
+        False otherwise.  NB you must still await connected.wait()
+        before using the device, because there may be further
+        initialisation for the driver to perform.
+
+        If your application is (for example) a command-line script
+        that wants to report failure as early as possible, you could
+        do so if this returns False.
         """
         if self._f:
-            return
+            return True
         self._log.debug("trying to connect to %s...", self._path)
         if self._glob:
             path = glob.glob(self._path)
@@ -124,12 +133,13 @@ class hid:
             # It didn't work.  Schedule a reconnection attempt if we can.
             self._log.debug("hid failed to open %s - waiting to try again", self._path)
             self._reconnect_task = asyncio.ensure_future(self._reconnect(), loop=self.loop)
-            return
+            return False
         self._reconnect_count = 0
         self._initialise_device()
         self._log.debug("hid opened %s", path[0])
         self.loop.add_reader(self._f, self._reader)
         self.connection_status_callback._invoke("connected")
+        return True
 
     async def _reconnect(self):
         self._reconnect_count += 1
@@ -149,8 +159,9 @@ class hid:
         if self._reconnect_task:
             self._reconnect_task.cancel()
             self._reconnect_task = None
-        self.loop.remove_reader(self._f)
-        os.close(self._f)
+        if self._f:
+            self.loop.remove_reader(self._f)
+            os.close(self._f)
         self._shutdown_device()
         self._f = None
         self.connected.clear()
