@@ -3,6 +3,16 @@
 from PyQt5 import QtWidgets, QtGui
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
+import usb.core
+
+from dali.driver import hasseb
+
+# Find hasseb USB DALI Master from all USB devices
+DALI_device = None
+dev = usb.core.find(find_all=True)
+for cfg in dev:   
+    if cfg.idVendor == 0x04cc and cfg.idProduct == 0x0802:
+        DALI_device = hasseb.AsyncHassebDALIUSBDriver()
 
 class mainWindow(QMainWindow):
     def __init__(self):
@@ -14,7 +24,13 @@ class mainWindow(QMainWindow):
         self.height = 500
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
-        self.statusBar().showMessage('Initializing...')
+
+        if DALI_device != None:
+            self.statusBar().showMessage('hasseb USB DALI Master device found.')
+        else:
+            self.label = QLabel(self)
+            self.label.setText('<span style="color:red">No USB DALI master device found. Please connect the device and restart the program.</span>')
+            self.statusBar().addPermanentWidget(self.label)
 
         self.tabs_widget = tabsWidget(self)
         self.setCentralWidget(self.tabs_widget)
