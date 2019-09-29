@@ -13,7 +13,6 @@ from dali.frame import BackwardFrameError
 from dali.frame import ForwardFrame
 from dali.exceptions import ResponseError, MissingResponse
 
-
 HASSEB_USB_VENDOR = 0x04cc
 HASSEB_USB_PRODUCT = 0x0802
 
@@ -33,6 +32,7 @@ class HassebDALIUSBNoAnswer:
         return 'NO_ANSWER'
 
     __str__ = __repr__
+
 
 class HassebDALIUSBDriver(DALIDriver):
     """``DALIDriver`` implementation for Hasseb DALI USB device.
@@ -68,6 +68,7 @@ class HassebDALIUSBDriver(DALIDriver):
         self.logger.error("Invalid Frame")
         return None
 
+
 class SyncHassebDALIUSBDriver(HassebDALIUSBDriver, SyncDALIDriver):
     """Synchronous ``DALIDriver`` implementation for Hasseb DALI USB device.
     """
@@ -99,6 +100,7 @@ class SyncHassebDALIUSBDriver(HassebDALIUSBDriver, SyncDALIDriver):
                 sleep(backoff)
             raise MissingResponse()
         return None
+
 
 class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
     """Asynchronous ``DALIDriver`` implementation for Hasseb DALI USB device.
@@ -159,6 +161,7 @@ def _test_async(logger, command):
     print('Press Ctrl+C')
     signal.pause()
 
+
 def _test_sync(logger, command):
     print('Test sync driver')
     driver = SyncHassebDALIUSBDriver()
@@ -166,6 +169,7 @@ def _test_sync(logger, command):
 
     print('Response: {}'.format(driver.send(command)))
     driver.backend.close()
+
 
 if __name__ == '__main__':
     """Usage: python tridonic.py sync|async address value."""
