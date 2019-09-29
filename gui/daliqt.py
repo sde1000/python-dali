@@ -14,13 +14,28 @@ for cfg in dev:
     if cfg.idVendor == 0x04cc and cfg.idProduct == 0x0802:
         DALI_device = hasseb.AsyncHassebDALIUSBDriver()
 
+class DALIThread(QRunnable):
+    '''
+    DALI messages are handled  here in a separate thread
+    '''
+
+    def __init__(self, fn, *args, **kwargs):
+        super(DALIThread, self).__init__()
+        self.fn = fn
+        self.args = args
+        self.kwargs = kwargs
+
+    @pyqtSlot()
+    def run(self):
+        self.fn(*self.args, **self.kwargs)
+
 class mainWindow(QMainWindow):
     def __init__(self):
         super(mainWindow, self).__init__()
         self.title = 'DALI Controller'
         self.left = 50
         self.top = 50
-        self.width = 700
+        self.width = 500
         self.height = 500
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
@@ -37,6 +52,10 @@ class mainWindow(QMainWindow):
 
         self.show()
 
+        self.threadpool = QThreadPool()
+        self.DALIThread = DALIThread(self.tabs_widget.writeDALILog("hello world"))
+        self.threadpool.start(self.DALIThread)
+
 class tabsWidget(QWidget):
     def __init__(self, parent):
         super(QWidget, self).__init__(parent)
@@ -51,7 +70,7 @@ class tabsWidget(QWidget):
         self.tabs.addTab(self.tab1,"Devices")
         self.tabs.addTab(self.tab2,"Log")
 
-        # Create first tab
+        # Tab 1
         # Layouts
         self.tab1.layout = QHBoxLayout(self.tab1)
         self.tab1.layout_listbox = QHBoxLayout()
@@ -72,9 +91,21 @@ class tabsWidget(QWidget):
         self.tab1.layout.setAlignment(Qt.AlignTop)
         self.tab1.setLayout(self.tab1.layout)
 
+        # Tab 2
+        # Widgets
+        self.tab2.layout = QHBoxLayout(self.tab2)
+        self.tab2.direction_textarea = QPlainTextEdit(self)
+        
+        # Add widgets to layout
+        self.tab2.layout.addWidget(self.tab2.direction_textarea)
+        self.tab2.setLayout(self.tab2.layout)
+
         # Add tabs to the widget
         self.layout.addWidget(self.tabs)
         self.setLayout(self.layout)
+
+    def writeDALILog(self, *args, **kwargs):
+        self.tab2.direction_textarea.appendPlainText(f"{args}\n")
 
     # Click actions
     @pyqtSlot()
