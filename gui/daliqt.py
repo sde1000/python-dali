@@ -4,16 +4,13 @@ from PyQt5 import QtWidgets, QtGui
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 import usb.core
-import hidapi
-
-hidapi.hid_init()
 
 from dali.driver import hasseb
 
 # Find hasseb USB DALI Master
-DALI_device = hidapi.hid_open(1228, 2050, None)
+#DALI_device = hidapi.hid_open(1228, 2050, None)
 # Create hasseb USB DALI driver instance to handle messages
-DALI_driver = hasseb.HassebDALIUSBDriver()
+DALI_device = hasseb.AsyncHassebDALIUSBDriver()
 
 class DALIThread(QRunnable):
     '''
@@ -28,8 +25,13 @@ class DALIThread(QRunnable):
     @pyqtSlot()
     def run(self):
         while 1:
-            data = hidapi.hid_read(DALI_device, 2)
-            self.fn(data)
+            data = DALI_device.receive()
+            if data is not None:
+                self.fn(0, data)
+            data = DALI_device.send_message
+            if data is not None:
+                self.fn(1, data)
+                DALI_device.send_message = None
 
 class mainWindow(QMainWindow):
     def __init__(self):
@@ -96,37 +98,39 @@ class tabsWidget(QWidget):
         # Tab 2
         # Widgets
         self.tab2.layout = QHBoxLayout(self.tab2)
-        self.tab2.direction_textarea = QPlainTextEdit(self)
-        self.tab2.data_textarea = QPlainTextEdit(self)
-        self.tab2.command_textarea = QPlainTextEdit(self)
+        self.tab2.log_textarea = QPlainTextEdit(self)
+        #self.tab2.data_textarea = QPlainTextEdit(self)
+        #self.tab2.command_textarea = QPlainTextEdit(self)
         
         # Add widgets to layout
-        self.tab2.layout.addWidget(self.tab2.direction_textarea)
-        self.tab2.layout.addWidget(self.tab2.data_textarea)
-        self.tab2.layout.addWidget(self.tab2.command_textarea)
+        self.tab2.layout.addWidget(self.tab2.log_textarea)
+        #self.tab2.layout.addWidget(self.tab2.data_textarea)
+        #self.tab2.layout.addWidget(self.tab2.command_textarea)
         self.tab2.setLayout(self.tab2.layout)
 
         # Add tabs to the widget
         self.layout.addWidget(self.tabs)
         self.setLayout(self.layout)
 
-    def writeDALILog(self, data):
-        self.tab2.direction_textarea.appendPlainText(f"DALI -> PC")
-        text = '| '
+    def writeDALILog(self, direction, data):
+        if direction == 0:
+            text = '|| DALI -> PC |'
+        else:
+            text = '|| PC -> DALI |'
         for i in data:
-            text = text + hex(i) + ' | '
-        self.tab2.data_textarea. appendPlainText(f"{text}")
-        self.tab2.command_textarea.appendPlainText(f"{DALI_driver.extract(data)}")
-        self.tab2.direction_textarea.moveCursor(QtGui.QTextCursor.End)
-        self.tab2.data_textarea.moveCursor(QtGui.QTextCursor.End)
-        self.tab2.command_textarea.moveCursor(QtGui.QTextCursor.End)
+            text += '| ' + "0x{:02x}".format(i) + ' '
+        text += '|| ' + f"{DALI_device.extract(data)}" + ' ||'
+        self.tab2.log_textarea. appendPlainText(f"{text}")
+        self.tab2.log_textarea.moveCursor(QtGui.QTextCursor.End)
+            #print(text)
 
     # Click actions
     @pyqtSlot()
     def initializeButtonClick(self):
-        colours = ['Red', 'Green', 'Blue', 'Yellow']
+        #colours = ['Red', 'Green', 'Blue', 'Yellow']
         self.tab1.listwidget.clear()
-        i = 0
-        for x in colours:
-            self.tab1.listwidget.insertItem(i, x)
-            i = i+1
+        #i = 0
+        #for x in colours:
+        #    self.tab1.listwidget.insertItem(i, x)
+        #    i = i+1
+        DALI_device.find_ballasts()
