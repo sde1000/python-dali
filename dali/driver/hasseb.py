@@ -129,17 +129,18 @@ class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
         self.backend.write(data)
 
     def receive(self, data):
-        frame = self.extract(data)
-        if isinstance(frame, HassebDALIUSBNoDataAvailable):
-            return
-        elif isinstance(frame, BackwardFrame):
-            if self._pending:
-                command, callback, kw = self._pending
-                callback(command.response(frame), **kw)
-            else:
-                logger.error("Received frame for no pending command")
-        else:
-            logger.error("Received frame is not BackwardFrame")
+
+        #frame = self.extract(data)
+        # if isinstance(frame, HassebDALIUSBNoDataAvailable):
+        #     return
+        # elif isinstance(frame, BackwardFrame):
+        #     if self._pending:
+        #         command, callback, kw = self._pending
+        #         callback(command.response(frame), **kw)
+        #     else:
+        #         logger.error("Received frame for no pending command")
+        # else:
+        #     logger.error("Received frame is not BackwardFrame")
 
 
 def _test_async(logger, command):
