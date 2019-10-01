@@ -121,8 +121,8 @@ class tabsWidget(QWidget):
             text += '| ' + "0x{:02x}".format(i) + ' '
         text += '|| ' + f"{DALI_device.extract(data)}" + ' ||'
         self.tab2.log_textarea. appendPlainText(f"{text}")
-        self.tab2.log_textarea.moveCursor(QtGui.QTextCursor.End)
-            #print(text)
+        #self.tab2.log_textarea.moveCursor(QtGui.QTextCursor.End)
+        #print(text)
 
     # Click actions
     @pyqtSlot()
