@@ -35,6 +35,9 @@ HASSEB_DRIVER_NO_DATA_AVAILABLE = 0
 HASSEB_DRIVER_NO_ANSWER = 1
 HASSEB_DRIVER_OK = 2
 HASSEB_DRIVER_INVALID_ANSWER = 3
+HASSEB_DRIVER_TOO_EARLY = 4
+HASSEB_DRIVER_SNIFFER_BYTE = 5
+HASSEB_DRIVER_SNIFFER_BYTE_ERROR = 6
 
 class HassebDALIUSBNoDataAvailable:
     def __repr__(self):
@@ -45,6 +48,20 @@ class HassebDALIUSBNoDataAvailable:
 class HassebDALIUSBNoAnswer:
     def __repr__(self):
         return 'NO_ANSWER'
+
+    __str__ = __repr__
+
+
+class HassebDALIUSBSnifferByte(object):
+    def __repr__(self):
+        return 'SNIFFER BYTE'
+
+    __str__ = __repr__
+
+
+class HassebDALIUSBSnifferByteError(object):
+    def __repr__(self):
+        return 'SNIFFER BYTE ERROR'
 
     __str__ = __repr__
 
@@ -80,6 +97,15 @@ class HassebDALIUSBDriver(DALIDriver):
             elif response_status == HASSEB_DRIVER_INVALID_ANSWER:
                 # 3: "Invalid Answer"
                 return BackwardFrameError(255)
+            elif response_status == HASSEB_DRIVER_TOO_EARLY:
+                # 4: "Answer too early"
+                self.logger.debug("Answer too early")
+            elif response_status == HASSEB_DRIVER_SNIFFER_BYTE:
+                # 5: "Sniffer byte"
+                return HassebDALIUSBSnifferByte()
+            elif response_status == HASSEB_DRIVER_SNIFFER_BYTE_ERROR:
+                # 6: "Sniffer byte error"
+                return HassebDALIUSBSnifferByteError()
         self.logger.error("Invalid Frame")
         return None
 
@@ -154,8 +180,6 @@ class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
                 callback(command.response(frame), **kw)
             else:
                 self.logger.error("Received frame for no pending command")
-        else:
-            self.logger.error("Received frame is not BackwardFrame")
         return data
 
     def _response_handler(self, frame):
