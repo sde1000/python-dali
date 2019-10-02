@@ -99,13 +99,9 @@ class tabsWidget(QWidget):
         # Widgets
         self.tab2.layout = QHBoxLayout(self.tab2)
         self.tab2.log_textarea = QPlainTextEdit(self)
-        #self.tab2.data_textarea = QPlainTextEdit(self)
-        #self.tab2.command_textarea = QPlainTextEdit(self)
         
         # Add widgets to layout
         self.tab2.layout.addWidget(self.tab2.log_textarea)
-        #self.tab2.layout.addWidget(self.tab2.data_textarea)
-        #self.tab2.layout.addWidget(self.tab2.command_textarea)
         self.tab2.setLayout(self.tab2.layout)
 
         # Add tabs to the widget
@@ -115,13 +111,17 @@ class tabsWidget(QWidget):
     def writeDALILog(self, direction, data):
         if direction == 0:
             text = '|| DALI -> PC |'
+            for i in data:
+                text += '| ' + "0x{:02x}".format(i) + ' '
+            text += '|| ' + f"{DALI_device.extract(data)}" + ' ||'
         else:
             text = '|| PC -> DALI |'
-        for i in data:
-            text += '| ' + "0x{:02x}".format(i) + ' '
-        text += '|| ' + f"{DALI_device.extract(data)}" + ' ||'
+            for i in data:
+                text += '| ' + "0x{:02x}".format(i) + ' '
+            text += '|| ' + f"{data}" + ' ||'
+
         self.tab2.log_textarea. appendPlainText(f"{text}")
-        #self.tab2.log_textarea.moveCursor(QtGui.QTextCursor.End)
+        self.tab2.log_textarea.moveCursor(QtGui.QTextCursor.End)
         #print(text)
 
     # Click actions
