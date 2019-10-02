@@ -22,6 +22,8 @@ from dali.gear.general import SetSearchAddrM
 from dali.gear.general import Terminate
 from dali.gear.general import Withdraw
 
+from PyQt5.QtWidgets import QApplication
+
 import time
 
 import hidapi
@@ -54,16 +56,23 @@ class HassebDALIUSBNoAnswer(object):
     __str__ = __repr__
 
 
+class HassebDALIUSBAnswerTooEarly(object):
+    def __repr__(self):
+        return 'ANSWER_TOO_EARLY'
+
+    __str__ = __repr__
+
+
 class HassebDALIUSBSnifferByte(object):
     def __repr__(self):
-        return 'SNIFFER BYTE'
+        return 'SNIFFER_BYTE'
 
     __str__ = __repr__
 
 
 class HassebDALIUSBSnifferByteError(object):
     def __repr__(self):
-        return 'SNIFFER BYTE ERROR'
+        return 'SNIFFER_BYTE_ERROR'
 
     __str__ = __repr__
 
@@ -102,6 +111,7 @@ class HassebDALIUSBDriver(DALIDriver):
             elif response_status == HASSEB_DRIVER_TOO_EARLY:
                 # 4: "Answer too early"
                 self.logger.debug("Answer too early")
+                return HassebDALIUSBAnswerTooEarly()
             elif response_status == HASSEB_DRIVER_SNIFFER_BYTE:
                 # 5: "Sniffer byte"
                 return HassebDALIUSBSnifferByte()
@@ -109,39 +119,6 @@ class HassebDALIUSBDriver(DALIDriver):
                 # 6: "Sniffer byte error"
                 return HassebDALIUSBSnifferByteError()
         self.logger.error("Invalid Frame")
-        return None
-
-
-class SyncHassebDALIUSBDriver(HassebDALIUSBDriver, SyncDALIDriver):
-    """Synchronous ``DALIDriver`` implementation for Hasseb DALI USB device.
-    """
-
-    def __init__(self, bus=None, port_numbers=None, interface=0):
-        self.backend = USBBackend(
-            HASSEB_USB_VENDOR,
-            HASSEB_USB_PRODUCT,
-            bus=bus,
-            port_numbers=port_numbers,
-            interface=interface
-        )
-
-    def send(self, command, timeout=2000):
-        self.backend.write(self.construct(command))
-        frame = None
-        backoff = 0.010
-
-        if command.response is not None:
-            for i in range(7):
-                frame = self.extract(self.backend.read(timeout=timeout))
-                if isinstance(frame, HassebDALIUSBNoAnswer):
-                    self.backend.write(self.construct(command))
-                if isinstance(frame, BackwardFrame):
-                    if command.response:
-                        return command.response(frame)
-                    return frame
-                backoff += backoff
-                sleep(backoff)
-            raise MissingResponse()
         return None
 
 
@@ -167,7 +144,7 @@ class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
 
     def send_sync(self, command):
         self._response_message = None
-        self.send(command, callback=self._response_handler)
+        self.send(command)
         self.wait_for_response()
         return self._response_message
 
@@ -178,28 +155,22 @@ class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
             return
         elif isinstance(frame, BackwardFrame):
             if self._pending:
-                command, callback, kw = self._pending
-                callback(command.response(frame), **kw)
+                self._response_message = frame
+                self._pending = None
             else:
                 self.logger.error("Received frame for no pending command")
         return data
 
-    def _response_handler(self, frame):
-        """Response message handler
-
-        """
-        self._response_message = frame
-        self._pending = None
-
     def wait_for_response(self):
-        """Wait for response message. Timeout 200 ms.
+        """Wait for response message. Timeout 100 ms.
 
         """
-        for i in range(200):
+        for i in range(20):
             if not self._pending:
                 return
             else:
-                time.sleep(0.001)
+                QApplication.processEvents()
+                time.sleep(0.05)
 
     def set_search_addr(self, addr):
         self.send(SetSearchAddrH((addr >> 16) & 0xff))
@@ -212,12 +183,13 @@ class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
         'low'.
 
         """
+        QApplication.processEvents()
         print("Searching from {} to {}...".format(low, high))
         if low == high:
             self.set_search_addr(low)
-            response = self.send(Compare())
+            response = self.send_sync(Compare())
 
-            if response != None:
+            if response == BackwardFrame(255):
                 print("Found ballast at {}; withdrawing it...".format(low))
                 self.send(Withdraw())
                 return low
@@ -226,7 +198,7 @@ class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
         self.set_search_addr(high)
         response = self.send_sync(Compare())
 
-        if response != None:
+        if response == BackwardFrame(255):
             midpoint = (low + high) // 2
             return self.find_next(low, midpoint) or self.find_next(midpoint + 1, high)
 
@@ -234,7 +206,9 @@ class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
         _ballasts = []
 
         self.send(Terminate())
+        time.sleep(0.05)
         self.send(Initialise(broadcast=True, address=None))
+        time.sleep(0.1)
         self.send(Randomise())
         time.sleep(0.1)  # Randomise may take up to 100ms
 
