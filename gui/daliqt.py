@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 
-from PyQt5 import QtWidgets, QtGui
+from PyQt5 import QtGui
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
-import usb.core
 
 from dali.driver import hasseb
 
-# Find hasseb USB DALI Master
-#DALI_device = hidapi.hid_open(1228, 2050, None)
 # Create hasseb USB DALI driver instance to handle messages
 DALI_device = hasseb.AsyncHassebDALIUSBDriver()
+
+# DALI devices found from the bus
+DALI_gear = None
 
 class DALIThread(QRunnable):
     '''
@@ -61,6 +61,9 @@ class mainWindow(QMainWindow):
         self.threadpool.start(self.DALIThread)
 
 class tabsWidget(QWidget):
+
+    ID, ShortAddress, Description = range(3)
+
     def __init__(self, parent):
         super(QWidget, self).__init__(parent)
         self.layout = QHBoxLayout(self)
@@ -77,21 +80,24 @@ class tabsWidget(QWidget):
         # Tab 1
         # Layouts
         self.tab1.layout = QHBoxLayout(self.tab1)
-        self.tab1.layout_listbox = QHBoxLayout()
+        self.tab1.layout_treeview = QHBoxLayout()
         self.tab1.layout_controls = QHBoxLayout()
 
         # Widgets and actions
-        self.tab1.listwidget = QListWidget()
+        self.tab1.treeview = QTreeView()
+        self.model = QtGui.QStandardItemModel(0, 3)
+        self.model.setHeaderData(self.ID, Qt.Horizontal, "ID")
+        self.tab1.treeview.setModel(self.model)
         self.tab1.initializeButton = QPushButton('Initialize')
         self.tab1.initializeButton.clicked.connect(self.initializeButtonClick)
 
         # Add widgets to layouts
-        self.tab1.layout_listbox.addWidget(self.tab1.listwidget)
+        self.tab1.layout_treeview.addWidget(self.tab1.treeview)
         self.tab1.layout_controls.addWidget(self.tab1.initializeButton)
-        self.tab1.layout_listbox.setAlignment(Qt.AlignTop)
+        self.tab1.layout_treeview.setAlignment(Qt.AlignTop)
         self.tab1.layout_controls.setAlignment(Qt.AlignTop)
         self.tab1.layout.addLayout(self.tab1.layout_controls)
-        self.tab1.layout.addLayout(self.tab1.layout_listbox)
+        self.tab1.layout.addLayout(self.tab1.layout_treeview)
         self.tab1.layout.setAlignment(Qt.AlignTop)
         self.tab1.setLayout(self.tab1.layout)
 
