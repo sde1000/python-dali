@@ -13,14 +13,14 @@ from dali.frame import BackwardFrameError
 from dali.frame import ForwardFrame
 from dali.exceptions import ResponseError, MissingResponse
 
-from dali.gear.general import Compare
-from dali.gear.general import Initialise
-from dali.gear.general import Randomise
-from dali.gear.general import SetSearchAddrH
-from dali.gear.general import SetSearchAddrL
-from dali.gear.general import SetSearchAddrM
-from dali.gear.general import Terminate
-from dali.gear.general import Withdraw
+from dali.gear.general import *
+#from dali.gear.general import Initialise
+#from dali.gear.general import Randomise
+#from dali.gear.general import SetSearchAddrH
+#from dali.gear.general import SetSearchAddrL
+#from dali.gear.general import SetSearchAddrM
+#from dali.gear.general import Terminate
+#from dali.gear.general import Withdraw
 
 from PyQt5.QtWidgets import QApplication
 
@@ -90,6 +90,8 @@ class HassebDALIUSBDriver(DALIDriver):
         return data
 
     def extract(self, data):
+        if data == None:
+            return None
         if len(data) >= 2:
             response_status = data[0]
             if response_status == HASSEB_DRIVER_NO_DATA_AVAILABLE:
@@ -127,8 +129,17 @@ class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
     _response_message = None
     send_message = None
 
-    def __init__(self, bus=None, port_numbers=None, interface=0):
-        self.device = hidapi.hid_open(1228, 2050, None)
+    ballast_id = None
+    ballast_short_address = None
+    ballast_type = None
+
+    _short_address = 0
+
+    def __init__(self):
+        try:
+            self.device = hidapi.hid_open(1228, 2050, None)
+        except:
+            print("No USB DALI Master device found")
 
     def send(self, command, callback=None, **kw):
         data = self.construct(command)
@@ -151,9 +162,9 @@ class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
         frame = self.extract(data)
         if isinstance(frame, HassebDALIUSBNoDataAvailable):
             return
-        elif isinstance(frame, BackwardFrame):
+        elif isinstance(frame, BackwardFrame) or isinstance(frame, HassebDALIUSBNoAnswer):
             if self._pending:
-                self._response_message = frame
+                self._response_message = data
                 self._pending = None
             else:
                 self.logger.error("Received frame for no pending command")
@@ -163,7 +174,7 @@ class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
         """Wait for response message. Timeout 100 ms.
 
         """
-        for i in range(20):
+        for i in range(60):
             if not self._pending:
                 return
             else:
@@ -187,24 +198,41 @@ class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
             self.set_search_addr(low)
             response = self.send_sync(Compare())
 
-            if response == BackwardFrame(255):
+            if self.extract(response) == BackwardFrame(255):
                 print("Found ballast at {}; withdrawing it...".format(low))
                 self.send(Withdraw())
+                time.sleep(0.05)
+                self.send(ProgramShortAddress(self._short_address))
+                time.sleep(0.1)
+                response = self.send_sync(QueryDeviceType(self._short_address))
+                try:
+                    self.ballast_type = QueryDeviceTypeResponse(self.extract(response))
+                except:
+                    self.ballast_type = "NaN"
+                #if (self.send_sync(QueryShortAddress()) & 0x3f) == self._short_address:
+                self.ballast_id = low
+                if self.extract(self.send_sync(VerifyShortAddress(self._short_address))) == BackwardFrame(255):
+                    self.ballast_short_address = self._short_address
+                else:
+                    self.ballast_short_address = "NaN"
+                QApplication.processEvents()
                 return low
             return None
 
         self.set_search_addr(high)
         response = self.send_sync(Compare())
 
-        if response == BackwardFrame(255):
+        if self.extract(response) == BackwardFrame(255):
             midpoint = (low + high) // 2
             return self.find_next(low, midpoint) or self.find_next(midpoint + 1, high)
 
     def find_ballasts(self):
         _ballasts = []
+        self._short_address = 0
+        self.ballast_id = None
 
         self.send(Terminate())
-        time.sleep(0.05)
+        time.sleep(0.1)
         self.send(Initialise(broadcast=True, address=None))
         time.sleep(0.1)
         self.send(Randomise())

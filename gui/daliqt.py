@@ -32,6 +32,10 @@ class DALIThread(QRunnable):
             if data is not None:
                 self.fn(1, data)
                 DALI_device.send_message = None
+            data = DALI_device.ballast_id
+            if data is not None:
+                self.fn(2, data)
+                DALI_device.ballast_id = None
 
 class mainWindow(QMainWindow):
     def __init__(self):
@@ -62,7 +66,7 @@ class mainWindow(QMainWindow):
 
 class tabsWidget(QWidget):
 
-    ID, ShortAddress, Description = range(3)
+    ShortAddress, ID, DeviceType = range(3)
 
     def __init__(self, parent):
         super(QWidget, self).__init__(parent)
@@ -87,6 +91,8 @@ class tabsWidget(QWidget):
         self.tab1.treeview = QTreeView()
         self.model = QtGui.QStandardItemModel(0, 3)
         self.model.setHeaderData(self.ID, Qt.Horizontal, "ID")
+        self.model.setHeaderData(self.ShortAddress, Qt.Horizontal, "Short address")
+        self.model.setHeaderData(self.DeviceType, Qt.Horizontal, "Device type")
         self.tab1.treeview.setModel(self.model)
         self.tab1.initializeButton = QPushButton('Initialize')
         self.tab1.initializeButton.clicked.connect(self.initializeButtonClick)
@@ -120,23 +126,23 @@ class tabsWidget(QWidget):
             for i in data:
                 text += '| ' + "0x{:02x}".format(i) + ' '
             text += '|| ' + f"{DALI_device.extract(data)}" + ' ||'
-        else:
+        elif direction  == 1:
             text = '|| PC -> DALI |'
             for i in data:
                 text += '| ' + "0x{:02x}".format(i) + ' '
             text += '|| ' + f"{data}" + ' ||'
+        elif direction == 2:
+            self.model.insertRow(0)
+            self.model.setData(self.model.index(0, self.ID), DALI_device.ballast_id)
+            self.model.setData(self.model.index(0, self.ShortAddress), f"{DALI_device.ballast_short_address}")
+            self.model.setData(self.model.index(0, self.DeviceType), f"{DALI_device.ballast_type}")
+            text = f"{DALI_device.ballast_id} | {DALI_device.ballast_short_address} | {DALI_device.ballast_type}"
 
-        self.tab2.log_textarea. appendPlainText(f"{text}")
-        self.tab2.log_textarea.moveCursor(QtGui.QTextCursor.End)
-        #print(text)
+        #self.tab2.log_textarea. appendPlainText(f"{text}")
+        #self.tab2.log_textarea.moveCursor(QtGui.QTextCursor.End)
+        print(text)
 
     # Click actions
     @pyqtSlot()
     def initializeButtonClick(self):
-        #colours = ['Red', 'Green', 'Blue', 'Yellow']
-        self.tab1.listwidget.clear()
-        #i = 0
-        #for x in colours:
-        #    self.tab1.listwidget.insertItem(i, x)
-        #    i = i+1
         DALI_device.find_ballasts()
