@@ -9,43 +9,51 @@ The firmware of hasseb USB DALI Master can be updated through USB. By booting th
 
 The protocol used in hasseb USB DALI Master is described in this text file. The device appears to the PC as an HID (Human Interface Device) device, such as mouse or keyboard. No special drivers are required. The device is based on NXP LPC1343 microcontroller and the schematics diagram of the device can be found in this folder.
 
-
+hasseb USB DALI Master device communicated with the host PC using 10 long HID in and out reports. The messages are parsed in the device and data sent to the DALI bus. Input and output buffers of 8 messages are implemented into the device. The protocol and message structure is described below. Note that all functions are not implemented in the present device but reserved for future use.
 
 Reports from host to interface
 ------------------------------
 
-All these reports are 10 bytes long. (? - TBD!)
-
 * Byte 0: command code
-* Byte 1: serial number
-* Bytes 2–n: depend on command
-
-The device must implement a queue for incoming commands of at least
-length 1, i.e. it must be possible to receive and store a command
-while still executing the previous command.  This is important for the
-implementation of DALI transactions.
+* Byte 1: sequence number
+* Bytes 2–9: command dependent
 
 ### List of command codes
 
-* 0: no operation, ignore this command
-* 1: read hardware type
-* 2: read firmware version
-* 3: read device serial number
-* 4: read bus status
-* 5: enter firmware update mode
-* 6: configure bus
-* 7: send frame
+* 0x00: No operation, ignore this command
+* 0x01: Read hardware type
+* 0x02: Read firmware version
+* 0x03: Read device serial number
+* 0x04: Read bus status
+* 0x05: Enter firmware update mode
+* 0x06: Configure bus
+* 0x07: Send frame
 
-### Command code descriptions
+#### 0x00, No operation
 
-Commands 1–4 cause the device to emit a report of the appropriate type.
+Command code 0x00 is a dummy code and all messages with this code shall be ignored.
 
-#### Enter firmware update mode
+#### 0x01, Read hardware type
 
-The device should restart in firmware update mode.  Returning to DALI
-Master mode after firmware update is device dependent!
+The device responds with a message including the hardware type. NOT IMPLEMENTED!
 
-#### Configure bus
+#### 0x02, Read firmware version
+
+The device responds with a message including the firmware version. Only the command byte is significant, data in the other octets are omitted.
+
+#### 0x03, Read device serial number
+
+When receiving a message with a command code 0x00, the device responds with a message including the firmware version. NOT IMPLEMENTED!
+
+#### 0x04, Read bus status
+
+The device responds with a message bus status message. NOT IMPLEMENTED!
+
+#### 0X05, Enter firmware update mode
+
+The device restart in firmware update mode. NOT IMPLEMENTED!
+
+#### 0x06, Configure bus
 
 Bytes 2 and 3 are only used if the "set power supply" flag bit is set.
 Sending this command with the bit not set can be used to read the
@@ -77,7 +85,7 @@ current status.
 
 Bytes 6–n must be set to zero.
 
-#### Send frame
+#### 0x07, Send frame
 
 XXX I haven't finished assigning data to bits and bytes in this
 section yet!  What do we need?
@@ -101,8 +109,6 @@ driver rather than having to implement it in the device.
 
 Reports from interface to host
 ------------------------------
-
-All these reports are 10 bytes long.  (? - TBD!)
 
 Byte 0: report type
 Byte 1: serial number
