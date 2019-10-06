@@ -80,15 +80,22 @@ class HassebDALIUSBSnifferByteError(object):
 class HassebDALIUSBDriver(DALIDriver):
     """``DALIDriver`` implementation for Hasseb DALI USB device.
 
-    This code borrows from the HassebDALIUSBDriver.
     """
     logger = logging.getLogger('HassebDALIUSBDriver')
 
     def construct(self, command):
+        sn = 0  # sequence number
+        frame_length = 16
+        expect_reply = 0
+        transmitter_settling_time = 0
+        send_twice_settling_time  = 0
         frame = command.frame.as_byte_sequence
         byte_a, byte_b = frame
-        data = struct.pack('BB', byte_a, byte_b)
-
+        data = struct.pack('BBBBBBBBBB', 7, sn,
+                           frame_length, expect_reply,
+                           transmitter_settling_time, send_twice_settling_time,
+                           byte_a, byte_b,
+                           0, 0)
         return data
 
     def extract(self, data):
@@ -126,7 +133,10 @@ class HassebDALIUSBDriver(DALIDriver):
 
 class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
     """Asynchronous ``DALIDriver`` implementation for Hasseb DALI USB device.
+
     """
+    device_found = None
+
     _pending = None
     _response_message = None
     send_message = None
@@ -140,12 +150,14 @@ class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
     def __init__(self):
         try:
             self.device = hidapi.hid_open(1228, 2050, None)
+            self.device_found = 1
         except:
             print("No USB DALI Master device found")
+            self.device_found = None
 
     def send(self, command, callback=None, **kw):
         data = self.construct(command)
-        self.send_message = data
+        self.send_message = struct.pack('BB', data[6], data[7])
         if command.response is not None:
             self._pending = command, callback, kw
             self._response_message = None
@@ -173,10 +185,10 @@ class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
         return data
 
     def wait_for_response(self):
-        """Wait for response message. Timeout 100 ms.
+        """Wait for response message. Timeout 2000 ms.
 
         """
-        for i in range(60):
+        for i in range(40):
             if not self._pending:
                 return
             else:
@@ -189,7 +201,7 @@ class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
         self.send(SetSearchAddrL(addr & 0xff))
 
     def find_next(self, low, high):
-        """Find the ballast with the lowest random address.  The caller
+        """Find the ballast with the lowest random address. The caller
         guarantees that there are no ballasts with an address lower than
         'low'.
 
@@ -203,20 +215,17 @@ class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
             if self.extract(response) == BackwardFrame(255):
                 print("Found ballast at {}; withdrawing it...".format(low))
                 self.send(Withdraw())
-                time.sleep(0.05)
                 self.send(ProgramShortAddress(self._short_address))
-                time.sleep(0.1)
                 response = self.send_sync(QueryDeviceType(self._short_address))
                 try:
                     self.ballast_type = QueryDeviceTypeResponse(self.extract(response))
                 except:
                     self.ballast_type = "NaN"
-                #if (self.send_sync(QueryShortAddress()) & 0x3f) == self._short_address:
-                self.ballast_id = low
                 if self.extract(self.send_sync(VerifyShortAddress(self._short_address))) == BackwardFrame(255):
                     self.ballast_short_address = self._short_address
                 else:
                     self.ballast_short_address = "NaN"
+                self.ballast_id = low
                 QApplication.processEvents()
                 return low
             return None
@@ -228,17 +237,16 @@ class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
             midpoint = (low + high) // 2
             return self.find_next(low, midpoint) or self.find_next(midpoint + 1, high)
 
-    def find_ballasts(self):
+    def find_ballasts(self, randomise=1):
         _ballasts = []
         self._short_address = 0
         self.ballast_id = None
 
         self.send(Terminate())
-        time.sleep(0.1)
         self.send(Initialise(broadcast=True, address=None))
-        time.sleep(0.1)
-        self.send(Randomise())
-        time.sleep(0.1)  # Randomise may take up to 100ms
+        if randomise:
+            self.send(Randomise())
+            time.sleep(0.1)  # Randomise may take up to 100ms
 
         low = 0
         high = 0xffffff
@@ -252,58 +260,4 @@ class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
         return _ballasts
 
 
-def _test_async(logger, command):
-    print('Test async driver')
-    driver = AsyncHassebDALIUSBDriver()
-    driver.logger = logger
-
-    # async response callback
-    def response_received(response):
-        print('Response received: {}'.format(response))
-
-    driver.send(command, callback=response_received)
-
-    # exit callback
-    def signal_handler(signal, frame):
-        driver.backend.close()
-        sys.exit(0)
-
-    import signal
-    signal.signal(signal.SIGINT, signal_handler)
-    print('Press Ctrl+C')
-    signal.pause()
-
-
-def _test_sync(logger, command):
-    print('Test sync driver')
-    driver = SyncHassebDALIUSBDriver()
-    driver.logger = logger
-
-    print('Response: {}'.format(driver.send(command)))
-    driver.backend.close()
-
-
-if __name__ == '__main__':
-    """Usage: python tridonic.py sync|async address value."""
-    from dali.gear.general import DAPC, QueryActualLevel
-    import sys
-
-    # setup console logging
-    logger = logging.getLogger('HassebDALIDriver')
-    logger.setLevel(logging.DEBUG)
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(logging.DEBUG)
-    handler.setFormatter(logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    ))
-    logger.addHandler(handler)
-
-    # command to send
-    cmd = DAPC(int(sys.argv[2]), int(sys.argv[3]))
-
-    # sync interface
-    if sys.argv[1] == 'sync':
-        _test_sync(logger, cmd)
-    # async interface
-    elif sys.argv[1] == 'async':
-        _test_async(logger, cmd)
+#if __name__ == '__main__':

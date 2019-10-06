@@ -43,16 +43,16 @@ class mainWindow(QMainWindow):
         self.title = 'DALI Controller'
         self.left = 50
         self.top = 50
-        self.width = 500
-        self.height = 500
+        self.width = 700
+        self.height = 400
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
 
-        if DALI_device != None:
+        if DALI_device.device_found != None:
             self.statusBar().showMessage('hasseb USB DALI Master device found.')
         else:
             self.label = QLabel(self)
-            self.label.setText('<span style="color:red">No USB DALI master device found. Please connect the device and restart the program.</span>')
+            self.label.setText('<span style="color:red">No USB DALI master device found. Please check the connection and restart program.</span>')
             self.statusBar().addPermanentWidget(self.label)
 
         self.tabs_widget = tabsWidget(self)
@@ -66,7 +66,7 @@ class mainWindow(QMainWindow):
 
 class tabsWidget(QWidget):
 
-    ShortAddress, ID, DeviceType = range(3)
+    ShortAddress, RandomAddress, DeviceType = range(3)
 
     def __init__(self, parent):
         super(QWidget, self).__init__(parent)
@@ -85,21 +85,27 @@ class tabsWidget(QWidget):
         # Layouts
         self.tab1.layout = QHBoxLayout(self.tab1)
         self.tab1.layout_treeview = QHBoxLayout()
-        self.tab1.layout_controls = QHBoxLayout()
+        self.tab1.layout_controls = QVBoxLayout()
 
         # Widgets and actions
         self.tab1.treeview = QTreeView()
         self.model = QtGui.QStandardItemModel(0, 3)
-        self.model.setHeaderData(self.ID, Qt.Horizontal, "ID")
+        self.model.setHeaderData(self.RandomAddress, Qt.Horizontal, "Random address")
         self.model.setHeaderData(self.ShortAddress, Qt.Horizontal, "Short address")
         self.model.setHeaderData(self.DeviceType, Qt.Horizontal, "Device type")
         self.tab1.treeview.setModel(self.model)
         self.tab1.initializeButton = QPushButton('Initialize')
         self.tab1.initializeButton.clicked.connect(self.initializeButtonClick)
+        self.tab1.searchButton = QPushButton('Search')
+        self.tab1.searchButton.clicked.connect(self.searchButtonClick)
+        self.tab1.sendButton = QPushButton('Send commands')
+        self.tab1.sendButton.clicked.connect(self.sendButtonClick)
 
         # Add widgets to layouts
         self.tab1.layout_treeview.addWidget(self.tab1.treeview)
         self.tab1.layout_controls.addWidget(self.tab1.initializeButton)
+        self.tab1.layout_controls.addWidget(self.tab1.searchButton)
+        self.tab1.layout_controls.addWidget(self.tab1.sendButton)
         self.tab1.layout_treeview.setAlignment(Qt.AlignTop)
         self.tab1.layout_controls.setAlignment(Qt.AlignTop)
         self.tab1.layout.addLayout(self.tab1.layout_controls)
@@ -133,7 +139,7 @@ class tabsWidget(QWidget):
             text += '|| ' + f"{data}" + ' ||'
         elif direction == 2:
             self.model.insertRow(0)
-            self.model.setData(self.model.index(0, self.ID), DALI_device.ballast_id)
+            self.model.setData(self.model.index(0, self.RandomAddress), DALI_device.ballast_id)
             self.model.setData(self.model.index(0, self.ShortAddress), f"{DALI_device.ballast_short_address}")
             self.model.setData(self.model.index(0, self.DeviceType), f"{DALI_device.ballast_type}")
             text = f"{DALI_device.ballast_id} | {DALI_device.ballast_short_address} | {DALI_device.ballast_type}"
@@ -145,4 +151,12 @@ class tabsWidget(QWidget):
     # Click actions
     @pyqtSlot()
     def initializeButtonClick(self):
-        DALI_device.find_ballasts()
+        DALI_device.find_ballasts(1)
+
+    @pyqtSlot()
+    def searchButtonClick(self):
+        DALI_device.find_ballasts(0)
+
+    @pyqtSlot()
+    def sendButtonClick(self):
+        DALI_device.find_ballasts(0)
