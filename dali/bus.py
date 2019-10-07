@@ -12,14 +12,13 @@ from dali.exceptions import NoFreeAddress
 from dali.exceptions import NotConnected
 from dali.exceptions import ProgramShortAddressFailure
 import dali.gear.general as gear
-import sets
 import time
 
 
 class Device(object):
     """Any DALI slave device that has been configured with a short address."""
 
-    def __init__(self, address, name=None, bus=None):
+    def __init__(self, address, randomAddress=None, deviceType=None, name=None, bus=None):
         if not isinstance(address, int) or address < 0 or address > 63:
             raise ValueError("address must be an integer in the range 0..63")
         self.address = address
@@ -27,6 +26,8 @@ class Device(object):
         self.bus = None
         if bus:
             self.bind(bus)
+        self.randomAddress = randomAddress
+        self.deviceType = deviceType
 
     def bind(self, bus):
         """Bind this device object to a particular DALI bus."""
@@ -36,7 +37,7 @@ class Device(object):
 class Bus(object):
     """A DALI bus."""
 
-    _all_addresses = sets.ImmutableSet(range(64))
+    _all_addresses = set(range(64))
 
     def __init__(self, name=None, interface=None):
         self._devices = {}
@@ -62,7 +63,7 @@ class Bus(object):
 
     def unused_addresses(self):
         """Return all short addresses that are not in use."""
-        used_addresses = sets.ImmutableSet(self._devices.keys())
+        used_addresses = set(self._devices.keys())
         return list(self._all_addresses - used_addresses)
 
     def scan(self):
@@ -70,7 +71,7 @@ class Bus(object):
         each discovered device.
         """
         i = self.get_interface()
-        for sa in xrange(0, 64):
+        for sa in range(64):
             if sa in self._devices:
                 continue
             response = i.send(
@@ -109,17 +110,14 @@ class Bus(object):
             return self.find_next(low, midpoint) \
                 or self.find_next(midpoint + 1, high)
 
-    def assign_short_addresses(self):
-        """Search for devices on the bus with no short address allocated, and
-        allocate each one a short address from the set of unused
-        addresses.
+    def search_bus(self, broadcast=False):
+        """ Initialize bus with broadcast on or off and find the devices from the bus
+
         """
-        if not self._bus_scanned:
-            self.scan()
         addrs = self.unused_addresses()
         i = self.get_interface()
         i.send(gear.Terminate())
-        i.send(gear.Initialise(broadcast=False, address=None))
+        i.send(gear.Initialise(broadcast=broadcast, address=None))
         i.send(gear.Randomise())
         # Randomise may take up to 100ms
         time.sleep(0.1)
@@ -133,11 +131,32 @@ class Bus(object):
                     i.send(gear.ProgramShortAddress(new_addr))
                     r = i.send(gear.VerifyShortAddress(new_addr))
                     if r.value is not True:
-                        raise ProgramShortAddressFailure(new_addr)
+                        ProgramShortAddressFailure(new_addr)
+                        print(f"Error in programming short address {new_addr}")
+                    response = i.send(gear.QueryDeviceType(new_addr))
+                    try:
+                        new_type = gear.QueryDeviceTypeResponse(i.extract(response))
+                    except:
+                        new_type = "NaN"
                     i.send(gear.Withdraw())
-                    Device(address=new_addr, bus=self)
+                    Device(address=new_addr, randomAddress=low, deviceType=new_type, bus=self)
                 else:
                     i.send(gear.Terminate())
                     raise NoFreeAddress()
                 low = low + 1
         i.send(gear.Terminate())
+
+    def assign_short_addresses(self):
+        """Search for devices on the bus with no short address allocated, and
+        allocate each one a short address from the set of unused
+        addresses.
+        """
+        if not self._bus_scanned:
+            self.scan()
+        self.search_bus(broadcast=False)
+
+    def initialize_bus(self):
+        """Initialize bus
+        """
+        self._devices = {}
+        self.search_bus(broadcast=True)
