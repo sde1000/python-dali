@@ -14,13 +14,6 @@ from dali.frame import ForwardFrame
 from dali.exceptions import ResponseError, MissingResponse
 
 from dali.gear.general import *
-#from dali.gear.general import Initialise
-#from dali.gear.general import Randomise
-#from dali.gear.general import SetSearchAddrH
-#from dali.gear.general import SetSearchAddrL
-#from dali.gear.general import SetSearchAddrM
-#from dali.gear.general import Terminate
-#from dali.gear.general import Withdraw
 
 from PyQt5.QtWidgets import QApplication
 
@@ -130,11 +123,6 @@ class HassebDALIUSBDriver(DALIDriver):
         self.logger.error("Invalid Frame")
         return None
 
-
-class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
-    """Asynchronous ``DALIDriver`` implementation for Hasseb DALI USB device.
-
-    """
     device_found = None
 
     _pending = None
@@ -155,21 +143,21 @@ class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
             print("No USB DALI Master device found")
             self.device_found = None
 
-    def send(self, command, callback=None, **kw):
+    def send(self, command):
+        time.sleep(0.01)
+        self._response_message = None
         data = self.construct(command)
         self.send_message = struct.pack('BB', data[6], data[7])
         if command.response is not None:
-            self._pending = command, callback, kw
+            self._pending = command
             self._response_message = None
+            hidapi.hid_write(self.device, data)
+            self.wait_for_response()
+            return command.response(self.extract(self._response_message))
         else:
             self._pending = None
-        hidapi.hid_write(self.device, data)
-
-    def send_sync(self, command):
-        self._response_message = None
-        self.send(command)
-        self.wait_for_response()
-        return self._response_message
+            hidapi.hid_write(self.device, data)
+            return
 
     def receive(self):
         data = hidapi.hid_read(self.device, 2)
@@ -177,8 +165,11 @@ class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
         if isinstance(frame, HassebDALIUSBNoDataAvailable):
             return
         elif isinstance(frame, BackwardFrame) or isinstance(frame, HassebDALIUSBNoAnswer):
-            if self._pending:
+            if self._pending and isinstance(frame, BackwardFrame):
                 self._response_message = data
+                self._pending = None
+            elif self._pending and isinstance(frame, HassebDALIUSBNoAnswer):
+                self._response_message = None
                 self._pending = None
             else:
                 self.logger.error("Received frame for no pending command")
@@ -194,70 +185,6 @@ class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
             else:
                 QApplication.processEvents()
                 time.sleep(0.05)
-
-    def set_search_addr(self, addr):
-        self.send(SetSearchAddrH((addr >> 16) & 0xff))
-        self.send(SetSearchAddrM((addr >> 8) & 0xff))
-        self.send(SetSearchAddrL(addr & 0xff))
-
-    def find_next(self, low, high):
-        """Find the ballast with the lowest random address. The caller
-        guarantees that there are no ballasts with an address lower than
-        'low'.
-
-        """
-        QApplication.processEvents()
-        print("Searching from {} to {}...".format(low, high))
-        if low == high:
-            self.set_search_addr(low)
-            response = self.send_sync(Compare())
-
-            if self.extract(response) == BackwardFrame(255):
-                print("Found ballast at {}; withdrawing it...".format(low))
-                self.send(Withdraw())
-                self.send(ProgramShortAddress(self._short_address))
-                response = self.send_sync(QueryDeviceType(self._short_address))
-                try:
-                    self.ballast_type = QueryDeviceTypeResponse(self.extract(response))
-                except:
-                    self.ballast_type = "NaN"
-                if self.extract(self.send_sync(VerifyShortAddress(self._short_address))) == BackwardFrame(255):
-                    self.ballast_short_address = self._short_address
-                else:
-                    self.ballast_short_address = "NaN"
-                self.ballast_id = low
-                QApplication.processEvents()
-                return low
-            return None
-
-        self.set_search_addr(high)
-        response = self.send_sync(Compare())
-
-        if self.extract(response) == BackwardFrame(255):
-            midpoint = (low + high) // 2
-            return self.find_next(low, midpoint) or self.find_next(midpoint + 1, high)
-
-    def find_ballasts(self, randomise=1):
-        _ballasts = []
-        self._short_address = 0
-        self.ballast_id = None
-
-        self.send(Terminate())
-        self.send(Initialise(broadcast=True, address=None))
-        if randomise:
-            self.send(Randomise())
-            time.sleep(0.1)  # Randomise may take up to 100ms
-
-        low = 0
-        high = 0xffffff
-        while low is not None:
-            low = self.find_next(low, high)
-            if low is not None:
-                _ballasts.append(low)
-                low += 1
-
-        self.send(Terminate())
-        return _ballasts
 
 
 #if __name__ == '__main__':

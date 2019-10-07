@@ -5,9 +5,12 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 
 from dali.driver import hasseb
+from dali import bus
 
 # Create hasseb USB DALI driver instance to handle messages
-DALI_device = hasseb.AsyncHassebDALIUSBDriver()
+DALI_device = hasseb.HassebDALIUSBDriver()
+# Create DALI bus
+DALI_bus = bus.Bus('hasseb DALI bus',   DALI_device)
 
 # DALI devices found from the bus
 DALI_gear = None
@@ -88,23 +91,25 @@ class tabsWidget(QWidget):
         self.tab1.layout_controls = QVBoxLayout()
 
         # Widgets and actions
-        self.tab1.treeview = QTreeView()
+        self.tab1.treeView = QTreeView()
+        self.tab1.treeView.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tab1.treeView.customContextMenuRequested.connect(self.openMenu)
         self.model = QtGui.QStandardItemModel(0, 3)
         self.model.setHeaderData(self.RandomAddress, Qt.Horizontal, "Random address")
         self.model.setHeaderData(self.ShortAddress, Qt.Horizontal, "Short address")
         self.model.setHeaderData(self.DeviceType, Qt.Horizontal, "Device type")
-        self.tab1.treeview.setModel(self.model)
+        self.tab1.treeView.setModel(self.model)
         self.tab1.initializeButton = QPushButton('Initialize')
         self.tab1.initializeButton.clicked.connect(self.initializeButtonClick)
-        self.tab1.searchButton = QPushButton('Search')
-        self.tab1.searchButton.clicked.connect(self.searchButtonClick)
+        self.tab1.scanButton = QPushButton('Scan bus')
+        self.tab1.scanButton.clicked.connect(self.scanButtonClick)
         self.tab1.sendButton = QPushButton('Send commands')
         self.tab1.sendButton.clicked.connect(self.sendButtonClick)
 
         # Add widgets to layouts
-        self.tab1.layout_treeview.addWidget(self.tab1.treeview)
+        self.tab1.layout_treeview.addWidget(self.tab1.treeView)
         self.tab1.layout_controls.addWidget(self.tab1.initializeButton)
-        self.tab1.layout_controls.addWidget(self.tab1.searchButton)
+        self.tab1.layout_controls.addWidget(self.tab1.scanButton)
         self.tab1.layout_controls.addWidget(self.tab1.sendButton)
         self.tab1.layout_treeview.setAlignment(Qt.AlignTop)
         self.tab1.layout_controls.setAlignment(Qt.AlignTop)
@@ -126,17 +131,34 @@ class tabsWidget(QWidget):
         self.layout.addWidget(self.tabs)
         self.setLayout(self.layout)
 
+    def openMenu(self, position):
+        indexes = self.tab1.treeView.selectedIndexes()
+        if len(indexes) > 0:
+            level = 0
+            index = indexes[0]
+            while index.parent().isValid():
+                index = index.parent()
+                level += 1
+        menu = QMenu()
+        if level == 0:
+            menu.addAction(self.tr("Edit person"))
+        elif level == 1:
+            menu.addAction(self.tr("Edit object/container"))
+        elif level == 2:
+            menu.addAction(self.tr("Edit object"))
+        menu.exec_(self.tab1.treeView.viewport().mapToGlobal(position))
+
     def writeDALILog(self, direction, data):
         if direction == 0:
             text = '|| DALI -> PC |'
             for i in data:
                 text += '| ' + "0x{:02x}".format(i) + ' '
-            text += '|| ' + f"{DALI_device.extract(data)}" + ' ||'
+            text += '|| '
         elif direction  == 1:
             text = '|| PC -> DALI |'
             for i in data:
                 text += '| ' + "0x{:02x}".format(i) + ' '
-            text += '|| ' + f"{data}" + ' ||'
+            text += '|| '
         elif direction == 2:
             self.model.insertRow(0)
             self.model.setData(self.model.index(0, self.RandomAddress), DALI_device.ballast_id)
@@ -151,11 +173,23 @@ class tabsWidget(QWidget):
     # Click actions
     @pyqtSlot()
     def initializeButtonClick(self):
-        DALI_device.find_ballasts(1)
+        #self.model.clear()
+        DALI_bus.initialize_bus()
+        for i in range(len(DALI_bus._devices)):
+            self.model.insertRow(0)
+            self.model.setData(self.model.index(0, self.RandomAddress), f"{DALI_bus._devices[i].randomAddress}")
+            self.model.setData(self.model.index(0, self.ShortAddress), f"{DALI_bus._devices[i].address}")
+            self.model.setData(self.model.index(0, self.DeviceType), f"{DALI_bus._devices[i].deviceType}")
+
 
     @pyqtSlot()
-    def searchButtonClick(self):
-        DALI_device.find_ballasts(0)
+    def scanButtonClick(self):
+        DALI_bus.assign_short_addresses()
+        for i in range(len(DALI_bus._devices)):
+            self.model.insertRow(0)
+            self.model.setData(self.model.index(0, self.RandomAddress), f"{DALI_bus._devices[i].randomAddress}")
+            self.model.setData(self.model.index(0, self.ShortAddress), f"{DALI_bus._devices[i].address}")
+            self.model.setData(self.model.index(0, self.DeviceType), f"{DALI_bus._devices[i].deviceType}")
 
     @pyqtSlot()
     def sendButtonClick(self):
