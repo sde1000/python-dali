@@ -51,22 +51,20 @@ class mainWindow(QMainWindow):
         self.height = 600
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
+        self.tabs_widget = tabsWidget(self)
+        self.setCentralWidget(self.tabs_widget)
 
         if DALI_device.device_found != None:
             self.statusBar().showMessage('hasseb USB DALI Master device found.')
+            self.threadpool = QThreadPool()
+            self.DALIThread = DALIThread(self.tabs_widget.writeDALILog)
+            self.threadpool.start(self.DALIThread)
         else:
             self.label = QLabel(self)
             self.label.setText('<span style="color:red">No USB DALI master device found. Please check the connection and restart program.</span>')
             self.statusBar().addPermanentWidget(self.label)
 
-        self.tabs_widget = tabsWidget(self)
-        self.setCentralWidget(self.tabs_widget)
-
         self.show()
-
-        self.threadpool = QThreadPool()
-        self.DALIThread = DALIThread(self.tabs_widget.writeDALILog)
-        self.threadpool.start(self.DALIThread)
 
 class tabsWidget(QWidget):
 
@@ -96,6 +94,7 @@ class tabsWidget(QWidget):
         # Widgets and actions
         # Tree view
         self.tab1.treeView = QTreeView()
+        self.tab1.treeView.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.tab1.treeView.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tab1.treeView.customContextMenuRequested.connect(self.openMenu)
         self.model = QtGui.QStandardItemModel(0, 4)
