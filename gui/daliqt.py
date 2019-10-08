@@ -69,7 +69,7 @@ class mainWindow(QMainWindow):
 
 class tabsWidget(QWidget):
 
-    ShortAddress, RandomAddress, DeviceType = range(3)
+    shortAddress, randomAddress, group, deviceType = range(4)
 
     def __init__(self, parent):
         super(QWidget, self).__init__(parent)
@@ -94,10 +94,11 @@ class tabsWidget(QWidget):
         self.tab1.treeView = QTreeView()
         self.tab1.treeView.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tab1.treeView.customContextMenuRequested.connect(self.openMenu)
-        self.model = QtGui.QStandardItemModel(0, 3)
-        self.model.setHeaderData(self.RandomAddress, Qt.Horizontal, "Random address")
-        self.model.setHeaderData(self.ShortAddress, Qt.Horizontal, "Short address")
-        self.model.setHeaderData(self.DeviceType, Qt.Horizontal, "Device type")
+        self.model = QtGui.QStandardItemModel(0, 4)
+        self.model.setHeaderData(self.shortAddress, Qt.Horizontal, "Short address")
+        self.model.setHeaderData(self.randomAddress, Qt.Horizontal, "Random address")
+        self.model.setHeaderData(self.group, Qt.Horizontal, "Group")
+        self.model.setHeaderData(self.deviceType, Qt.Horizontal, "Device type")
         self.tab1.treeView.setModel(self.model)
         self.tab1.initializeButton = QPushButton('Initialize')
         self.tab1.initializeButton.clicked.connect(self.initializeButtonClick)
@@ -131,8 +132,15 @@ class tabsWidget(QWidget):
         self.layout.addWidget(self.tabs)
         self.setLayout(self.layout)
 
+        for i in range(10):
+            self.model.insertRow(0)
+            self.model.setData(self.model.index(0, self.randomAddress), f"{i}")
+            self.model.setData(self.model.index(0, self.shortAddress), f"asdf")
+            self.model.setData(self.model.index(0, self.deviceType), f"asdf")
+
     def openMenu(self, position):
         indexes = self.tab1.treeView.selectedIndexes()
+        print(indexes)
         if len(indexes) > 0:
             level = 0
             index = indexes[0]
@@ -141,12 +149,18 @@ class tabsWidget(QWidget):
                 level += 1
         menu = QMenu()
         if level == 0:
-            menu.addAction(self.tr("Edit person"))
+            menu.addAction(self.tr("Change short address"))
+            menu.addAction(self.tr("Add to group"))
         elif level == 1:
             menu.addAction(self.tr("Edit object/container"))
         elif level == 2:
             menu.addAction(self.tr("Edit object"))
         menu.exec_(self.tab1.treeView.viewport().mapToGlobal(position))
+
+    def sendCommandDialog(self):
+        self.sendDlg = QDialog(self)
+        self.sendDlg.setWindowTitle("Send command")
+        self.sendDlg.exec_()
 
     def writeDALILog(self, direction, data):
         if direction == 0:
@@ -161,9 +175,9 @@ class tabsWidget(QWidget):
             text += '|| '
         elif direction == 2:
             self.model.insertRow(0)
-            self.model.setData(self.model.index(0, self.RandomAddress), DALI_device.ballast_id)
-            self.model.setData(self.model.index(0, self.ShortAddress), f"{DALI_device.ballast_short_address}")
-            self.model.setData(self.model.index(0, self.DeviceType), f"{DALI_device.ballast_type}")
+            self.model.setData(self.model.index(0, self.randomAddress), DALI_device.ballast_id)
+            self.model.setData(self.model.index(0, self.shortAddress), f"{DALI_device.ballast_short_address}")
+            self.model.setData(self.model.index(0, self.deviceType), f"{DALI_device.ballast_type}")
             text = f"{DALI_device.ballast_id} | {DALI_device.ballast_short_address} | {DALI_device.ballast_type}"
 
         #self.tab2.log_textarea. appendPlainText(f"{text}")
@@ -177,9 +191,9 @@ class tabsWidget(QWidget):
         DALI_bus.initialize_bus()
         for i in range(len(DALI_bus._devices)):
             self.model.insertRow(0)
-            self.model.setData(self.model.index(0, self.RandomAddress), f"{DALI_bus._devices[i].randomAddress}")
-            self.model.setData(self.model.index(0, self.ShortAddress), f"{DALI_bus._devices[i].address}")
-            self.model.setData(self.model.index(0, self.DeviceType), f"{DALI_bus._devices[i].deviceType}")
+            self.model.setData(self.model.index(0, self.randomAddress), f"{DALI_bus._devices[i].randomAddress}")
+            self.model.setData(self.model.index(0, self.shortAddress), f"{DALI_bus._devices[i].address}")
+            self.model.setData(self.model.index(0, self.deviceType), f"{DALI_bus._devices[i].deviceType}")
 
 
     @pyqtSlot()
@@ -187,10 +201,10 @@ class tabsWidget(QWidget):
         DALI_bus.assign_short_addresses()
         for i in range(len(DALI_bus._devices)):
             self.model.insertRow(0)
-            self.model.setData(self.model.index(0, self.RandomAddress), f"{DALI_bus._devices[i].randomAddress}")
-            self.model.setData(self.model.index(0, self.ShortAddress), f"{DALI_bus._devices[i].address}")
-            self.model.setData(self.model.index(0, self.DeviceType), f"{DALI_bus._devices[i].deviceType}")
+            self.model.setData(self.model.index(0, self.randomAddress), f"{DALI_bus._devices[i].randomAddress}")
+            self.model.setData(self.model.index(0, self.shortAddress), f"{DALI_bus._devices[i].address}")
+            self.model.setData(self.model.index(0, self.deviceType), f"{DALI_bus._devices[i].deviceType}")
 
     @pyqtSlot()
     def sendButtonClick(self):
-        DALI_device.find_ballasts(0)
+        self.sendCommandDialog()
