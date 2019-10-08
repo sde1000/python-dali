@@ -6,6 +6,7 @@ from PyQt5.QtCore import *
 
 from dali.driver import hasseb
 from dali import bus
+import DALICommands
 
 # Create hasseb USB DALI driver instance to handle messages
 DALI_device = hasseb.HassebDALIUSBDriver()
@@ -47,7 +48,7 @@ class mainWindow(QMainWindow):
         self.left = 50
         self.top = 50
         self.width = 700
-        self.height = 400
+        self.height = 600
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
 
@@ -87,10 +88,13 @@ class tabsWidget(QWidget):
         # Tab 1
         # Layouts
         self.tab1.layout = QHBoxLayout(self.tab1)
-        self.tab1.layout_treeview = QHBoxLayout()
+        self.tab1.layout_treeview = QVBoxLayout()
         self.tab1.layout_controls = QVBoxLayout()
+        self.tab1.layout_sendCommands = QVBoxLayout()
+        self.tab1.layout_sendCommandsMiddle = QHBoxLayout()
 
         # Widgets and actions
+        # Tree view
         self.tab1.treeView = QTreeView()
         self.tab1.treeView.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tab1.treeView.customContextMenuRequested.connect(self.openMenu)
@@ -100,23 +104,35 @@ class tabsWidget(QWidget):
         self.model.setHeaderData(self.group, Qt.Horizontal, "Group")
         self.model.setHeaderData(self.deviceType, Qt.Horizontal, "Device type")
         self.tab1.treeView.setModel(self.model)
+        # Send commands group box
+        self.tab1.sendCommandGroupBox = QGroupBox('Send commands')
+        self.tab1.commandsComboBox = QComboBox()
+        #for i in range(len(DALICommands.commands)):
+        self.tab1.commandsComboBox.addItems(DALICommands.commands)
+        self.tab1.sendButton = QPushButton('Send')
+        self.tab1.sendButton.clicked.connect(self.sendButtonClick)
+        # Buttons
         self.tab1.initializeButton = QPushButton('Initialize')
         self.tab1.initializeButton.clicked.connect(self.initializeButtonClick)
         self.tab1.scanButton = QPushButton('Scan bus')
         self.tab1.scanButton.clicked.connect(self.scanButtonClick)
-        self.tab1.sendButton = QPushButton('Send commands')
-        self.tab1.sendButton.clicked.connect(self.sendButtonClick)
 
         # Add widgets to layouts
         self.tab1.layout_treeview.addWidget(self.tab1.treeView)
+        self.tab1.layout_treeview.addWidget(self.tab1.sendCommandGroupBox)
+        self.tab1.layout_sendCommands.addWidget(self.tab1.commandsComboBox)
+        self.tab1.layout_sendCommandsMiddle.addWidget(self.tab1.sendButton)
+
         self.tab1.layout_controls.addWidget(self.tab1.initializeButton)
         self.tab1.layout_controls.addWidget(self.tab1.scanButton)
-        self.tab1.layout_controls.addWidget(self.tab1.sendButton)
         self.tab1.layout_treeview.setAlignment(Qt.AlignTop)
         self.tab1.layout_controls.setAlignment(Qt.AlignTop)
         self.tab1.layout.addLayout(self.tab1.layout_controls)
         self.tab1.layout.addLayout(self.tab1.layout_treeview)
         self.tab1.layout.setAlignment(Qt.AlignTop)
+
+        self.tab1.layout_sendCommands.addLayout(self.tab1.layout_sendCommandsMiddle)
+        self.tab1.sendCommandGroupBox.setLayout(self.tab1.layout_sendCommands)
         self.tab1.setLayout(self.tab1.layout)
 
         # Tab 2
@@ -158,9 +174,14 @@ class tabsWidget(QWidget):
         menu.exec_(self.tab1.treeView.viewport().mapToGlobal(position))
 
     def sendCommandDialog(self):
-        self.sendDlg = QDialog(self)
-        self.sendDlg.setWindowTitle("Send command")
-        self.sendDlg.exec_()
+        sendDlg = QDialog(self)
+        sendDlg.setWindowTitle("Send command")
+        layout_sendCommandDialog = QHBoxLayout()
+        comboBox = QComboBox()
+
+        layout_sendCommandDialog.addWidget(comboBox)
+        sendDlg.setLayout(layout_sendCommandDialog)
+        sendDlg.exec_()
 
     def writeDALILog(self, direction, data):
         if direction == 0:
