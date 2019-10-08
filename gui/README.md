@@ -34,7 +34,7 @@ git clone https://github.com/awelkie/pyhidapi.git
 cd pyhidapi  
 sudo python3 setup.py install  
 
-## Installing development environment and dependencies in Linux  
+## Installing development environment and dependencies in Windows  
 
 To get python-dali working in Windows 10, you need to have Python 3.7 or newer installed. The following software and python dependencies need to be installed as well:  
 
