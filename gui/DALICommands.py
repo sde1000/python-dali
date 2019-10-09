@@ -1,4 +1,7 @@
-commands = ('DIRECT ARC POWER CONTROL',
+import dali.gear.general as gear
+
+commands = ('',
+            'DIRECT_ARC_POWER_CONTROL',
             'OFF',
             'UP',
             'DOWN',
@@ -279,7 +282,33 @@ commands = ('DIRECT ARC POWER CONTROL',
             'WRITE_MEMORY_LOCATION'
             )
 
-class sendDALICommands(object):
+class DALICommandSender(object):
     '''A class taking care of sending individual DALI commands
 
     '''
+
+    #def __init__(self):
+
+    def commandHandler(self, command, address, send):
+        '''Command codes output and sending is handled in the same function to prevent writing everything twice.
+        '''
+        if command == 'DIRECT_ARC_POWER_CONTROL':
+            if send == 1:
+                print('sending...')
+            else:
+                command = gear.DAPC(address, 127)
+                return command.frame.as_byte_sequence
+
+        elif command == 'OFF':
+            if send == 1:
+                print('sending...')
+            else:
+                command = gear.Off(address)
+                return command.frame.as_byte_sequence
+
+        elif command == 'UP':
+            if send == 1:
+                print('sending...')
+            else:
+                command = gear.Up(address)
+                return command.frame.as_byte_sequence
