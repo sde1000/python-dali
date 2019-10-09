@@ -12,9 +12,11 @@ import DALICommands
 DALI_device = hasseb.HassebDALIUSBDriver()
 # Create DALI bus
 DALI_bus = bus.Bus('hasseb DALI bus',   DALI_device)
+# Instance to send individual DALI commands
+DALI_command_sender = DALICommands.DALICommandSender()
 
 # DALI devices found from the bus
-DALI_gear = None
+#DALI_gear = None
 
 class DALIThread(QRunnable):
     '''
@@ -90,13 +92,18 @@ class tabsWidget(QWidget):
         self.tab1.layout_controls = QVBoxLayout()
         self.tab1.layout_sendCommands = QVBoxLayout()
         self.tab1.layout_sendCommandsMiddle = QHBoxLayout()
+        self.tab1.layout_sendCommandsMiddleLeft = QHBoxLayout()
+        self.tab1.layout_sendCommandsMiddleRight = QHBoxLayout()
+        self.tab1.layout_sendCommandsBottom = QHBoxLayout()
+        self.tab1.layout_sendCommandsBottomLeft = QHBoxLayout()
+        self.tab1.layout_sendCommandsBottomRight = QHBoxLayout()
 
         # Widgets and actions
         # Tree view
         self.tab1.treeView = QTreeView()
         self.tab1.treeView.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.tab1.treeView.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.tab1.treeView.customContextMenuRequested.connect(self.openMenu)
+
+        #QObject.connect(self.tab1.treeView.selectionModel(), SIGNAL('selectionChanged()'), self.commandSendComboBoxChanged)
         self.model = QtGui.QStandardItemModel(0, 4)
         self.model.setHeaderData(self.shortAddress, Qt.Horizontal, "Short address")
         self.model.setHeaderData(self.randomAddress, Qt.Horizontal, "Random address")
@@ -106,8 +113,22 @@ class tabsWidget(QWidget):
         # Send commands group box
         self.tab1.sendCommandGroupBox = QGroupBox('Send commands')
         self.tab1.commandsComboBox = QComboBox()
-        #for i in range(len(DALICommands.commands)):
         self.tab1.commandsComboBox.addItems(DALICommands.commands)
+        self.tab1.commandsComboBox.activated[str].connect(self.commandSendComboBoxChanged)
+        self.tab1.commandsByte1Label = QLabel('Byte 1:')
+        self.tab1.commandsByte1Label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.tab1.commandsByte1 = QSpinBox()
+        self.tab1.commandsByte1.setRange(0, 255)
+        self.tab1.commandsByte1.setFixedWidth(80)
+        self.tab1.commandsByte2Label = QLabel('Byte 2:')
+        self.tab1.commandsByte2Label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.tab1.commandsByte2 = QSpinBox()
+        self.tab1.commandsByte2.setRange(0, 255)
+        self.tab1.commandsByte2.setFixedWidth(80)
+        self.tab1.commandsResponseLabel = QLabel("Response:")
+        self.tab1.commandsResponseLabel.setFixedWidth(80)
+        self.tab1.commandsResponse = QLineEdit()
+        self.tab1.commandsResponse.setFixedWidth(100)
         self.tab1.sendButton = QPushButton('Send')
         self.tab1.sendButton.clicked.connect(self.sendButtonClick)
         # Buttons
@@ -120,18 +141,28 @@ class tabsWidget(QWidget):
         self.tab1.layout_treeview.addWidget(self.tab1.treeView)
         self.tab1.layout_treeview.addWidget(self.tab1.sendCommandGroupBox)
         self.tab1.layout_sendCommands.addWidget(self.tab1.commandsComboBox)
-        self.tab1.layout_sendCommandsMiddle.addWidget(self.tab1.sendButton)
-
+        self.tab1.layout_sendCommandsMiddleLeft.addWidget(self.tab1.commandsByte1Label)
+        self.tab1.layout_sendCommandsMiddleLeft.addWidget(self.tab1.commandsByte1)
+        self.tab1.layout_sendCommandsMiddleLeft.addWidget(self.tab1.commandsByte2Label)
+        self.tab1.layout_sendCommandsMiddleLeft.addWidget(self.tab1.commandsByte2)
+        self.tab1.layout_sendCommandsMiddleRight.addWidget(self.tab1.sendButton)
+        self.tab1.layout_sendCommandsBottomLeft.addWidget(self.tab1.commandsResponseLabel)
+        self.tab1.layout_sendCommandsBottomLeft.addWidget(self.tab1.commandsResponse)
         self.tab1.layout_controls.addWidget(self.tab1.initializeButton)
         self.tab1.layout_controls.addWidget(self.tab1.scanButton)
         self.tab1.layout_treeview.setAlignment(Qt.AlignTop)
         self.tab1.layout_controls.setAlignment(Qt.AlignTop)
+        self.tab1.layout_sendCommandsMiddle.addLayout(self.tab1.layout_sendCommandsMiddleLeft)
+        self.tab1.layout_sendCommandsMiddle.addLayout(self.tab1.layout_sendCommandsMiddleRight)
+        self.tab1.layout_sendCommands.addLayout(self.tab1.layout_sendCommandsMiddle)
+        self.tab1.layout_sendCommandsBottom.addLayout(self.tab1.layout_sendCommandsBottomLeft)
+        self.tab1.layout_sendCommandsBottom.addLayout(self.tab1.layout_sendCommandsBottomRight)
+        self.tab1.layout_sendCommandsBottomLeft.setAlignment(Qt.AlignLeft)
+        self.tab1.layout_sendCommands.addLayout(self.tab1.layout_sendCommandsBottom)
+        self.tab1.sendCommandGroupBox.setLayout(self.tab1.layout_sendCommands)
         self.tab1.layout.addLayout(self.tab1.layout_controls)
         self.tab1.layout.addLayout(self.tab1.layout_treeview)
         self.tab1.layout.setAlignment(Qt.AlignTop)
-
-        self.tab1.layout_sendCommands.addLayout(self.tab1.layout_sendCommandsMiddle)
-        self.tab1.sendCommandGroupBox.setLayout(self.tab1.layout_sendCommands)
         self.tab1.setLayout(self.tab1.layout)
 
         # Tab 2
@@ -150,7 +181,7 @@ class tabsWidget(QWidget):
         for i in range(10):
             self.model.insertRow(0)
             self.model.setData(self.model.index(0, self.randomAddress), f"{i}")
-            self.model.setData(self.model.index(0, self.shortAddress), f"asdf")
+            self.model.setData(self.model.index(0, self.shortAddress), f"{i}")
             self.model.setData(self.model.index(0, self.deviceType), f"asdf")
 
     def openMenu(self, position):
@@ -205,6 +236,17 @@ class tabsWidget(QWidget):
         print(text)
 
     # Click actions
+    @pyqtSlot()
+    def commandSendComboBoxChanged(self):
+        '''Read selected short address from the tree view if selected, else do nothing
+        '''
+        if self.tab1.treeView.selectedIndexes():
+            byte1, byte2 = DALI_command_sender.commandHandler(self.tab1.commandsComboBox.currentText(),
+                            int(self.model.itemFromIndex(self.tab1.treeView.selectedIndexes()[0]).text()),
+                            0)
+            self.tab1.commandsByte1.setValue(byte1)
+            self.tab1.commandsByte2.setValue(byte2)
+
     @pyqtSlot()
     def initializeButtonClick(self):
         #self.model.clear()
