@@ -289,15 +289,14 @@ class DALICommandSender(object):
 
     #def __init__(self):
 
-    def commandHandler(self, command, address, send):
+    def commandHandler(self, command, address, byte1, byte2, send):
         '''Command codes output and sending is handled in the same function to prevent writing everything twice.
         '''
         if command == 'DIRECT_ARC_POWER_CONTROL':
             if send == 1:
                 print('sending...')
             else:
-                command = gear.DAPC(address, 127)
-                return command.frame.as_byte_sequence
+                return address, byte2, 'Short address:', 'Power:'
 
         elif command == 'OFF':
             if send == 1:
