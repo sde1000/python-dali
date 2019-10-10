@@ -5,4 +5,4 @@ export PYBUILD_NAME = dali
 #export PYBUILD_DISABLE = test
 
 %:
-	dh $@ --with=python2,python3 --buildsystem=pybuild
+	dh $@ --with=python3 --buildsystem=pybuild

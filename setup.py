@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 from setuptools import setup
 import unittest
 
@@ -26,7 +26,6 @@ setup(
         'Intended Audience :: Developers',
         'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
         'License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)',
-        'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 3',
     ],
     license='LGPL3+',
