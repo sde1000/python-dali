@@ -241,11 +241,15 @@ class tabsWidget(QWidget):
         '''Read selected short address from the tree view if selected, else do nothing
         '''
         if self.tab1.treeView.selectedIndexes():
-            byte1, byte2 = DALI_command_sender.commandHandler(self.tab1.commandsComboBox.currentText(),
+            byte1, byte2, byte1label, byte2label = DALI_command_sender.commandHandler(self.tab1.commandsComboBox.currentText(),
                             int(self.model.itemFromIndex(self.tab1.treeView.selectedIndexes()[0]).text()),
+                            self.tab1.commandsByte1.value(),
+                            self.tab1.commandsByte2.value(),
                             0)
             self.tab1.commandsByte1.setValue(byte1)
+            self.tab1.commandsByte1Label.setText(byte1label)
             self.tab1.commandsByte2.setValue(byte2)
+            self.tab1.commandsByte2Label.setText(byte2label)
 
     @pyqtSlot()
     def initializeButtonClick(self):
