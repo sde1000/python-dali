@@ -133,13 +133,8 @@ class Bus(object):
                     if r.value is not True:
                         ProgramShortAddressFailure(new_addr)
                         print(f"Error in programming short address {new_addr}")
-                    response = i.send(gear.QueryDeviceType(new_addr))
-                    try:
-                        new_type = gear.QueryDeviceTypeResponse(i.extract(response))
-                    except:
-                        new_type = "NaN"
                     i.send(gear.Withdraw())
-                    Device(address=new_addr, randomAddress=low, deviceType=new_type, bus=self)
+                    Device(address=new_addr, randomAddress=low, bus=self)
                 else:
                     i.send(gear.Terminate())
                     raise NoFreeAddress()
@@ -160,3 +155,12 @@ class Bus(object):
         """
         self._devices = {}
         self.search_bus(broadcast=True)
+        self.query_device_types()
+
+    def query_device_types(self):
+        """Find the device types of the devices in the bus
+        """
+        i = self.get_interface()
+        for sa in range(64):
+            if sa in self._devices:
+                self._devices[sa].deviceType = i.send(gear.QueryDeviceType(sa))
