@@ -15,51 +15,83 @@ DALI_bus = bus.Bus('hasseb DALI bus',   DALI_device)
 # Instance to send individual DALI commands
 DALI_command_sender = DALICommands.DALICommandSender()
 
-# DALI devices found from the bus
-#DALI_gear = None
+# Circular buffer for received DALI messages
+DALI_BUFFER_LENGTH = 8
+dali_rec_buffer = [0 for i in range(DALI_BUFFER_LENGTH)]
+dali_message_received = [float('inf') for i in range(DALI_BUFFER_LENGTH)]
+dali_message_type = [None for i in range(DALI_BUFFER_LENGTH)]
+dali_rec_buffer_write_idx = 0
+MESSAGE_TYPE_DALI_PC = 0
+MESSAGE_TYPE_PC_DALI = 1
+MESSAGE_TYPE_BALLAST_FOUND = 2
 
 class DALIThread(QRunnable):
     '''
     DALI messages are handled  here in a separate thread
     '''
 
-    def __init__(self, fn, *args):
+    def __init__(self, signal):
         super(DALIThread, self).__init__()
-        self.fn = fn
-        self.args = args
+        self.signal = signal
+        self.message_number = 0
 
     @pyqtSlot()
     def run(self):
+        global dali_rec_buffer
+        global dali_message_type
+        global dali_message_received
+        global dali_rec_buffer_write_idx
         while 1:
             data = DALI_device.receive()
             if data is not None:
-                self.fn(0, data)
+                dali_rec_buffer[dali_rec_buffer_write_idx] = data
+                dali_message_type[dali_rec_buffer_write_idx] = MESSAGE_TYPE_DALI_PC
+                self.message_number += 1
+                dali_message_received[dali_rec_buffer_write_idx] = self.message_number
+                if dali_rec_buffer_write_idx < DALI_BUFFER_LENGTH-1:
+                    dali_rec_buffer_write_idx += 1
+                else:
+                    dali_rec_buffer_write_idx = 0
+                self.signal.emit()
             data = DALI_device.send_message
             if data is not None:
-                self.fn(1, data)
+                dali_rec_buffer[dali_rec_buffer_write_idx] = data
+                dali_message_type[dali_rec_buffer_write_idx] = MESSAGE_TYPE_PC_DALI
+                self.message_number += 1
+                dali_message_received[dali_rec_buffer_write_idx] = self.message_number
+                if dali_rec_buffer_write_idx < DALI_BUFFER_LENGTH-1:
+                    dali_rec_buffer_write_idx += 1
+                else:
+                    dali_rec_buffer_write_idx = 0
+                self.signal.emit()
                 DALI_device.send_message = None
-            data = DALI_device.ballast_id
-            if data is not None:
-                self.fn(2, data)
-                DALI_device.ballast_id = None
+            #data = DALI_device.ballast_id
+            #if data is not None:
+                #self.fn(2, data)
+                #self.signal.emit()
+                #DALI_device.ballast_id = None
 
 class mainWindow(QMainWindow):
-    def __init__(self):
+    # Signal updating DALI message log received in different thread
+    updateLog = pyqtSignal()
+
+    def __init__(self, app):
         super(mainWindow, self).__init__()
         self.title = 'DALI Controller'
-        self.left = 50
-        self.top = 50
-        self.width = 700
-        self.height = 600
+        screen_resolution = app.desktop().screenGeometry()
+        self.width, self.height = screen_resolution.width()/3, screen_resolution.height()/2
+        self.left = screen_resolution.width()/2-self.width/2
+        self.top = screen_resolution.height()/2-self.height/2
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
         self.tabs_widget = tabsWidget(self)
         self.setCentralWidget(self.tabs_widget)
 
         if DALI_device.device_found != None:
-            self.statusBar().showMessage('hasseb USB DALI Master device found.')
+            self.statusBar().showMessage(f"hasseb USB DALI Master device with firmware version {DALI_device.readFirmwareVersion()} found.")
+            self.updateLog.connect(self.tabs_widget.writeDALILog)
             self.threadpool = QThreadPool()
-            self.DALIThread = DALIThread(self.tabs_widget.writeDALILog)
+            self.DALIThread = DALIThread(self.updateLog)
             self.threadpool.start(self.DALIThread)
         else:
             self.label = QLabel(self)
@@ -69,9 +101,6 @@ class mainWindow(QMainWindow):
         self.show()
 
 class tabsWidget(QWidget):
-
-    shortAddress, randomAddress, group, deviceType = range(4)
-
     def __init__(self, parent):
         super(QWidget, self).__init__(parent)
         self.layout = QHBoxLayout(self)
@@ -100,21 +129,17 @@ class tabsWidget(QWidget):
 
         # Widgets and actions
         # Tree view
-        self.tab1.treeView = QTreeView()
-        self.tab1.treeView.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.tab1.treeWidget = QTreeWidget(self)
+        self.tab1.treeWidget.setColumnCount(4)
+        self.tab1.treeWidget.setHeaderLabels(["Short address", "Random address", "Group", "Device type"])
+        self.tab1.treeWidget.currentItemChanged.connect(self.updateCommand)
+        self.tab1.treeWidget.itemClicked.connect(self.updateCommand)
 
-        #QObject.connect(self.tab1.treeView.selectionModel(), SIGNAL('selectionChanged()'), self.commandSendComboBoxChanged)
-        self.model = QtGui.QStandardItemModel(0, 4)
-        self.model.setHeaderData(self.shortAddress, Qt.Horizontal, "Short address")
-        self.model.setHeaderData(self.randomAddress, Qt.Horizontal, "Random address")
-        self.model.setHeaderData(self.group, Qt.Horizontal, "Group")
-        self.model.setHeaderData(self.deviceType, Qt.Horizontal, "Device type")
-        self.tab1.treeView.setModel(self.model)
         # Send commands group box
         self.tab1.sendCommandGroupBox = QGroupBox('Send commands')
         self.tab1.commandsComboBox = QComboBox()
         self.tab1.commandsComboBox.addItems(DALICommands.commands)
-        self.tab1.commandsComboBox.activated[str].connect(self.commandSendComboBoxChanged)
+        self.tab1.commandsComboBox.activated[str].connect(self.updateCommand)
         self.tab1.commandsByte1Label = QLabel('Byte 1:')
         self.tab1.commandsByte1Label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.tab1.commandsByte1 = QSpinBox()
@@ -126,7 +151,7 @@ class tabsWidget(QWidget):
         self.tab1.commandsByte2.setRange(0, 255)
         self.tab1.commandsByte2.setFixedWidth(80)
         self.tab1.commandsResponseLabel = QLabel("Response:")
-        self.tab1.commandsResponseLabel.setFixedWidth(80)
+        self.tab1.commandsResponseLabel.setFixedWidth(120)
         self.tab1.commandsResponse = QLineEdit()
         self.tab1.commandsResponse.setFixedWidth(100)
         self.tab1.sendButton = QPushButton('Send')
@@ -138,7 +163,7 @@ class tabsWidget(QWidget):
         self.tab1.scanButton.clicked.connect(self.scanButtonClick)
 
         # Add widgets to layouts
-        self.tab1.layout_treeview.addWidget(self.tab1.treeView)
+        self.tab1.layout_treeview.addWidget(self.tab1.treeWidget)
         self.tab1.layout_treeview.addWidget(self.tab1.sendCommandGroupBox)
         self.tab1.layout_sendCommands.addWidget(self.tab1.commandsComboBox)
         self.tab1.layout_sendCommandsMiddleLeft.addWidget(self.tab1.commandsByte1Label)
@@ -179,10 +204,8 @@ class tabsWidget(QWidget):
         self.setLayout(self.layout)
 
         for i in range(10):
-            self.model.insertRow(0)
-            self.model.setData(self.model.index(0, self.randomAddress), f"{i}")
-            self.model.setData(self.model.index(0, self.shortAddress), f"{i}")
-            self.model.setData(self.model.index(0, self.deviceType), f"asdf")
+            l1 = QTreeWidgetItem([ f"{i}",  f"{i}",  "0", "asdf" ])
+            self.tab1.treeWidget.addTopLevelItem(l1)
 
     def openMenu(self, position):
         indexes = self.tab1.treeView.selectedIndexes()
@@ -213,39 +236,44 @@ class tabsWidget(QWidget):
         sendDlg.setLayout(layout_sendCommandDialog)
         sendDlg.exec_()
 
-    def writeDALILog(self, direction, data):
-        if direction == 0:
-            text = '|| DALI -> PC |'
-            for i in data:
-                text += '| ' + "0x{:02x}".format(i) + ' '
-            text += '|| '
-        elif direction  == 1:
-            text = '|| PC -> DALI |'
-            for i in data:
-                text += '| ' + "0x{:02x}".format(i) + ' '
-            text += '|| '
-        elif direction == 2:
-            self.model.insertRow(0)
-            self.model.setData(self.model.index(0, self.randomAddress), DALI_device.ballast_id)
-            self.model.setData(self.model.index(0, self.shortAddress), f"{DALI_device.ballast_short_address}")
-            self.model.setData(self.model.index(0, self.deviceType), f"{DALI_device.ballast_type}")
-            text = f"{DALI_device.ballast_id} | {DALI_device.ballast_short_address} | {DALI_device.ballast_type}"
+    @pyqtSlot()
+    def writeDALILog(self):
+        global dali_rec_buffer
+        global dali_message_type
+        global dali_message_received
+        while dali_message_received.count(float('inf')) != DALI_BUFFER_LENGTH:
+            index = dali_message_received.index(min(dali_message_received))
+            if dali_message_type[index] == MESSAGE_TYPE_DALI_PC:
+                text = '|| DALI -> PC |'
+                for i in range(2,4):
+                    text += '| ' + "0x{:02x}".format(dali_rec_buffer[index][i]) + ' '
+                text += '|| '
+            elif dali_message_type[index] == MESSAGE_TYPE_PC_DALI:
+                text = '|| PC -> DALI |'
+                for data in dali_rec_buffer[index]:
+                    text += '| ' + "0x{:02x}".format(data) + ' '
+                    text += '|| '
+            #elif dali_message_type[index] == MESSAGE_TYPE_BALLAST_FOUND:
+            dali_message_received[index] = float('inf')
+        # elif direction == 2:
+        #     text = f"{DALI_device.ballast_id} | {DALI_device.ballast_short_address} | {DALI_device.ballast_type}"
 
-        #self.tab2.log_textarea. appendPlainText(f"{text}")
-        #self.tab2.log_textarea.moveCursor(QtGui.QTextCursor.End)
-        print(text)
+            self.tab2.log_textarea.appendPlainText(f"{text}")
+            self.tab2.log_textarea.moveCursor(QtGui.QTextCursor.End)
+            #print(text)
 
     # Click actions
     @pyqtSlot()
-    def commandSendComboBoxChanged(self):
-        '''Read selected short address from the tree view if selected, else do nothing
+    def updateCommand(self):
+        '''Read selected short address from the treeWidget if selected, else do nothing
         '''
-        if self.tab1.treeView.selectedIndexes():
+        selectedItem = self.tab1.treeWidget.selectedItems()
+        if selectedItem and self.tab1.commandsComboBox.currentText():
             byte1, byte2, byte1label, byte2label = DALI_command_sender.commandHandler(self.tab1.commandsComboBox.currentText(),
-                            int(self.model.itemFromIndex(self.tab1.treeView.selectedIndexes()[0]).text()),
-                            self.tab1.commandsByte1.value(),
-                            self.tab1.commandsByte2.value(),
-                            0)
+                int(selectedItem[0].text(0)),
+                self.tab1.commandsByte1.value(),
+                self.tab1.commandsByte2.value(),
+                0)
             self.tab1.commandsByte1.setValue(byte1)
             self.tab1.commandsByte1Label.setText(byte1label)
             self.tab1.commandsByte2.setValue(byte2)
@@ -253,23 +281,20 @@ class tabsWidget(QWidget):
 
     @pyqtSlot()
     def initializeButtonClick(self):
-        #self.model.clear()
+        self.tab1.treeWidget.clear()
         DALI_bus.initialize_bus()
         for i in range(len(DALI_bus._devices)):
-            self.model.insertRow(0)
-            self.model.setData(self.model.index(0, self.randomAddress), f"{DALI_bus._devices[i].randomAddress}")
-            self.model.setData(self.model.index(0, self.shortAddress), f"{DALI_bus._devices[i].address}")
-            self.model.setData(self.model.index(0, self.deviceType), f"{DALI_bus._devices[i].deviceType}")
+            l1 = QTreeWidgetItem([ f"{DALI_bus._devices[i].address}",  f"{DALI_bus._devices[i].randomAddress}",  "0", f"{DALI_bus._devices[i].deviceType}" ])
+            self.tab1.treeWidget.addTopLevelItem(l1)
 
 
     @pyqtSlot()
     def scanButtonClick(self):
+        self.tab1.treeWidget.clear()
         DALI_bus.assign_short_addresses()
         for i in range(len(DALI_bus._devices)):
-            self.model.insertRow(0)
-            self.model.setData(self.model.index(0, self.randomAddress), f"{DALI_bus._devices[i].randomAddress}")
-            self.model.setData(self.model.index(0, self.shortAddress), f"{DALI_bus._devices[i].address}")
-            self.model.setData(self.model.index(0, self.deviceType), f"{DALI_bus._devices[i].deviceType}")
+            l1 = QTreeWidgetItem([ f"{DALI_bus._devices[i].address}",  f"{DALI_bus._devices[i].randomAddress}",  "0", f"{DALI_bus._devices[i].deviceType}" ])
+            self.tab1.treeWidget.addTopLevelItem(l1)
 
     @pyqtSlot()
     def sendButtonClick(self):

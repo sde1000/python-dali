@@ -8,6 +8,6 @@ from daliqt import mainWindow
 
 if __name__ == '__main__':
     app = QApplication([])
-    GUI = mainWindow()
+    GUI = mainWindow(app)
     app.setWindowIcon(QtGui.QIcon('hasseb_icon.ico'))
     app.exec_()

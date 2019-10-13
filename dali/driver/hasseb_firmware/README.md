@@ -14,9 +14,10 @@ hasseb USB DALI Master device communicated with the host PC using 10 long HID in
 Reports from host to interface
 ------------------------------
 
-* Byte 0: command code
-* Byte 1: sequence number
-* Bytes 2–9: command dependent
+* Byte 0: preamble, alway 0xAA
+* Byte 1: command code
+* Byte 2: sequence number
+* Bytes 3–9: command dependent
 
 ### List of command codes
 
@@ -55,11 +56,11 @@ The device restart in firmware update mode. NOT IMPLEMENTED!
 
 #### 0x06, Configure bus
 
-Bytes 2 and 3 are only used if the "set power supply" flag bit is set.
+Bytes 3 and 4 are only used if the "set power supply" flag bit is set.
 Sending this command with the bit not set can be used to read the
 current status.
 
-* Byte 2 of the command sets the maximum output current of the
+* Byte 3 of the command sets the maximum output current of the
   interface's internal power supply, in mA.  Setting to zero will
   disable the power supply.  Setting to 255 shall be interpreted as
   "the maximum the hardware is capable of".  The standard specifies a
@@ -69,23 +70,40 @@ current status.
   power supply isn't controllable by software, this will be indicated
   in the response.
 
-* Byte 3 of the command sets the voltage of the internal power supply,
+* Byte 4 of the command sets the voltage of the internal power supply,
   in tenths of a volt.
 
-* Byte 4 contains flag bits:
+* Byte 5 contains flag bits:
 
 ** Set power supply
 
 ** Short the bus (this is useful for testing control gear's response
    to power supply failures)
 
-* Byte 5 sets the maximum number of retransmission attempts during
+* Byte 6 sets the maximum number of retransmission attempts during
   collision avoidance.  (The standard doesn't specify a minimum or
   maximum, but it's sensible for the firmware not to retry forever!)
 
-Bytes 6–n must be set to zero.
+Bytes 7–9 must be set to zero.
 
 #### 0x07, Send frame
+
+* Byte 3 is the incrementing sequence number of the command. Sequence
+  is incremented by one every frame sent. If a response is expected, the
+  sequence number of the response frame equals the sequence number of the
+  sent frame.
+  
+* Byte 4 is the length of the DALI data frame in bits. The default is 16
+  bits. 24-bit frames will be supported in future.
+  
+* Byte 5 is a flag indicating if a response is expected. 0 for no response,
+  1 for response.
+  
+* Byte 6: reserved
+
+* Byte 7: reserved
+
+* Bytes 8-10: Data bytes sent to DALI bus.
 
 XXX I haven't finished assigning data to bits and bytes in this
 section yet!  What do we need?
@@ -110,13 +128,14 @@ driver rather than having to implement it in the device.
 Reports from interface to host
 ------------------------------
 
-Byte 0: report type
-Byte 1: serial number
-Bytes 2–n: depend on report type
+* Byte 0: preamble, alway 0xAA
+* Byte 1: report type
+* Byte 2: sequence number
+* Bytes 3–9: report dependent
 
 Reports generated in response to a command from the host will include
-the serial number of the command in byte 1.  Reports generated
-otherwise (for example in response to bus activity) set byte 1 to
+the sequence number of the command in byte 2.  Reports generated
+otherwise (for example in response to bus activity) set byte 2 to
 zero.  By convention, the host should not send a command with serial
 number zero.
 
@@ -124,14 +143,14 @@ Any bits or bytes not described below should be set to zero.
 
 ### List of report types
 
-* 0: no operation, ignore this report
-* 1: hardware type
-* 2: firmware version
-* 3: device serial number
-* 4: bus status
-* 5: unused
-* 6: bus configuration
-* 7: transmission report
+* 0x00: no operation, ignore this report
+* 0x01: hardware type
+* 0x02: firmware version
+* 0x03: device serial number
+* 0x04: bus status
+* 0x05: unused
+* 0x06: bus configuration
+* 0x07: transmission report
 
 ### Report descriptions
 
