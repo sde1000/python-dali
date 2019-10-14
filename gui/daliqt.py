@@ -111,8 +111,8 @@ class tabsWidget(QWidget):
         self.tab2 = QWidget()
 
         # Add tabs
-        self.tabs.addTab(self.tab1,"Devices")
-        self.tabs.addTab(self.tab2,"Log")
+        self.tabs.addTab(self.tab1, "Devices")
+        self.tabs.addTab(self.tab2, "Log")
 
         # Tab 1
         # Layouts
@@ -132,6 +132,9 @@ class tabsWidget(QWidget):
         self.tab1.treeWidget = QTreeWidget(self)
         self.tab1.treeWidget.setColumnCount(4)
         self.tab1.treeWidget.setHeaderLabels(["Short address", "Random address", "Group", "Device type"])
+        for i in range(4):
+            self.tab1.treeWidget.resizeColumnToContents(i)
+        print('hello')
         self.tab1.treeWidget.currentItemChanged.connect(self.updateCommand)
         self.tab1.treeWidget.itemClicked.connect(self.updateCommand)
 
@@ -286,6 +289,8 @@ class tabsWidget(QWidget):
         for i in range(len(DALI_bus._devices)):
             l1 = QTreeWidgetItem([ f"{DALI_bus._devices[i].address}",  f"{DALI_bus._devices[i].randomAddress}",  "0", f"{DALI_bus._devices[i].deviceType}" ])
             self.tab1.treeWidget.addTopLevelItem(l1)
+        for i in range(4):
+            self.tab1.treeWidget.resizeColumnToContents(i)
 
 
     @pyqtSlot()
@@ -295,6 +300,8 @@ class tabsWidget(QWidget):
         for i in range(len(DALI_bus._devices)):
             l1 = QTreeWidgetItem([ f"{DALI_bus._devices[i].address}",  f"{DALI_bus._devices[i].randomAddress}",  "0", f"{DALI_bus._devices[i].deviceType}" ])
             self.tab1.treeWidget.addTopLevelItem(l1)
+        for i in range(4):
+            self.tab1.treeWidget.resizeColumnToContents(i)
 
     @pyqtSlot()
     def sendButtonClick(self):
