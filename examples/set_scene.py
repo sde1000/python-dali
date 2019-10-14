@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from dali.address import Broadcast
 from dali.gear.general import GoToScene

@@ -86,6 +86,8 @@ Contributors
 
 - Boldie
 
+- Martijn Hemeryck
+
 
 Copyright
 ---------
