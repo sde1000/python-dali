@@ -6,6 +6,7 @@ from PyQt5.QtCore import *
 
 from dali.driver import hasseb
 from dali import bus
+from dali import address
 import DALICommands
 
 # Create hasseb USB DALI driver instance to handle messages
@@ -79,7 +80,7 @@ class mainWindow(QMainWindow):
         super(mainWindow, self).__init__()
         self.title = 'DALI Controller'
         screen_resolution = app.desktop().screenGeometry()
-        self.width, self.height = screen_resolution.width()/3, screen_resolution.height()/2
+        self.width, self.height = screen_resolution.width()/2, screen_resolution.height()/2
         self.left = screen_resolution.width()/2-self.width/2
         self.top = screen_resolution.height()/2-self.height/2
         self.setWindowTitle(self.title)
@@ -117,71 +118,92 @@ class tabsWidget(QWidget):
         # Tab 1
         # Layouts
         self.tab1.layout = QHBoxLayout(self.tab1)
-        self.tab1.layout_treeview = QVBoxLayout()
         self.tab1.layout_controls = QVBoxLayout()
+        self.tab1.layout_treeWidget = QVBoxLayout()
         self.tab1.layout_sendCommands = QVBoxLayout()
+        self.tab1.layout_addressByte = QHBoxLayout()
+        self.tab1.layout_dataByte = QHBoxLayout()
+        self.tab1.layout_sendButton = QHBoxLayout()
         self.tab1.layout_sendCommandsMiddle = QHBoxLayout()
-        self.tab1.layout_sendCommandsMiddleLeft = QHBoxLayout()
-        self.tab1.layout_sendCommandsMiddleRight = QHBoxLayout()
+        self.tab1.layout_response = QHBoxLayout()
         self.tab1.layout_sendCommandsBottom = QHBoxLayout()
         self.tab1.layout_sendCommandsBottomLeft = QHBoxLayout()
         self.tab1.layout_sendCommandsBottomRight = QHBoxLayout()
 
         # Widgets and actions
-        # Tree view
-        self.tab1.treeWidget = QTreeWidget(self)
-        self.tab1.treeWidget.setColumnCount(4)
-        self.tab1.treeWidget.setHeaderLabels(["Short address", "Random address", "Group", "Device type"])
-        for i in range(4):
-            self.tab1.treeWidget.resizeColumnToContents(i)
-        print('hello')
-        self.tab1.treeWidget.currentItemChanged.connect(self.updateCommand)
-        self.tab1.treeWidget.itemClicked.connect(self.updateCommand)
-
-        # Send commands group box
-        self.tab1.sendCommandGroupBox = QGroupBox('Send commands')
-        self.tab1.commandsComboBox = QComboBox()
-        self.tab1.commandsComboBox.addItems(DALICommands.commands)
-        self.tab1.commandsComboBox.activated[str].connect(self.updateCommand)
-        self.tab1.commandsByte1Label = QLabel('Byte 1:')
-        self.tab1.commandsByte1Label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.tab1.commandsByte1 = QSpinBox()
-        self.tab1.commandsByte1.setRange(0, 255)
-        self.tab1.commandsByte1.setFixedWidth(80)
-        self.tab1.commandsByte2Label = QLabel('Byte 2:')
-        self.tab1.commandsByte2Label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.tab1.commandsByte2 = QSpinBox()
-        self.tab1.commandsByte2.setRange(0, 255)
-        self.tab1.commandsByte2.setFixedWidth(80)
-        self.tab1.commandsResponseLabel = QLabel("Response:")
-        self.tab1.commandsResponseLabel.setFixedWidth(120)
-        self.tab1.commandsResponse = QLineEdit()
-        self.tab1.commandsResponse.setFixedWidth(100)
-        self.tab1.sendButton = QPushButton('Send')
-        self.tab1.sendButton.clicked.connect(self.sendButtonClick)
         # Buttons
         self.tab1.initializeButton = QPushButton('Initialize')
         self.tab1.initializeButton.clicked.connect(self.initializeButtonClick)
         self.tab1.scanButton = QPushButton('Scan bus')
         self.tab1.scanButton.clicked.connect(self.scanButtonClick)
+        # TreeWidget
+        self.tab1.treeWidget = QTreeWidget(self)
+        self.tab1.treeWidget.setColumnCount(4)
+        self.tab1.treeWidget.setHeaderLabels(["Short address", "Random address", "Group", "Device type"])
+        for i in range(4):
+            self.tab1.treeWidget.resizeColumnToContents(i)
+        self.tab1.treeWidget.currentItemChanged.connect(self.updateCommand)
+        self.tab1.treeWidget.itemClicked.connect(self.updateCommand)
+        # Send commands group box
+        self.tab1.sendCommandGroupBox = QGroupBox('Send commands')
+        self.tab1.commandsComboBox = QComboBox()
+        self.tab1.commandsComboBox.addItems(DALICommands.commands)
+        self.tab1.commandsComboBox.activated[str].connect(self.updateCommand)
+        # Address group box
+        self.tab1.addressGroupBox = QGroupBox('Address')
+        self.tab1.addressAll = QRadioButton('All')
+        self.tab1.addressAll.setChecked(True)
+        self.tab1.addressAll.toggled.connect(self.onAddressRadioClicked)
+        self.tab1.addressGroup = QRadioButton('Group')
+        self.tab1.addressGroup.toggled.connect(self.onAddressRadioClicked)
+        self.tab1.addressShort = QRadioButton('Address')
+        self.tab1.addressShort.toggled.connect(self.onAddressRadioClicked)
+        self.tab1.addressByte = QSpinBox()
+        self.tab1.addressByte.setRange(0, 255)
+        self.tab1.addressByte.setEnabled(False)
+        self.tab1.addressByte.clear()
+        # Data group box
+        self.tab1.dataGroupBox = QGroupBox('Data')
+        self.tab1.dataByte = QSpinBox()
+        self.tab1.dataByte.setRange(0, 255)
+        # Send button
+        self.tab1.sendButton = QPushButton('Send')
+        self.tab1.sendButton.clicked.connect(self.sendButtonClick)
+        # Response group box
+        self.tab1.responseGroupBox = QGroupBox('Response')
+        self.tab1.responseByte = QLineEdit()
+        self.tab1.responseCommand = QLineEdit()
 
         # Add widgets to layouts
-        self.tab1.layout_treeview.addWidget(self.tab1.treeWidget)
-        self.tab1.layout_treeview.addWidget(self.tab1.sendCommandGroupBox)
-        self.tab1.layout_sendCommands.addWidget(self.tab1.commandsComboBox)
-        self.tab1.layout_sendCommandsMiddleLeft.addWidget(self.tab1.commandsByte1Label)
-        self.tab1.layout_sendCommandsMiddleLeft.addWidget(self.tab1.commandsByte1)
-        self.tab1.layout_sendCommandsMiddleLeft.addWidget(self.tab1.commandsByte2Label)
-        self.tab1.layout_sendCommandsMiddleLeft.addWidget(self.tab1.commandsByte2)
-        self.tab1.layout_sendCommandsMiddleRight.addWidget(self.tab1.sendButton)
-        self.tab1.layout_sendCommandsBottomLeft.addWidget(self.tab1.commandsResponseLabel)
-        self.tab1.layout_sendCommandsBottomLeft.addWidget(self.tab1.commandsResponse)
+        # Buttons
         self.tab1.layout_controls.addWidget(self.tab1.initializeButton)
         self.tab1.layout_controls.addWidget(self.tab1.scanButton)
-        self.tab1.layout_treeview.setAlignment(Qt.AlignTop)
+        # Treeview
+        self.tab1.layout_treeWidget.addWidget(self.tab1.treeWidget)
+        self.tab1.layout_treeWidget.addWidget(self.tab1.sendCommandGroupBox)
+        # Send commands group box
+        self.tab1.layout_sendCommands.addWidget(self.tab1.commandsComboBox)
+        # Address group box
+        self.tab1.layout_sendCommandsMiddle.addWidget(self.tab1.addressGroupBox)
+        self.tab1.layout_addressByte.addWidget(self.tab1.addressAll)
+        self.tab1.layout_addressByte.addWidget(self.tab1.addressGroup)
+        self.tab1.layout_addressByte.addWidget(self.tab1.addressShort)
+        self.tab1.layout_addressByte.addWidget(self.tab1.addressByte)
+        self.tab1.addressGroupBox.setLayout(self.tab1.layout_addressByte)
+        # Data group box
+        self.tab1.layout_sendCommandsMiddle.addWidget(self.tab1.dataGroupBox)
+        self.tab1.layout_dataByte.addWidget(self.tab1.dataByte)
+        self.tab1.dataGroupBox.setLayout(self.tab1.layout_dataByte)
+        # Send button
+        self.tab1.layout_sendButton.addWidget(self.tab1.sendButton)
+        self.tab1.layout_sendCommandsMiddle.addLayout(self.tab1.layout_sendButton)
+        # Response
+        self.tab1.layout_sendCommandsBottomLeft.addWidget(self.tab1.responseGroupBox)
+        self.tab1.layout_response.addWidget(self.tab1.responseByte)
+        self.tab1.layout_response.addWidget(self.tab1.responseCommand)
+        self.tab1.responseGroupBox.setLayout(self.tab1.layout_response)
+        self.tab1.layout_treeWidget.setAlignment(Qt.AlignTop)
         self.tab1.layout_controls.setAlignment(Qt.AlignTop)
-        self.tab1.layout_sendCommandsMiddle.addLayout(self.tab1.layout_sendCommandsMiddleLeft)
-        self.tab1.layout_sendCommandsMiddle.addLayout(self.tab1.layout_sendCommandsMiddleRight)
         self.tab1.layout_sendCommands.addLayout(self.tab1.layout_sendCommandsMiddle)
         self.tab1.layout_sendCommandsBottom.addLayout(self.tab1.layout_sendCommandsBottomLeft)
         self.tab1.layout_sendCommandsBottom.addLayout(self.tab1.layout_sendCommandsBottomRight)
@@ -189,7 +211,7 @@ class tabsWidget(QWidget):
         self.tab1.layout_sendCommands.addLayout(self.tab1.layout_sendCommandsBottom)
         self.tab1.sendCommandGroupBox.setLayout(self.tab1.layout_sendCommands)
         self.tab1.layout.addLayout(self.tab1.layout_controls)
-        self.tab1.layout.addLayout(self.tab1.layout_treeview)
+        self.tab1.layout.addLayout(self.tab1.layout_treeWidget)
         self.tab1.layout.setAlignment(Qt.AlignTop)
         self.tab1.setLayout(self.tab1.layout)
 
@@ -210,24 +232,16 @@ class tabsWidget(QWidget):
             l1 = QTreeWidgetItem([ f"{i}",  f"{i}",  "0", "asdf" ])
             self.tab1.treeWidget.addTopLevelItem(l1)
 
-    def openMenu(self, position):
-        indexes = self.tab1.treeView.selectedIndexes()
-        print(indexes)
-        if len(indexes) > 0:
-            level = 0
-            index = indexes[0]
-            while index.parent().isValid():
-                index = index.parent()
-                level += 1
-        menu = QMenu()
-        if level == 0:
-            menu.addAction(self.tr("Change short address"))
-            menu.addAction(self.tr("Add to group"))
-        elif level == 1:
-            menu.addAction(self.tr("Edit object/container"))
-        elif level == 2:
-            menu.addAction(self.tr("Edit object"))
-        menu.exec_(self.tab1.treeView.viewport().mapToGlobal(position))
+    def onAddressRadioClicked(self):
+        if self.tab1.addressAll.isChecked():
+            self.tab1.addressByte.setEnabled(False)
+            self.tab1.addressByte.clear()
+        elif self.tab1.addressGroup.isChecked():
+            self.tab1.addressByte.setRange(0, 15)
+            self.tab1.addressByte.setEnabled(True)
+        elif self.tab1.addressShort.isChecked():
+            self.tab1.addressByte.setRange(0, 255)
+            self.tab1.addressByte.setEnabled(True)
 
     def sendCommandDialog(self):
         sendDlg = QDialog(self)
@@ -272,15 +286,13 @@ class tabsWidget(QWidget):
         '''
         selectedItem = self.tab1.treeWidget.selectedItems()
         if selectedItem and self.tab1.commandsComboBox.currentText():
-            byte1, byte2, byte1label, byte2label = DALI_command_sender.commandHandler(self.tab1.commandsComboBox.currentText(),
+            byte1, byte2 = DALI_command_sender.commandHandler(self.tab1.commandsComboBox.currentText(),
                 int(selectedItem[0].text(0)),
-                self.tab1.commandsByte1.value(),
-                self.tab1.commandsByte2.value(),
-                0)
-            self.tab1.commandsByte1.setValue(byte1)
-            self.tab1.commandsByte1Label.setText(byte1label)
-            self.tab1.commandsByte2.setValue(byte2)
-            self.tab1.commandsByte2Label.setText(byte2label)
+                self.tab1.addressByte.value(),
+                self.tab1.dataByte.value(),
+                send=False)
+            self.tab1.addressByte.setValue(byte1)
+            self.tab1.dataByte.setValue(byte2)
 
     @pyqtSlot()
     def initializeButtonClick(self):
@@ -305,4 +317,15 @@ class tabsWidget(QWidget):
 
     @pyqtSlot()
     def sendButtonClick(self):
-        self.sendCommandDialog()
+        if self.tab1.addressAll.isChecked():
+            DALI_command_sender.commandHandler(self.tab1.commandsComboBox.currentText(),
+                                               address.Broadcast(),
+                                               self.tab1.addressByte.value(),
+                                               self.tab1.dataByte.value(),
+                                               send=True)
+        elif self.tab1.addressGroup.isChecked():
+            self.tab1.addressByte.setRange(0, 15)
+            self.tab1.addressByte.setEnabled(True)
+        elif self.tab1.addressShort.isChecked():
+            self.tab1.addressByte.setRange(0, 255)
+            self.tab1.addressByte.setEnabled(True)
