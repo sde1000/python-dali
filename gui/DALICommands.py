@@ -293,10 +293,10 @@ class DALICommandSender(object):
         '''Command codes output and sending is handled in the same function to prevent writing everything twice.
         '''
         if command == 'DIRECT_ARC_POWER_CONTROL':
-            if send == 1:
-                print('sending...')
+            if send == True:
+                gear.DAPC(address, byte2)
             else:
-                return address, byte2, 'Short address:', 'Power:'
+                return address, byte2
 
         elif command == 'OFF':
             if send == 1:
