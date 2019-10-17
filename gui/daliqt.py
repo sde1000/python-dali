@@ -282,7 +282,7 @@ class tabsWidget(QWidget):
     # Click actions
     @pyqtSlot()
     def updateCommand(self):
-        '''Read selected short address from the treeWidget if selected, else do nothing
+        '''Read selected short or group address from the treeWidget if selected, else do nothing
         '''
         selectedItem = self.tab1.treeWidget.selectedItems()
         if selectedItem and self.tab1.commandsComboBox.currentText():
@@ -291,8 +291,20 @@ class tabsWidget(QWidget):
                 self.tab1.addressByte.value(),
                 self.tab1.dataByte.value(),
                 send=False)
-            self.tab1.addressByte.setValue(byte1)
-            self.tab1.dataByte.setValue(byte2)
+            if self.tab1.addressAll.isChecked():
+                self.tab1.addressByte.setEnabled(False)
+                self.tab1.addressByte.clear()
+                self.tab1.dataByte.setValue(byte2)
+            elif self.tab1.addressGroup.isChecked():
+                self.tab1.addressByte.setRange(0, 15)
+                self.tab1.addressByte.setEnabled(True)
+                self.tab1.addressByte.setValue(int(selectedItem[0].text(2)))
+                self.tab1.dataByte.setValue(byte2)
+            elif self.tab1.addressShort.isChecked():
+                self.tab1.addressByte.setRange(0, 255)
+                self.tab1.addressByte.setEnabled(True)
+                self.tab1.addressByte.setValue(int(selectedItem[0].text(0)))
+                self.tab1.dataByte.setValue(byte2)
 
     @pyqtSlot()
     def initializeButtonClick(self):
