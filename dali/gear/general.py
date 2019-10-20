@@ -279,6 +279,26 @@ class GoToLastActiveLevel(_StandardCommand):
     _cmdval = 0x0a
 
 
+class ContinuousUp(_StandardCommand):
+    """Dim up using the set fade rate.
+
+    targetLevel shall be set to maxLevel and a fade shall be started
+    using the set fade rate. The fade shall stop when maxLevel is
+    reached.
+    """
+    _cmdval = 0x0b
+
+
+class ContinuousDown(_StandardCommand):
+    """Dim down using the set fade rate.
+
+    targetLevel shall be set to minLevel and a fade shall be started
+    using the set fade rate. The fade shall stop when minLevel is
+    reached.
+    """
+    _cmdval = 0x0c
+
+
 class GoToScene(_StandardCommand):
     """Set the actual arc power level to the value stored for the scene
     using the actual fade time.

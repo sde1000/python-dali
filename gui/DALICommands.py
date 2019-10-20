@@ -12,12 +12,9 @@ commands = ('',
             'STEP_DOWN_AND_OFF',
             'ON_AND_STEP_UP',
             'ENABLE_DAPC_SEQUENCE',
-            'RESERVED_10',
-            'RESERVED_11',
-            'RESERVED_12',
-            'RESERVED_13',
-            'RESERVED_14',
-            'RESERVED_15',
+            'GO_TO_LAST_ACTIVE_LEVEL',
+            'CONTINUOUS_UP',
+            'CONTINUOUS_DOWN',
             'GO_TO_SCENE_0',
             'GO_TO_SCENE_1',
             'GO_TO_SCENE_2',
@@ -36,9 +33,9 @@ commands = ('',
             'GO_TO_SCENE_15',                                                                                            
             'RESET',
             'STORE_ACTUAL_LEVEL_IN_THE_DTR',
-            'RESERVED_34',
-            'RESERVED_35',
-            'RESERVED_36',
+            'SAVE_PERSISTENT_VARIABLES',
+            'SET_OPERATION_MODE',
+            'RESET_MEMORY_BANK',
             'RESERVED_37',
             'RESERVED_38',
             'RESERVED_39',
@@ -289,25 +286,76 @@ class DALICommandSender(object):
 
     #def __init__(self):
 
-    def commandHandler(self, command, address, byte1, byte2, send):
-        '''Command codes output and sending is handled in the same function to prevent writing everything twice.
+    def send(self, command, address):
+        '''Function to send DALI commands.
         '''
         if command == 'DIRECT_ARC_POWER_CONTROL':
-            if send == True:
-                gear.DAPC(address, byte2)
-            else:
-                return address, byte2
-
+            gear.DAPC(address, byte2)
         elif command == 'OFF':
-            if send == 1:
-                print('sending...')
-            else:
-                command = gear.Off(address)
-                return command.frame.as_byte_sequence
-
+            gear.Off(address)
         elif command == 'UP':
-            if send == 1:
-                print('sending...')
-            else:
-                command = gear.Up(address)
-                return command.frame.as_byte_sequence
+            gear.Up(address)
+        elif command == 'STEP_UP':
+            gear.StepUp(address)
+        elif command == 'STEP_DOWN':
+            gear.StepDown(address)
+        elif command == 'RECALL_MAX_LEVEL':
+            gear.RecallMaxLevel(address)
+        elif command == 'RECALL_MIN_LEVEL':
+            gear.RecallMinLevel(address)
+        elif command == 'STEP_DOWN_AND_OFF':
+            gear.StepDownAndOff(address)
+        elif command == 'ON_AND_STEP_UP':
+            gear.OnAndStepUp(address)
+        elif command == 'ENABLE_DAPC_SEQUENCE':
+            gear.EnableDAPCSequence(address)
+        elif command == 'STEP_UP':
+            gear.StepUp(address)
+        elif command =='GO_TO_LAST_ACTIVE_LEVEL':
+            gear.GoToLastActiveLevel(address)
+        elif command =='CONTINUOUS_UP':
+            gear.ContinuousUp(address)
+        elif command =='CONTINUOUS_DOWN':
+            gear.ContinuousDown(address)
+        elif command == 'GO_TO_SCENE_0':
+            gear.GoToScene(address, 0)
+        elif command == 'GO_TO_SCENE_1':
+            gear.GoToScene(address, 1)
+        elif command == 'GO_TO_SCENE_2':
+            gear.GoToScene(address, 2)
+        elif command == 'GO_TO_SCENE_3':
+            gear.GoToScene(address, 3)
+        elif command == 'GO_TO_SCENE_4':
+            gear.GoToScene(address, 4)
+        elif command == 'GO_TO_SCENE_5':
+            gear.GoToScene(address, 5)
+        elif command == 'GO_TO_SCENE_6':
+            gear.GoToScene(address, 6)
+        elif command == 'GO_TO_SCENE_7':
+            gear.GoToScene(address, 7)
+        elif command == 'GO_TO_SCENE_8':
+            gear.GoToScene(address, 8)
+        elif command == 'GO_TO_SCENE_9':
+            gear.GoToScene(address, 9)
+        elif command == 'GO_TO_SCENE_10':
+            gear.GoToScene(address, 10)
+        elif command == 'GO_TO_SCENE_11':
+            gear.GoToScene(address, 11)
+        elif command == 'GO_TO_SCENE_12':
+            gear.GoToScene(address, 12)
+        elif command == 'GO_TO_SCENE_13':
+            gear.GoToScene(address, 13)
+        elif command == 'GO_TO_SCENE_14':
+            gear.GoToScene(address, 14)
+        elif command == 'GO_TO_SCENE_15':
+            gear.GoToScene(address, 15)
+        elif command == 'RESET':
+            gear.Reset(address)
+        elif command == 'STORE_ACTUAL_LEVEL_IN_THE_DTR':
+            gear.StoreActualLevelInDTR0(address)
+        elif command == 'SAVE_PERSISTENT_VARIABLES':
+            gear.SavePersistentVariables(address)
+        elif command == 'SET_OPERATION_MODE':
+            gear.SetOperatingMode(address)
+        elif command == 'RESET_MEMORY_BANK':
+            gear.ResetMemoryBank(address)
