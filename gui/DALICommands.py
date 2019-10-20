@@ -1,57 +1,38 @@
 import dali.gear.general as gear
 
 commands = ('',
-            'DIRECT_ARC_POWER_CONTROL',
+            'DIRECT ARC POWER CONTROL (level)',
             'OFF',
             'UP',
             'DOWN',
-            'STEP_UP',
-            'STEP_DOWN',
-            'RECALL_MAX_LEVEL',
-            'RECALL_MIN_LEVEL',
-            'STEP_DOWN_AND_OFF',
-            'ON_AND_STEP_UP',
-            'ENABLE_DAPC_SEQUENCE',
-            'GO_TO_LAST_ACTIVE_LEVEL',
-            'CONTINUOUS_UP',
-            'CONTINUOUS_DOWN',
-            'GO_TO_SCENE_0',
-            'GO_TO_SCENE_1',
-            'GO_TO_SCENE_2',
-            'GO_TO_SCENE_3',
-            'GO_TO_SCENE_4',
-            'GO_TO_SCENE_5',
-            'GO_TO_SCENE_6',
-            'GO_TO_SCENE_7',
-            'GO_TO_SCENE_8',
-            'GO_TO_SCENE_9',
-            'GO_TO_SCENE_10',
-            'GO_TO_SCENE_11',
-            'GO_TO_SCENE_12',
-            'GO_TO_SCENE_13',
-            'GO_TO_SCENE_14',
-            'GO_TO_SCENE_15',                                                                                            
+            'STEP UP',
+            'STEP DOWN',
+            'RECALL MAX LEVEL',
+            'RECALL MIN LEVEL',
+            'STEP DOWN AND OFF',
+            'ON AND STEP UP',
+            'ENABLE DAPC SEQUENCE',
+            'GO TO LAST ACTIVE LEVEL',
+            'CONTINUOUS UP',
+            'CONTINUOUS DOWN',
+            'GO TO SCENE (scene number)',
             'RESET',
-            'STORE_ACTUAL_LEVEL_IN_THE_DTR',
-            'SAVE_PERSISTENT_VARIABLES',
-            'SET_OPERATION_MODE',
-            'RESET_MEMORY_BANK',
-            'RESERVED_37',
-            'RESERVED_38',
-            'RESERVED_39',
-            'RESERVED_40',
-            'RESERVED_41',
-            'STORE_THE_DTR_AS_MAX_LEVEL',
-            'STORE_THE_DTR_AS_MIN_LEVEL',
-            'STORE_THE_DTR_AS_SYSTEM_FAILURE_LEVEL',
-            'STORE_THE_DTR_AS_POWER_ON_LEVEL',
-            'STORE_THE_DTR_AS_FADE_TIME',
-            'STORE_THE_DTR_AS_FADE_RATE',
-            'RESERVED_48',
-            'RESERVED_49',
-            'RESERVED_50',
-            'RESERVED_51',
-            'RESERVED_52',
+            'STORE ACTUAL LEVEL IN THE DTR0',
+            'SAVE PERSISTENT VARIABLES',
+            'SET OPERATION MODE (mode number)',
+            'RESET MEMORY BANK (bank number)',
+            'IDENTIFY DEVICE',
+            'SET MAX LEVEL (level)',
+            'SET MIN LEVEL (level)',
+            'SET SYSTEM FAILURE LEVEL (level)',
+            'SET POWER ON LEVEL (level)',
+            'SET FADE TIME (fade time)',
+            'SET FADE RATE (fade rate)',
+            'SET EXTENDED FADE TIME (fade time)',
+            'SET SCENE (scene number)',
+            'REMOVE FROM SCENE (scene number)',
+            'ADD TO GROUP (group)',
+            'REMOVE FROM GROUP (group)',
             'RESERVED_53',
             'RESERVED_54',
             'RESERVED_55',
@@ -284,78 +265,87 @@ class DALICommandSender(object):
 
     '''
 
-    #def __init__(self):
+    def __init__(self, interface):
+        self._interface = interface
 
-    def send(self, command, address):
+    def getDataLabelRange(self, command):
+        '''Function checking if data or DTR0 is required
+        '''
+        if command == commands[1]:
+            return 'Level', 255
+        elif command == commands[15]:
+            return 'Scene number', 15
+        elif command == commands[19]:
+            return 'Mode number', 255
+        elif command == commands[20]:
+            return 'Bank number', 255
+        elif command == commands[22] or \
+             command == commands[23] or \
+             command == commands[24] or \
+             command == commands[25]:
+            return 'Level', 255
+        elif command == commands[26]:
+            return 'Fade time', 255
+        elif command == commands[27]:
+            return 'Fade rate', 255
+        elif command == commands[28]:
+            return 'Fade time', 255
+        elif command == commands[29] or \
+             command == commands[30]:
+            return 'Scene number', 255
+        elif command == commands[31] or \
+             command == commands[32]:
+            return 'Group', 255
+        else:
+            return 'Data', 0
+
+    def send(self, command, address, data):
         '''Function to send DALI commands.
         '''
-        if command == 'DIRECT_ARC_POWER_CONTROL':
-            gear.DAPC(address, byte2)
-        elif command == 'OFF':
-            gear.Off(address)
-        elif command == 'UP':
-            gear.Up(address)
-        elif command == 'STEP_UP':
-            gear.StepUp(address)
-        elif command == 'STEP_DOWN':
-            gear.StepDown(address)
-        elif command == 'RECALL_MAX_LEVEL':
-            gear.RecallMaxLevel(address)
-        elif command == 'RECALL_MIN_LEVEL':
-            gear.RecallMinLevel(address)
-        elif command == 'STEP_DOWN_AND_OFF':
-            gear.StepDownAndOff(address)
-        elif command == 'ON_AND_STEP_UP':
-            gear.OnAndStepUp(address)
-        elif command == 'ENABLE_DAPC_SEQUENCE':
-            gear.EnableDAPCSequence(address)
-        elif command == 'STEP_UP':
-            gear.StepUp(address)
-        elif command =='GO_TO_LAST_ACTIVE_LEVEL':
-            gear.GoToLastActiveLevel(address)
-        elif command =='CONTINUOUS_UP':
-            gear.ContinuousUp(address)
-        elif command =='CONTINUOUS_DOWN':
-            gear.ContinuousDown(address)
-        elif command == 'GO_TO_SCENE_0':
-            gear.GoToScene(address, 0)
-        elif command == 'GO_TO_SCENE_1':
-            gear.GoToScene(address, 1)
-        elif command == 'GO_TO_SCENE_2':
-            gear.GoToScene(address, 2)
-        elif command == 'GO_TO_SCENE_3':
-            gear.GoToScene(address, 3)
-        elif command == 'GO_TO_SCENE_4':
-            gear.GoToScene(address, 4)
-        elif command == 'GO_TO_SCENE_5':
-            gear.GoToScene(address, 5)
-        elif command == 'GO_TO_SCENE_6':
-            gear.GoToScene(address, 6)
-        elif command == 'GO_TO_SCENE_7':
-            gear.GoToScene(address, 7)
-        elif command == 'GO_TO_SCENE_8':
-            gear.GoToScene(address, 8)
-        elif command == 'GO_TO_SCENE_9':
-            gear.GoToScene(address, 9)
-        elif command == 'GO_TO_SCENE_10':
-            gear.GoToScene(address, 10)
-        elif command == 'GO_TO_SCENE_11':
-            gear.GoToScene(address, 11)
-        elif command == 'GO_TO_SCENE_12':
-            gear.GoToScene(address, 12)
-        elif command == 'GO_TO_SCENE_13':
-            gear.GoToScene(address, 13)
-        elif command == 'GO_TO_SCENE_14':
-            gear.GoToScene(address, 14)
-        elif command == 'GO_TO_SCENE_15':
-            gear.GoToScene(address, 15)
-        elif command == 'RESET':
-            gear.Reset(address)
-        elif command == 'STORE_ACTUAL_LEVEL_IN_THE_DTR':
-            gear.StoreActualLevelInDTR0(address)
-        elif command == 'SAVE_PERSISTENT_VARIABLES':
-            gear.SavePersistentVariables(address)
-        elif command == 'SET_OPERATION_MODE':
-            gear.SetOperatingMode(address)
-        elif command == 'RESET_MEMORY_BANK':
-            gear.ResetMemoryBank(address)
+        if command == commands[1]:
+            self._interface.send(gear.DAPC(address, data))
+        elif command == commands[2]:
+            self._interface.send(gear.Off(address))
+        elif command == commands[3]:
+            self._interface.send(gear.Up(address))
+        elif command == commands[4]:
+            self._interface.send(gear.Down(address))
+        elif command == commands[5]:
+            self._interface.send(gear.StepUp(address))
+        elif command == commands[6]:
+            self._interface.send(gear.StepDown(address))
+        elif command == commands[7]:
+            self._interface.send(gear.RecallMaxLevel(address))
+        elif command == commands[8]:
+            self._interface.send(gear.RecallMinLevel(address))
+        elif command == commands[9]:
+            self._interface.send(gear.StepDownAndOff(address))
+        elif command == commands[10]:
+            self._interface.send(gear.OnAndStepUp(address))
+        elif command == commands[11]:
+            self._interface.send(gear.EnableDAPCSequence(address))
+        elif command == commands[12]:
+            self._interface.send(gear.GoToLastActiveLevel(address))
+        elif command == commands[13]:
+            self._interface.send(gear.ContinuousUp(address))
+        elif command == commands[14]:
+            self._interface.send(gear.ContinuousDown(address))
+        elif command == commands[15]:
+            self._interface.send(gear.GoToScene(address, data))
+        elif command == commands[16]:
+            self._interface.send(gear.Reset(address))
+        elif command == commands[17]:
+            self._interface.send(gear.StoreActualLevelInDTR0(address))
+        elif command == commands[18]:
+            self._interface.send(gear.SavePersistentVariables(address))
+        elif command == commands[19]:
+            self._interface.send(gear.DTR0(data))
+            self._interface.send(gear.SetOperatingMode(address))
+        elif command == commands[20]:
+            self._interface.send(gear.DTR0(data))
+            self._interface.send(gear.ResetMemoryBank(address))
+        elif command == commands[21]:
+            self._interface.send(gear.IdentifyDevice(address))
+        elif command == commands[22]:
+            self._interface.send(gear.DTR0(data))
+            self._interface.send(gear.SetMaxLevel(address))

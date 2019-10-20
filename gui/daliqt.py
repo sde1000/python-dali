@@ -14,7 +14,7 @@ DALI_device = hasseb.HassebDALIUSBDriver()
 # Create DALI bus
 DALI_bus = bus.Bus('hasseb DALI bus',   DALI_device)
 # Instance to send individual DALI commands
-DALI_command_sender = DALICommands.DALICommandSender()
+DALI_command_sender = DALICommands.DALICommandSender(DALI_device)
 
 # Circular buffer for received DALI messages
 DALI_BUFFER_LENGTH = 8
@@ -297,6 +297,15 @@ class tabsWidget(QWidget):
                 self.tab1.addressByte.setRange(0, 255)
                 self.tab1.addressByte.setEnabled(True)
                 self.tab1.addressByte.setValue(int(selectedItem[0].text(0)))
+            # Data group box
+            title, range = DALI_command_sender.getDataLabelRange(self.tab1.commandsComboBox.currentText())
+            self.tab1.dataGroupBox.setTitle(title)
+            self.tab1.dataByte.setRange(0, range)
+            if range == 0:
+                self.tab1.dataByte.setEnabled(False)
+            else:
+                self.tab1.dataByte.setEnabled(True)
+
 
     @pyqtSlot()
     def initializeButtonClick(self):
@@ -323,10 +332,13 @@ class tabsWidget(QWidget):
     def sendButtonClick(self):
         if self.tab1.addressAll.isChecked():
             DALI_command_sender.send(self.tab1.commandsComboBox.currentText(),
-                                               address.Broadcast())
+                                               address.Broadcast(),
+                                               self.tab1.dataByte.value())
         elif self.tab1.addressGroup.isChecked():
             DALI_command_sender.send(self.tab1.commandsComboBox.currentText(),
-                                               address.Group(self.tab1.addressByte.value()))
+                                               address.Group(self.tab1.addressByte.value()),
+                                               self.tab1.dataByte.value())
         elif self.tab1.addressShort.isChecked():
             DALI_command_sender.send(self.tab1.commandsComboBox.currentText(),
-                                               address.Short(self.tab1.addressByte.value()))
+                                               address.Short(self.tab1.addressByte.value()),
+                                               self.tab1.dataByte.value())
