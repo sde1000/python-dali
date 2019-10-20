@@ -84,12 +84,15 @@ class HassebDALIUSBDriver(DALIDriver):
         frame_length = 16
         expect_reply = 0
         transmitter_settling_time = 0
-        send_twice_settling_time  = 0
+        if command.is_config():
+            send_twice = 1
+        else:
+            send_twice = 0
         frame = command.frame.as_byte_sequence
         byte_a, byte_b = frame
         data = struct.pack('BBBBBBBBBB', 0xAA, HASSEB_DALI_FRAME, sn,
                            frame_length, expect_reply,
-                           transmitter_settling_time, send_twice_settling_time,
+                           transmitter_settling_time, send_twice,
                            byte_a, byte_b,
                            0)
         return data

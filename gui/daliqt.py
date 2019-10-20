@@ -286,25 +286,17 @@ class tabsWidget(QWidget):
         '''
         selectedItem = self.tab1.treeWidget.selectedItems()
         if selectedItem and self.tab1.commandsComboBox.currentText():
-            byte1, byte2 = DALI_command_sender.commandHandler(self.tab1.commandsComboBox.currentText(),
-                int(selectedItem[0].text(0)),
-                self.tab1.addressByte.value(),
-                self.tab1.dataByte.value(),
-                send=False)
             if self.tab1.addressAll.isChecked():
                 self.tab1.addressByte.setEnabled(False)
                 self.tab1.addressByte.clear()
-                self.tab1.dataByte.setValue(byte2)
             elif self.tab1.addressGroup.isChecked():
-                self.tab1.addressByte.setRange(0, 15)
+                self.tab1.addressByte.setRange(0, 31)
                 self.tab1.addressByte.setEnabled(True)
                 self.tab1.addressByte.setValue(int(selectedItem[0].text(2)))
-                self.tab1.dataByte.setValue(byte2)
             elif self.tab1.addressShort.isChecked():
                 self.tab1.addressByte.setRange(0, 255)
                 self.tab1.addressByte.setEnabled(True)
                 self.tab1.addressByte.setValue(int(selectedItem[0].text(0)))
-                self.tab1.dataByte.setValue(byte2)
 
     @pyqtSlot()
     def initializeButtonClick(self):
@@ -330,14 +322,11 @@ class tabsWidget(QWidget):
     @pyqtSlot()
     def sendButtonClick(self):
         if self.tab1.addressAll.isChecked():
-            DALI_command_sender.commandHandler(self.tab1.commandsComboBox.currentText(),
-                                               address.Broadcast(),
-                                               self.tab1.addressByte.value(),
-                                               self.tab1.dataByte.value(),
-                                               send=True)
+            DALI_command_sender.send(self.tab1.commandsComboBox.currentText(),
+                                               address.Broadcast())
         elif self.tab1.addressGroup.isChecked():
-            self.tab1.addressByte.setRange(0, 15)
-            self.tab1.addressByte.setEnabled(True)
+            DALI_command_sender.send(self.tab1.commandsComboBox.currentText(),
+                                               address.Group(self.tab1.addressByte.value()))
         elif self.tab1.addressShort.isChecked():
-            self.tab1.addressByte.setRange(0, 255)
-            self.tab1.addressByte.setEnabled(True)
+            DALI_command_sender.send(self.tab1.commandsComboBox.currentText(),
+                                               address.Short(self.tab1.addressByte.value()))

@@ -101,7 +101,7 @@ Bytes 7–9 must be set to zero.
   
 * Byte 6: reserved
 
-* Byte 7: reserved
+* Byte 7: if set to other value than 0, the frame will be sent twice
 
 * Bytes 8-10: Data bytes sent to DALI bus.
 
