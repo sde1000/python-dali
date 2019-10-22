@@ -10,7 +10,7 @@ from dali import address
 import DALICommands
 
 # Create hasseb USB DALI driver instance to handle messages
-DALI_device = hasseb.HassebDALIUSBDriver()
+DALI_device = hasseb.AsyncHassebDALIUSBDriver()
 # Create DALI bus
 DALI_bus = bus.Bus('hasseb DALI bus',   DALI_device)
 # Instance to send individual DALI commands
@@ -166,6 +166,9 @@ class tabsWidget(QWidget):
         self.tab1.dataGroupBox = QGroupBox('Data')
         self.tab1.dataByte = QSpinBox()
         self.tab1.dataByte.setRange(0, 255)
+        self.tab1.dataByte2 = QSpinBox()
+        self.tab1.dataByte2.setRange(0, 255)
+        self.tab1.dataByte2.setVisible(False)
         # Send button
         self.tab1.sendButton = QPushButton('Send')
         self.tab1.sendButton.clicked.connect(self.sendButtonClick)
@@ -193,6 +196,7 @@ class tabsWidget(QWidget):
         # Data group box
         self.tab1.layout_sendCommandsMiddle.addWidget(self.tab1.dataGroupBox)
         self.tab1.layout_dataByte.addWidget(self.tab1.dataByte)
+        self.tab1.layout_dataByte.addWidget(self.tab1.dataByte2)
         self.tab1.dataGroupBox.setLayout(self.tab1.layout_dataByte)
         # Send button
         self.tab1.layout_sendButton.addWidget(self.tab1.sendButton)
@@ -305,6 +309,12 @@ class tabsWidget(QWidget):
                 self.tab1.dataByte.setEnabled(False)
             else:
                 self.tab1.dataByte.setEnabled(True)
+            # If more than 1 data bytes
+            # Set scene
+            if self.tab1.commandsComboBox.currentText() == DALICommands.commands[29]:
+                self.tab1.dataByte2.setVisible(True)
+            else:
+                self.tab1.dataByte2.setVisible(False)
 
 
     @pyqtSlot()
@@ -333,12 +343,15 @@ class tabsWidget(QWidget):
         if self.tab1.addressAll.isChecked():
             DALI_command_sender.send(self.tab1.commandsComboBox.currentText(),
                                                address.Broadcast(),
-                                               self.tab1.dataByte.value())
+                                               self.tab1.dataByte.value(),
+                                               self.tab1.dataByte2.value())
         elif self.tab1.addressGroup.isChecked():
             DALI_command_sender.send(self.tab1.commandsComboBox.currentText(),
                                                address.Group(self.tab1.addressByte.value()),
-                                               self.tab1.dataByte.value())
+                                               self.tab1.dataByte.value(),
+                                               self.tab1.dataByte2.value())
         elif self.tab1.addressShort.isChecked():
             DALI_command_sender.send(self.tab1.commandsComboBox.currentText(),
                                                address.Short(self.tab1.addressByte.value()),
-                                               self.tab1.dataByte.value())
+                                               self.tab1.dataByte.value(),
+                                               self.tab1.dataByte2.value())

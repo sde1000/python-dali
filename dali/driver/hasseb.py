@@ -75,16 +75,18 @@ class HassebDALIUSBSnifferByteError(object):
 
 class HassebDALIUSBDriver(DALIDriver):
     """``DALIDriver`` implementation for Hasseb DALI USB device.
-
     """
     logger = logging.getLogger('HassebDALIUSBDriver')
 
     def construct(self, command):
         sn = 0  # sequence number
         frame_length = 16
-        expect_reply = 0
+        if command.is_query:
+            expect_reply = 1
+        else:
+            expect_reply = 0
         transmitter_settling_time = 0
-        if command.is_config():
+        if command.is_config == True:
             send_twice = 1
         else:
             send_twice = 0
@@ -129,25 +131,38 @@ class HassebDALIUSBDriver(DALIDriver):
         self.logger.error("Invalid Frame")
         return None
 
+    def __init__(self):
+        try:
+            self.device = hidapi.hid_open(HASSEB_USB_VENDOR, HASSEB_USB_PRODUCT, None)
+            self.device_found = 1
+        except:
+            print("No USB DALI Master device found")
+            self.device_found = None
+
+    def readFirmwareVersion(self):
+        data = struct.pack('BBBBBBBBBB', 0xAA, HASSEB_READ_FIRMWARE_VERSION,
+                            0, 0, 0, 0, 0, 0, 0, 0)
+        hidapi.hid_write(self.device, data)
+        data = hidapi.hid_read(self.device, 10)
+        for i in range(0,100):
+            if data[1] != HASSEB_READ_FIRMWARE_VERSION:
+                data = hidapi.hid_read(self.device, 10)
+            else:
+                return f"{data[2]}.{data[3]}"
+        return f"VERSION_ERROR"
+
+
+class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
+    """Asynchronous ``DALIDriver`` implementation for Hasseb DALI USB device.
+       Using asynchronous driver requires a separate thread for receiving
+       DALI messages. receive() function needs to be called continously
+       from the thread.
+    """
     device_found = None
 
     _pending = None
     _response_message = None
     send_message = None
-
-    ballast_id = None
-    ballast_short_address = None
-    ballast_type = None
-
-    _short_address = 0
-
-    def __init__(self):
-        try:
-            self.device = hidapi.hid_open(1228, 2050, None)
-            self.device_found = 1
-        except:
-            print("No USB DALI Master device found")
-            self.device_found = None
 
     def send(self, command):
         time.sleep(0.05)    # a delay between sent messages for better reliability
@@ -183,7 +198,6 @@ class HassebDALIUSBDriver(DALIDriver):
 
     def wait_for_response(self):
         """Wait for response message. Timeout 2000 ms.
-
         """
         for i in range(200):
             if not self._pending:
@@ -192,17 +206,27 @@ class HassebDALIUSBDriver(DALIDriver):
                 QApplication.processEvents()
                 time.sleep(0.01)
 
-    def readFirmwareVersion(self):
-        data = struct.pack('BBBBBBBBBB', 0xAA, HASSEB_READ_FIRMWARE_VERSION,
-                            0, 0, 0, 0, 0, 0, 0, 0)
+
+class SyncHassebDALIUSBDriver(HassebDALIUSBDriver, SyncDALIDriver):
+    """Synchronous ``DALIDriver`` implementation for Hasseb DALI USB device.
+    """
+
+    def send(self, command):
+        data = self.construct(command)
         hidapi.hid_write(self.device, data)
-        data = hidapi.hid_read(self.device, 10)
-        for i in range(0,100):
-            if data[1] != HASSEB_READ_FIRMWARE_VERSION:
-                data = hidapi.hid_read(self.device, 10)
-            else:
-                return f"{data[2]}.{data[3]}"
-        return f"VERSION_ERROR"
+
+        if command.response is not None:
+            for i in range(100):
+                data = hidapi.hid_read(self.device, 6)
+                frame = self.extract(data)
+                if isinstance(frame, HassebDALIUSBNoAnswer):
+                    self.backend.write(self.construct(command))
+                if isinstance(frame, BackwardFrame):
+                    if command.response:
+                        return command.response(frame)
+                    return frame
+            raise MissingResponse()
+        return None
         
 
 if __name__ == '__main__':

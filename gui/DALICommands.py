@@ -29,102 +29,13 @@ commands = ('',
             'SET FADE TIME (fade time)',
             'SET FADE RATE (fade rate)',
             'SET EXTENDED FADE TIME (fade time)',
-            'SET SCENE (scene number)',
+            'SET SCENE (scene number, level)',
             'REMOVE FROM SCENE (scene number)',
             'ADD TO GROUP (group)',
             'REMOVE FROM GROUP (group)',
-            'RESERVED_53',
-            'RESERVED_54',
-            'RESERVED_55',
-            'RESERVED_56',
-            'RESERVED_57',
-            'RESERVED_58',
-            'RESERVED_59',
-            'RESERVED_60',
-            'RESERVED_61',
-            'RESERVED_62',
-            'RESERVED_63',
-            'STORE_THE_DTR_AS_SCENE_0',
-            'STORE_THE_DTR_AS_SCENE_1',
-            'STORE_THE_DTR_AS_SCENE_2',
-            'STORE_THE_DTR_AS_SCENE_3',
-            'STORE_THE_DTR_AS_SCENE_4',
-            'STORE_THE_DTR_AS_SCENE_5',
-            'STORE_THE_DTR_AS_SCENE_6',
-            'STORE_THE_DTR_AS_SCENE_7',
-            'STORE_THE_DTR_AS_SCENE_8',
-            'STORE_THE_DTR_AS_SCENE_9',
-            'STORE_THE_DTR_AS_SCENE_10',
-            'STORE_THE_DTR_AS_SCENE_11',
-            'STORE_THE_DTR_AS_SCENE_12',
-            'STORE_THE_DTR_AS_SCENE_13',
-            'STORE_THE_DTR_AS_SCENE_14',
-            'STORE_THE_DTR_AS_SCENE_15',
-            'REMOVE_FROM_SCENE_0',
-            'REMOVE_FROM_SCENE_1',
-            'REMOVE_FROM_SCENE_2',
-            'REMOVE_FROM_SCENE_3',
-            'REMOVE_FROM_SCENE_4',
-            'REMOVE_FROM_SCENE_5',
-            'REMOVE_FROM_SCENE_6',
-            'REMOVE_FROM_SCENE_7',
-            'REMOVE_FROM_SCENE_8',
-            'REMOVE_FROM_SCENE_9',
-            'REMOVE_FROM_SCENE_10',
-            'REMOVE_FROM_SCENE_11',
-            'REMOVE_FROM_SCENE_12',
-            'REMOVE_FROM_SCENE_13',
-            'REMOVE_FROM_SCENE_14',
-            'REMOVE_FROM_SCENE_15',
-            'ADD_TO_GROUP_0',
-            'ADD_TO_GROUP_1',
-            'ADD_TO_GROUP_2',
-            'ADD_TO_GROUP_3',
-            'ADD_TO_GROUP_4',
-            'ADD_TO_GROUP_5',
-            'ADD_TO_GROUP_6',
-            'ADD_TO_GROUP_7',
-            'ADD_TO_GROUP_8',
-            'ADD_TO_GROUP_9',
-            'ADD_TO_GROUP_10',
-            'ADD_TO_GROUP_11',
-            'ADD_TO_GROUP_12',
-            'ADD_TO_GROUP_13',
-            'ADD_TO_GROUP_14',
-            'ADD_TO_GROUP_15',
-            'REMOVE_FROM_GROUP_0',
-            'REMOVE_FROM_GROUP_1',
-            'REMOVE_FROM_GROUP_2',
-            'REMOVE_FROM_GROUP_3',
-            'REMOVE_FROM_GROUP_4',
-            'REMOVE_FROM_GROUP_5',
-            'REMOVE_FROM_GROUP_6',
-            'REMOVE_FROM_GROUP_7',
-            'REMOVE_FROM_GROUP_8',
-            'REMOVE_FROM_GROUP_9',
-            'REMOVE_FROM_GROUP_10',
-            'REMOVE_FROM_GROUP_11',
-            'REMOVE_FROM_GROUP_12',
-            'REMOVE_FROM_GROUP_13',
-            'REMOVE_FROM_GROUP_14',
-            'REMOVE_FROM_GROUP_15',
-            'STORE_DTR_AS_SHORT_ADDRESS',
-            'ENABLE_WRITE_MEMORY',
-            'RESERVED_130',
-            'RESERVED_131',
-            'RESERVED_132',
-            'RESERVED_133',
-            'RESERVED_134',
-            'RESERVED_135',
-            'RESERVED_136',
-            'RESERVED_137',
-            'RESERVED_138',
-            'RESERVED_139',
-            'RESERVED_140',
-            'RESERVED_141',
-            'RESERVED_142',
-            'RESERVED_143',
-            'QUERY_STATUS',
+            'SET SHORT ADDRESS (address)',
+            'ENABLE WRITE MEMORY',
+            'QUERY STATUS',
             'QUERY_CONTROL_GEAR',
             'QUERY_LAMP_FAILURE',
             'QUERY_LAMP_POWER_ON',
@@ -290,16 +201,19 @@ class DALICommandSender(object):
             return 'Fade rate', 255
         elif command == commands[28]:
             return 'Fade time', 255
-        elif command == commands[29] or \
-             command == commands[30]:
+        elif command == commands[29]:
+            return 'Scene number, level', 255
+        elif command == commands[30]:
             return 'Scene number', 255
         elif command == commands[31] or \
              command == commands[32]:
             return 'Group', 255
+        elif command == commands[33]:
+            return 'Address', 63
         else:
             return 'Data', 0
 
-    def send(self, command, address, data):
+    def send(self, command, address, data, data2=None):
         '''Function to send DALI commands.
         '''
         if command == commands[1]:
@@ -349,3 +263,37 @@ class DALICommandSender(object):
         elif command == commands[22]:
             self._interface.send(gear.DTR0(data))
             self._interface.send(gear.SetMaxLevel(address))
+        elif command == commands[23]:
+            self._interface.send(gear.DTR0(data))
+            self._interface.send(gear.SetMinLevel(address))
+        elif command == commands[24]:
+            self._interface.send(gear.DTR0(data))
+            self._interface.send(gear.SetSystemFailureLevel(address))
+        elif command == commands[25]:
+            self._interface.send(gear.DTR0(data))
+            self._interface.send(gear.SetPowerOnLevel(address))
+        elif command == commands[26]:
+            self._interface.send(gear.DTR0(data))
+            self._interface.send(gear.SetFadeTime(address))
+        elif command == commands[27]:
+            self._interface.send(gear.DTR0(data))
+            self._interface.send(gear.SetFadeRate(address))
+        elif command == commands[28]:
+            self._interface.send(gear.DTR0(data))
+            self._interface.send(gear.SetExtendedFadeTime(address))
+        elif command == commands[29]:
+            self._interface.send(gear.DTR0(data2))
+            self._interface.send(gear.SetScene(address, data))
+        elif command == commands[30]:
+            self._interface.send(gear.RemoveFromScene(address, data))
+        elif command == commands[31]:
+            self._interface.send(gear.AddToGroup(address, data))
+        elif command == commands[32]:
+            self._interface.send(gear.RemoveFromGroup(address, data))
+        elif command == commands[33]:
+            self._interface.send(gear.DTR0(data))
+            self._interface.send(gear.SetShortAddress(address))
+        elif command == commands[34]:
+            self._interface.send(gear.EnableWriteMemory(address))
+        elif command == commands[35]:
+            self._interface.send(gear.QueryStatus(address))
