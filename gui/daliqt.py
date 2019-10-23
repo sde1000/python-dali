@@ -73,8 +73,8 @@ class DALIThread(QRunnable):
                 #DALI_device.ballast_id = None
 
 class mainWindow(QMainWindow):
-    # Signal updating DALI message log received in different thread
-    updateLog = pyqtSignal()
+    # Signal handling received DALI messages, receiving made in separate thread
+    updateRecMsg = pyqtSignal()
 
     def __init__(self, app):
         super(mainWindow, self).__init__()
@@ -90,9 +90,9 @@ class mainWindow(QMainWindow):
 
         if DALI_device.device_found != None:
             self.statusBar().showMessage(f"hasseb USB DALI Master device with firmware version {DALI_device.readFirmwareVersion()} found.")
-            self.updateLog.connect(self.tabs_widget.writeDALILog)
+            self.updateRecMsg.connect(self.tabs_widget.writeDALILog)
             self.threadpool = QThreadPool()
-            self.DALIThread = DALIThread(self.updateLog)
+            self.DALIThread = DALIThread(self.updateRecMsg)
             self.threadpool.start(self.DALIThread)
         else:
             self.label = QLabel(self)
@@ -102,6 +102,8 @@ class mainWindow(QMainWindow):
         self.show()
 
 class tabsWidget(QWidget):
+    response_expected = False
+
     def __init__(self, parent):
         super(QWidget, self).__init__(parent)
         self.layout = QHBoxLayout(self)
@@ -147,7 +149,7 @@ class tabsWidget(QWidget):
         # Send commands group box
         self.tab1.sendCommandGroupBox = QGroupBox('Send commands')
         self.tab1.commandsComboBox = QComboBox()
-        self.tab1.commandsComboBox.addItems(DALICommands.commands)
+        self.tab1.commandsComboBox.addItems(DALICommands.commands.values())
         self.tab1.commandsComboBox.activated[str].connect(self.updateCommand)
         # Address group box
         self.tab1.addressGroupBox = QGroupBox('Address')
@@ -262,6 +264,7 @@ class tabsWidget(QWidget):
         global dali_rec_buffer
         global dali_message_type
         global dali_message_received
+        global response_expected
         while dali_message_received.count(float('inf')) != DALI_BUFFER_LENGTH:
             index = dali_message_received.index(min(dali_message_received))
             if dali_message_type[index] == MESSAGE_TYPE_DALI_PC:
@@ -269,6 +272,11 @@ class tabsWidget(QWidget):
                 for i in range(2,4):
                     text += '| ' + "0x{:02x}".format(dali_rec_buffer[index][i]) + ' '
                 text += '|| '
+                if response_expected:
+                    self.tab1.responseByte.clear()
+                    self.tab1.responseCommand.clear()
+                    self.tab1.responseByte.setText(f"{dali_rec_buffer[index][3]}")
+                    self.tab1.responseCommand.setText(f"{DALI_device.extract(dali_rec_buffer[index])}")
             elif dali_message_type[index] == MESSAGE_TYPE_PC_DALI:
                 text = '|| PC -> DALI |'
                 for data in dali_rec_buffer[index]:
@@ -311,7 +319,7 @@ class tabsWidget(QWidget):
                 self.tab1.dataByte.setEnabled(True)
             # If more than 1 data bytes
             # Set scene
-            if self.tab1.commandsComboBox.currentText() == DALICommands.commands[29]:
+            if self.tab1.commandsComboBox.currentText() == DALICommands.commands[0x40]:
                 self.tab1.dataByte2.setVisible(True)
             else:
                 self.tab1.dataByte2.setVisible(False)
@@ -340,18 +348,19 @@ class tabsWidget(QWidget):
 
     @pyqtSlot()
     def sendButtonClick(self):
+        global response_expected
         if self.tab1.addressAll.isChecked():
-            DALI_command_sender.send(self.tab1.commandsComboBox.currentText(),
+            response_expected = DALI_command_sender.send(self.tab1.commandsComboBox.currentText(),
                                                address.Broadcast(),
                                                self.tab1.dataByte.value(),
                                                self.tab1.dataByte2.value())
         elif self.tab1.addressGroup.isChecked():
-            DALI_command_sender.send(self.tab1.commandsComboBox.currentText(),
+            response_expected = DALI_command_sender.send(self.tab1.commandsComboBox.currentText(),
                                                address.Group(self.tab1.addressByte.value()),
                                                self.tab1.dataByte.value(),
                                                self.tab1.dataByte2.value())
         elif self.tab1.addressShort.isChecked():
-            DALI_command_sender.send(self.tab1.commandsComboBox.currentText(),
+            response_expected = DALI_command_sender.send(self.tab1.commandsComboBox.currentText(),
                                                address.Short(self.tab1.addressByte.value()),
                                                self.tab1.dataByte.value(),
                                                self.tab1.dataByte2.value())
