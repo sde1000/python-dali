@@ -1,22 +1,24 @@
-; script to make an dali_gui installer package for windows using NSIS
+; script to make an Dali2Controller installer package for windows using NSIS
 
 ;--------------------------------
 
 ; The name of the installer
-Name "hasseb DaliController2"
+Name "hasseb Dali2Controller"
 
 ; The file to write
 OutFile "install.exe"
 
 ; The default installation directory
-InstallDir $PROGRAMFILES\hasseb\DaliController2
+InstallDir $PROGRAMFILES\hasseb\Dali2Controller
 
 ; Registry key to check for directory (so if you install again, it will 
 ; overwrite the old one automatically)
-InstallDirRegKey HKLM "Software\hasseb_DaliController2" "Install_Dir"
+InstallDirRegKey HKLM "Software\hasseb_Dali2Controller" "Install_Dir"
 
-; Request application privileges for Windows Vista
+; Request admin privileges
 RequestExecutionLevel admin
+
+; Show installation details
 ShowInstDetails Show
 
 ;--------------------------------
@@ -35,7 +37,7 @@ UninstPage instfiles
 ; The stuff to install
 Section "" ;No components page, name is not important
 
-  ; Set output path to the installation directory.
+  ; Set output path to the installation directory
   SetOutPath $INSTDIR
   
   ; Put file there
@@ -43,19 +45,19 @@ Section "" ;No components page, name is not important
   File hidapi.dll
   File hasseb_icon.ico
   
-  ; Add install directory to path; Add a value
+  ; Add install directory to path
   EnVar::AddValue "PATH" $INSTDIR
   Pop $0
   DetailPrint "EnVar::AddValue returned=|$0|"
   
   ; Write the installation path into the registry
-  WriteRegStr HKLM "Software\hasseb_DaliController2" "Install_Dir" "$INSTDIR"
+  WriteRegStr HKLM "Software\hasseb_Dali2Controller" "Install_Dir" "$INSTDIR"
   
   ; Write the uninstall keys for Windows
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\DaliController2" "DisplayName" "hasseb DaliController2"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\DaliController2" "UninstallString" '"$INSTDIR\uninstall.exe"'
-  WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\DaliController2" "NoModify" 1
-  WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\DaliController2" "NoRepair" 1
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Dali2Controller" "DisplayName" "hasseb Dali2Controller"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Dali2Controller" "UninstallString" '"$INSTDIR\uninstall.exe"'
+  WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Dali2Controller" "NoModify" 1
+  WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Dali2Controller" "NoRepair" 1
   WriteUninstaller "$INSTDIR\uninstall.exe"
   
 SectionEnd
@@ -63,15 +65,15 @@ SectionEnd
 ; Optional section (can be disabled by the user)
 Section "Start Menu Shortcuts"
 
-  CreateDirectory "$SMPROGRAMS\DaliController2"
-  CreateShortcut "$SMPROGRAMS\DaliController2\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0
-  CreateShortcut "$SMPROGRAMS\DaliController2\DaliController2.lnk" "$INSTDIR\dali_gui.exe" "" "$INSTDIR\dali_gui.exe" 0
+  CreateDirectory "$SMPROGRAMS\Dali2Controller"
+  CreateShortcut "$SMPROGRAMS\Dali2Controller\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0
+  CreateShortcut "$SMPROGRAMS\Dali2Controller\Dali2Controller.lnk" "$INSTDIR\dali_gui.exe" "" "$INSTDIR\dali_gui.exe" 0
   
 SectionEnd
 
 Section "Desktop Shortcut"
 
-  CreateShortCut "$DESKTOP\DaliController2.lnk" "$INSTDIR\dali_gui.exe" ""
+  CreateShortCut "$DESKTOP\Dali2Controller.lnk" "$INSTDIR\dali_gui.exe" ""
   
 SectionEnd
 
@@ -82,8 +84,8 @@ SectionEnd
 Section "Uninstall"
   
   ; Remove registry keys
-  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\DaliController2"
-  DeleteRegKey HKLM SOFTWARE\hasseb_DaliController2
+  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Dali2Controller"
+  DeleteRegKey HKLM SOFTWARE\hasseb_Dali2Controller
 
   ; Remove files and uninstaller
   Delete "$INSTDIR\dali_gui.exe"
@@ -92,15 +94,14 @@ Section "Uninstall"
   Delete "$INSTDIR\uninstall.exe"
 
   ; Remove shortcuts, if any
-  Delete "$SMPROGRAMS\DaliController2\*.*"
-  Delete "$DESKTOP\DaliController2.lnk"
+  Delete "$SMPROGRAMS\Dali2Controller\*.*"
+  Delete "$DESKTOP\Dali2Controller.lnk"
 
   ; Remove directories used
-  RMDir "$SMPROGRAMS\DaliController2"
+  RMDir "$SMPROGRAMS\Dali2Controller"
   RMDir "$INSTDIR"
   
   ; Remove install directory from PATH
-  ; Delete a value from a variable
   EnVar::DeleteValue "PATH" $INSTDIR
   Pop $0
   DetailPrint "EnVar::DeleteValue returned=|$0|"
