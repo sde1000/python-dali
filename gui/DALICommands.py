@@ -38,19 +38,19 @@ commands = {
     0x81:'ENABLE WRITE MEMORY',
     0x90:'QUERY STATUS',
     0x91:'QUERY CONTROL GEAR PRESENT',
-            # 'QUERY_LAMP_FAILURE',
-            # 'QUERY_LAMP_POWER_ON',
-            # 'QUERY_LIMIT_ERROR',
-            # 'QUERY_RESET_STATE',
-            # 'QUERY_MISSING_SHORT_ADDRESS',
-            # 'QUERY_VERSION_NUMBER',
-            # 'QUERY_CONTENT_DTR',
-            # 'QUERY_DEVICE_TYPE',
-            # 'QUERY_PHYSICAL_MINIMUM_LEVEL',
-            # 'QUERY_POWER_FAILURE',
-            # 'QUERY_CONTENT_DTR1',
-            # 'QUERY_CONTENT_DTR2',
-            # 'RESERVED_158',
+    0x92:'QUERY LAMP_FAILURE',
+    0x93:'QUERY LAMP POWER ON',
+    0x94:'QUERY LIMIT ERROR',
+    0x95:'QUERY RESET STATE',
+    0x96:'QUERY MISSING SHORT ADDRESS',
+    0x97:'QUERY VERSION NUMBER',
+    0x98:'QUERY CONTENT DTR0',
+    0x99:'QUERY DEVICE TYPE',
+    0x9A:'QUERY PHYSICAL MINIMUM',
+    0x9B:'QUERY POWER FAILURE',
+    0x9C:'QUERY_CONTENT_DTR1',
+    0x9D:'QUERY_CONTENT_DTR2',
+    0x9E:'QUERY        # 'RESERVED_158',
             # 'RESERVED_159',
             # 'QUERY_ACTUAL_LEVEL',
             # 'QUERY_MAX_LEVEL',
@@ -188,7 +188,7 @@ class DALICommandSender(object):
         elif command == commands[0x10]:
             return 'Scene number', 15
         elif command == commands[0x23]:
-            return 'Mode number', 255
+            return 'Mode number', 127
         elif command == commands[0x24]:
             return 'Bank number', 255
         elif command == commands[0x2A] or \
@@ -203,12 +203,12 @@ class DALICommandSender(object):
         elif command == commands[0x30]:
             return 'Fade time', 255
         elif command == commands[0x40]:
-            return 'Scene number, level', 255
+            return 'Scene number, level', 15
         elif command == commands[0x50]:
-            return 'Scene number', 255
+            return 'Scene number', 15
         elif command == commands[0x60] or \
              command == commands[0x70]:
-            return 'Group', 255
+            return 'Group', 15
         elif command == commands[0x80]:
             return 'Address', 63
         else:
@@ -333,4 +333,10 @@ class DALICommandSender(object):
         elif command == commands[0x90]:
             main_command = gear.QueryStatus(address)
             self._interface.send(main_command)
+        elif command == commands[0x91]:
+            self._interface.send(gear.QueryControlGearPresent(address))
+        elif command == commands[0x92]:
+            self._interface.send(gear.QueryLampFailure(address))
+        elif command == commands[0x93]:
+            self._interface.send(gear.QueryLampPowerOn(address))
         return main_command.is_query
