@@ -48,13 +48,13 @@ commands = {
     0x99:'QUERY DEVICE TYPE',
     0x9A:'QUERY PHYSICAL MINIMUM',
     0x9B:'QUERY POWER FAILURE',
-    0x9C:'QUERY_CONTENT_DTR1',
-    0x9D:'QUERY_CONTENT_DTR2',
-    0x9E:'QUERY        # 'RESERVED_158',
-            # 'RESERVED_159',
-            # 'QUERY_ACTUAL_LEVEL',
-            # 'QUERY_MAX_LEVEL',
-            # 'QUERY_MIN_LEVEL',
+    0x9C:'QUERY CONTENT DTR1',
+    0x9D:'QUERY CONTENT DTR2',
+    0x9E:'QUERY OPERATING MODE',
+    0x9F:'QUERY LIGHT SOURCE TYPE',
+    0xA0:'QUERY ACTUAL LEVEL',
+    0xA1:'QUERY MAX LEVEL',
+    0xA2:'QUERY MIN LEVEL',
             # 'QUERY_POWER_ON_LEVEL',
             # 'QUERY_SYSTEM_FAILURE_LEVEL',
             # 'QUERY_FADE_TIME_FADE_RATE',
@@ -339,4 +339,34 @@ class DALICommandSender(object):
             self._interface.send(gear.QueryLampFailure(address))
         elif command == commands[0x93]:
             self._interface.send(gear.QueryLampPowerOn(address))
+        elif command == commands[0x94]:
+            self._interface.send(gear.QueryLimitError(address))
+        elif command == commands[0x95]:
+            self._interface.send(gear.QueryResetState(address))
+        elif command == commands[0x96]:
+            self._interface.send(gear.QueryMissingShortAddress(address))
+        elif command == commands[0x97]:
+            self._interface.send(gear.QueryVersionNumber(address))
+        elif command == commands[0x98]:
+            self._interface.send(gear.QueryContentDTR0(address))
+        elif command == commands[0x99]:
+            self._interface.send(gear.QueryDeviceType(address))
+        elif command == commands[0x9A]:
+            self._interface.send(gear.QueryPhysicalMinimum(address))
+        elif command == commands[0x9B]:
+            self._interface.send(gear.QueryPowerFailure(address))
+        elif command == commands[0x9C]:
+            self._interface.send(gear.QueryContentDTR1(address))
+        elif command == commands[0x9D]:
+            self._interface.send(gear.QueryContentDTR2(address))
+        elif command == commands[0x9E]:
+            self._interface.send(gear.QueryOperatingMode(address))
+        elif command == commands[0x9F]:
+            self._interface.send(gear.QueryLightSourceType(address))
+        elif command == commands[0xA0]:
+            self._interface.send(gear.QueryActualLevel(address))
+        elif command == commands[0xA1]:
+            self._interface.send(gear.QueryMaxLevel(address))
+        elif command == commands[0xA2]:
+            self._interface.send(gear.QueryMinLevel(address))
         return main_command.is_query

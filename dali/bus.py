@@ -18,7 +18,7 @@ import time
 class Device(object):
     """Any DALI slave device that has been configured with a short address."""
 
-    def __init__(self, address, randomAddress=None, deviceType=None, name=None, bus=None):
+    def __init__(self, address, randomAddress=None, deviceType=None, group=0, bus=None):
         if not isinstance(address, int) or address < 0 or address > 63:
             raise ValueError("address must be an integer in the range 0..63")
         self.address = address
@@ -28,6 +28,7 @@ class Device(object):
             self.bind(bus)
         self.randomAddress = randomAddress
         self.deviceType = deviceType
+        self.group = group
 
     def bind(self, bus):
         """Bind this device object to a particular DALI bus."""

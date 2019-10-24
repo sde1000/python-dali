@@ -154,8 +154,8 @@ class tabsWidget(QWidget):
         # Address group box
         self.tab1.addressGroupBox = QGroupBox('Address')
         self.tab1.addressAll = QRadioButton('All')
-        self.tab1.addressAll.setChecked(True)
         self.tab1.addressAll.toggled.connect(self.onAddressRadioClicked)
+        self.tab1.addressAll.setChecked(True)
         self.tab1.addressGroup = QRadioButton('Group')
         self.tab1.addressGroup.toggled.connect(self.onAddressRadioClicked)
         self.tab1.addressShort = QRadioButton('Address')
@@ -248,6 +248,7 @@ class tabsWidget(QWidget):
         elif self.tab1.addressShort.isChecked():
             self.tab1.addressByte.setRange(0, 255)
             self.tab1.addressByte.setEnabled(True)
+        updateCommand()
 
     def sendCommandDialog(self):
         sendDlg = QDialog(self)
@@ -302,7 +303,7 @@ class tabsWidget(QWidget):
                 self.tab1.addressByte.setEnabled(False)
                 self.tab1.addressByte.clear()
             elif self.tab1.addressGroup.isChecked():
-                self.tab1.addressByte.setRange(0, 31)
+                self.tab1.addressByte.setRange(0, 15)
                 self.tab1.addressByte.setEnabled(True)
                 self.tab1.addressByte.setValue(int(selectedItem[0].text(2)))
             elif self.tab1.addressShort.isChecked():
