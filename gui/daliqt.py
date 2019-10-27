@@ -24,7 +24,6 @@ dali_message_type = [None for i in range(DALI_BUFFER_LENGTH)]
 dali_rec_buffer_write_idx = 0
 MESSAGE_TYPE_DALI_PC = 0
 MESSAGE_TYPE_PC_DALI = 1
-MESSAGE_TYPE_BALLAST_FOUND = 2
 
 class DALIThread(QRunnable):
     '''
@@ -66,11 +65,7 @@ class DALIThread(QRunnable):
                     dali_rec_buffer_write_idx = 0
                 self.signal.emit()
                 DALI_device.send_message = None
-            #data = DALI_device.ballast_id
-            #if data is not None:
-                #self.fn(2, data)
-                #self.signal.emit()
-                #DALI_device.ballast_id = None
+
 
 class mainWindow(QMainWindow):
     # Signal handling received DALI messages, receiving made in separate thread
@@ -153,6 +148,10 @@ class tabsWidget(QWidget):
         self.tab1.commandsComboBox.activated[str].connect(self.updateCommand)
         # Address group box
         self.tab1.addressGroupBox = QGroupBox('Address')
+        self.tab1.addressByte = QSpinBox()
+        self.tab1.addressByte.setRange(0, 255)
+        self.tab1.addressByte.setEnabled(False)
+        self.tab1.addressByte.clear()
         self.tab1.addressAll = QRadioButton('All')
         self.tab1.addressAll.toggled.connect(self.onAddressRadioClicked)
         self.tab1.addressAll.setChecked(True)
@@ -160,10 +159,6 @@ class tabsWidget(QWidget):
         self.tab1.addressGroup.toggled.connect(self.onAddressRadioClicked)
         self.tab1.addressShort = QRadioButton('Address')
         self.tab1.addressShort.toggled.connect(self.onAddressRadioClicked)
-        self.tab1.addressByte = QSpinBox()
-        self.tab1.addressByte.setRange(0, 255)
-        self.tab1.addressByte.setEnabled(False)
-        self.tab1.addressByte.clear()
         # Data group box
         self.tab1.dataGroupBox = QGroupBox('Data')
         self.tab1.dataByte = QSpinBox()
@@ -248,7 +243,7 @@ class tabsWidget(QWidget):
         elif self.tab1.addressShort.isChecked():
             self.tab1.addressByte.setRange(0, 255)
             self.tab1.addressByte.setEnabled(True)
-        updateCommand()
+        self.updateCommand()
 
     def sendCommandDialog(self):
         sendDlg = QDialog(self)
@@ -283,14 +278,10 @@ class tabsWidget(QWidget):
                 for data in dali_rec_buffer[index]:
                     text += '| ' + "0x{:02x}".format(data) + ' '
                     text += '|| '
-            #elif dali_message_type[index] == MESSAGE_TYPE_BALLAST_FOUND:
             dali_message_received[index] = float('inf')
-        # elif direction == 2:
-        #     text = f"{DALI_device.ballast_id} | {DALI_device.ballast_short_address} | {DALI_device.ballast_type}"
 
             self.tab2.log_textarea.appendPlainText(f"{text}")
             self.tab2.log_textarea.moveCursor(QtGui.QTextCursor.End)
-            #print(text)
 
     # Click actions
     @pyqtSlot()
@@ -319,33 +310,40 @@ class tabsWidget(QWidget):
             else:
                 self.tab1.dataByte.setEnabled(True)
             # If more than 1 data bytes
-            # Set scene
-            if self.tab1.commandsComboBox.currentText() == DALICommands.commands[0x40]:
+            if self.tab1.commandsComboBox.currentText() == DALICommands.commands[0x40] or \
+                    self.tab1.commandsComboBox.currentText() == DALICommands.commands[0xC5]:
                 self.tab1.dataByte2.setVisible(True)
             else:
                 self.tab1.dataByte2.setVisible(False)
 
 
-    @pyqtSlot()
-    def initializeButtonClick(self):
+    def updateDeviceList(self):
         self.tab1.treeWidget.clear()
-        DALI_bus.initialize_bus()
         for i in range(len(DALI_bus._devices)):
-            l1 = QTreeWidgetItem([ f"{DALI_bus._devices[i].address}",  f"{DALI_bus._devices[i].randomAddress}",  "0", f"{DALI_bus._devices[i].deviceType}" ])
+            l1 = QTreeWidgetItem([ f"{DALI_bus._devices[i].address}",
+                                   f"{DALI_bus._devices[i].randomAddress}",
+                                   f"{DALI_bus._devices[i].group}",
+                                   f"{DALI_bus._devices[i].deviceType}" ])
             self.tab1.treeWidget.addTopLevelItem(l1)
         for i in range(4):
             self.tab1.treeWidget.resizeColumnToContents(i)
+
+
+    @pyqtSlot()
+    def initializeButtonClick(self):
+        global response_expected
+        self.tab1.treeWidget.clear()
+        response_expected = False
+        DALI_bus.initialize_bus()
+        self.updateDeviceList()
 
 
     @pyqtSlot()
     def scanButtonClick(self):
         self.tab1.treeWidget.clear()
         DALI_bus.assign_short_addresses()
-        for i in range(len(DALI_bus._devices)):
-            l1 = QTreeWidgetItem([ f"{DALI_bus._devices[i].address}",  f"{DALI_bus._devices[i].randomAddress}",  "0", f"{DALI_bus._devices[i].deviceType}" ])
-            self.tab1.treeWidget.addTopLevelItem(l1)
-        for i in range(4):
-            self.tab1.treeWidget.resizeColumnToContents(i)
+        self.updateDeviceList()
+
 
     @pyqtSlot()
     def sendButtonClick(self):
@@ -365,3 +363,4 @@ class tabsWidget(QWidget):
                                                address.Short(self.tab1.addressByte.value()),
                                                self.tab1.dataByte.value(),
                                                self.tab1.dataByte2.value())
+        self.updateDeviceList()
