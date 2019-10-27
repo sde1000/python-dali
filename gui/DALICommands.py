@@ -55,121 +55,21 @@ commands = {
     0xA0:'QUERY ACTUAL LEVEL',
     0xA1:'QUERY MAX LEVEL',
     0xA2:'QUERY MIN LEVEL',
-            # 'QUERY_POWER_ON_LEVEL',
-            # 'QUERY_SYSTEM_FAILURE_LEVEL',
-            # 'QUERY_FADE_TIME_FADE_RATE',
-            # 'RESERVED_166',
-            # 'RESERVED_167',
-            # 'RESERVED_168',
-            # 'RESERVED_169',
-            # 'RESERVED_170',
-            # 'RESERVED_171',
-            # 'RESERVED_172',
-            # 'RESERVED_173',
-            # 'RESERVED_174',
-            # 'RESERVED_175',
-            # 'QUERY_SCENE_LEVEL_0',
-            # 'QUERY_SCENE_LEVEL_1',
-            # 'QUERY_SCENE_LEVEL_2',
-            # 'QUERY_SCENE_LEVEL_3',
-            # 'QUERY_SCENE_LEVEL_4',
-            # 'QUERY_SCENE_LEVEL_5',
-            # 'QUERY_SCENE_LEVEL_6',
-            # 'QUERY_SCENE_LEVEL_7',
-            # 'QUERY_SCENE_LEVEL_8',
-            # 'QUERY_SCENE_LEVEL_9',
-            # 'QUERY_SCENE_LEVEL_10',
-            # 'QUERY_SCENE_LEVEL_11',
-            # 'QUERY_SCENE_LEVEL_12',
-            # 'QUERY_SCENE_LEVEL_13',
-            # 'QUERY_SCENE_LEVEL_14',
-            # 'QUERY_SCENE_LEVEL_15',
-            # 'QUERY_GROUPS_0_7',
-            # 'QUERY_GROUPS_8_15',
-            # 'QUERY_RANDOM_ADDRESS_H',
-            # 'QUERY_RANDOM_ADDRESS_M',
-            # 'QUERY_RANDOM_ADDRESS_L',
-            # 'READ_MEMORY_LOCATION',
-            # 'RESERVED_198',
-            # 'RESERVED_199',
-            # 'RESERVED_200',
-            # 'RESERVED_201',
-            # 'RESERVED_202',
-            # 'RESERVED_203',
-            # 'RESERVED_204',
-            # 'RESERVED_205',
-            # 'RESERVED_206',
-            # 'RESERVED_207',
-            # 'RESERVED_208',
-            # 'RESERVED_209',
-            # 'RESERVED_210',
-            # 'RESERVED_211',
-            # 'RESERVED_212',
-            # 'RESERVED_213',
-            # 'RESERVED_214',
-            # 'RESERVED_215',
-            # 'RESERVED_216',
-            # 'RESERVED_217',
-            # 'RESERVED_218',
-            # 'RESERVED_219',
-            # 'RESERVED_220',
-            # 'RESERVED_221',
-            # 'RESERVED_222',
-            # 'RESERVED_223',
-            # 'APP_EXTENDED_224',
-            # 'APP_EXTENDED_225',
-            # 'APP_EXTENDED_226',
-            # 'APP_EXTENDED_227',
-            # 'APP_EXTENDED_228',
-            # 'APP_EXTENDED_229',
-            # 'APP_EXTENDED_230',
-            # 'APP_EXTENDED_231',
-            # 'APP_EXTENDED_232',
-            # 'APP_EXTENDED_233',
-            # 'APP_EXTENDED_234',
-            # 'APP_EXTENDED_235',
-            # 'APP_EXTENDED_236',
-            # 'APP_EXTENDED_237',
-            # 'APP_EXTENDED_238',
-            # 'APP_EXTENDED_239',
-            # 'APP_EXTENDED_240',
-            # 'APP_EXTENDED_241',
-            # 'APP_EXTENDED_242',
-            # 'APP_EXTENDED_243',
-            # 'APP_EXTENDED_244',
-            # 'APP_EXTENDED_245',
-            # 'APP_EXTENDED_246',
-            # 'APP_EXTENDED_247',
-            # 'APP_EXTENDED_248',
-            # 'APP_EXTENDED_249',
-            # 'APP_EXTENDED_250',
-            # 'APP_EXTENDED_251',
-            # 'APP_EXTENDED_252',
-            # 'APP_EXTENDED_253',
-            # 'APP_EXTENDED_254',
-            # 'QUERY_EXTENDED_VERSION_NUM',
-            #
-            # # special commands
-            # 'TERMINATE',
-            # 'DATA_TRANSFER_REGISTER_DTR',
-            # 'INITIALISE',
-            # 'RANDOMISE',
-            # 'COMPARE',
-            # 'WITHDRAW',
-            # 'RESERVED_262',
-            # 'RESERVED_263',
-            # 'SEARCH_ADDR_H',
-            # 'SEARCH_ADDR_M',
-            # 'SEARCH_ADDR_L',
-            # 'PROGRAM_SHORT_ADDRESS',
-            # 'VERIFY_SHORT_ADDRESS',
-            # 'QUERY_SHORT_ADDRESS',
-            # 'PHYSICAL_SELECTION',
-            # 'RESERVED_271',
-            # 'ENABLE_DEVICE_TYPE_X',
-            # 'DATA_TRANSFER_REGISTER_1',
-            # 'DATA_TRANSFER_REGISTER_2',
-            # 'WRITE_MEMORY_LOCATION'
+    0xA3:'QUERY POWER ON LEVEL',
+    0xA4:'QUERY SYSTEM FAILURE LEVEL',
+    0xA5:'QUERY FADE TIME/FADE RATE',
+    0xA6:'QUERY MANUFACTURER SPECIFIC MODE',
+    0xA7:'QUERY NEXT DEVICE TYPE',
+    0xA8:'QUERY EXTENDED FADE TIME',
+    0xAA:'QUERY CONTROL GEAR FAILURE',
+    0xB0:'QUERY SCENE LEVEL (scene number)',
+    0xC0:'QUERY GROUPS 0-7',
+    0xC1:'QUERY GROUPS 8-15',
+    0xC2:'QUERY RANDOM ADDRESS (H)',
+    0xC3:'QUERY RANDOM ADDRESS (M)',
+    0xC4:'QUERY RANDOM ADDRESS (L)',
+    0xC5:'READ MEMORY LOCATION (memory bank, location',
+    0xFF:'QUERY EXTENDED VERSION NUMBER',
 }
 
 class DALICommandSender(object):
@@ -211,6 +111,10 @@ class DALICommandSender(object):
             return 'Group', 15
         elif command == commands[0x80]:
             return 'Address', 63
+        elif command == commands[0xB0]:
+            return 'Scene number', 15
+        elif command == commands[0xC5]:
+            return 'Memory bank, location', 255
         else:
             return 'Data', 0
 
@@ -334,39 +238,104 @@ class DALICommandSender(object):
             main_command = gear.QueryStatus(address)
             self._interface.send(main_command)
         elif command == commands[0x91]:
-            self._interface.send(gear.QueryControlGearPresent(address))
+            main_command = gear.QueryControlGearPresent(address)
+            self._interface.send(main_command)
         elif command == commands[0x92]:
-            self._interface.send(gear.QueryLampFailure(address))
+            main_command = gear.QueryLampFailure(address)
+            self._interface.send(main_command)
         elif command == commands[0x93]:
-            self._interface.send(gear.QueryLampPowerOn(address))
+            main_command = gear.QueryLampPowerOn(address)
+            self._interface.send(main_command)
         elif command == commands[0x94]:
-            self._interface.send(gear.QueryLimitError(address))
+            main_command = gear.QueryLimitError(address)
+            self._interface.send(main_command)
         elif command == commands[0x95]:
-            self._interface.send(gear.QueryResetState(address))
+            main_command = gear.QueryResetState(address)
+            self._interface.send(main_command)
         elif command == commands[0x96]:
-            self._interface.send(gear.QueryMissingShortAddress(address))
+            main_command = gear.QueryMissingShortAddress(address)
+            self._interface.send(main_command)
         elif command == commands[0x97]:
-            self._interface.send(gear.QueryVersionNumber(address))
+            main_command = gear.QueryVersionNumber(address)
+            self._interface.send(main_command)
         elif command == commands[0x98]:
-            self._interface.send(gear.QueryContentDTR0(address))
+            main_command = gear.QueryContentDTR0(address)
+            self._interface.send(main_command)
         elif command == commands[0x99]:
-            self._interface.send(gear.QueryDeviceType(address))
+            main_command = gear.QueryDeviceType(address)
+            self._interface.send(main_command)
         elif command == commands[0x9A]:
-            self._interface.send(gear.QueryPhysicalMinimum(address))
+            main_command = gear.QueryPhysicalMinimum(address)
+            self._interface.send(main_command)
         elif command == commands[0x9B]:
-            self._interface.send(gear.QueryPowerFailure(address))
+            main_command = gear.QueryPowerFailure(address)
+            self._interface.send(main_command)
         elif command == commands[0x9C]:
-            self._interface.send(gear.QueryContentDTR1(address))
+            main_command = gear.QueryContentDTR1(address)
+            self._interface.send(main_command)
         elif command == commands[0x9D]:
-            self._interface.send(gear.QueryContentDTR2(address))
+            main_command = gear.QueryContentDTR2(address)
+            self._interface.send(main_command)
         elif command == commands[0x9E]:
-            self._interface.send(gear.QueryOperatingMode(address))
+            main_command = gear.QueryOperatingMode(address)
+            self._interface.send(main_command)
         elif command == commands[0x9F]:
-            self._interface.send(gear.QueryLightSourceType(address))
+            main_command = gear.QueryLightSourceType(address)
+            self._interface.send(main_command)
         elif command == commands[0xA0]:
-            self._interface.send(gear.QueryActualLevel(address))
+            main_command = gear.QueryActualLevel(address)
+            self._interface.send(main_command)
         elif command == commands[0xA1]:
-            self._interface.send(gear.QueryMaxLevel(address))
+            main_command = gear.QueryMaxLevel(address)
+            self._interface.send(main_command)
         elif command == commands[0xA2]:
-            self._interface.send(gear.QueryMinLevel(address))
+            main_command = gear.QueryMinLevel(address)
+            self._interface.send(main_command)
+        elif command == commands[0xA3]:
+            main_command = gear.QueryPowerOnLevel(address)
+            self._interface.send(main_command)
+        elif command == commands[0xA4]:
+            main_command = gear.QuerySystemFailureLevel(address)
+            self._interface.send(main_command)
+        elif command == commands[0xA5]:
+            main_command = gear.QueryFadeTimeFadeRate(address)
+            self._interface.send(main_command)
+        elif command == commands[0xA6]:
+            main_command = gear.QueryManufacturerSpecificMode(address)
+            self._interface.send(main_command)
+        elif command == commands[0xA7]:
+            main_command = gear.QueryNextDeviceType(address)
+            self._interface.send(main_command)
+        elif command == commands[0xA8]:
+            main_command = gear.QueryExtendedFadeTime(address)
+            self._interface.send(main_command)
+        elif command == commands[0xAA]:
+            main_command = gear.QueryControlGearFailure(address)
+            self._interface.send(main_command)
+        elif command == commands[0xB0]:
+            main_command = gear.QuerySceneLevel(address, data)
+            self._interface.send(main_command)
+        elif command == commands[0xC0]:
+            main_command = gear.QueryGroupsZeroToSeven(address)
+            self._interface.send(main_command)
+        elif command == commands[0xC1]:
+            main_command = gear.QueryGroupsEightToFifteen(address)
+            self._interface.send(main_command)
+        elif command == commands[0xC2]:
+            main_command = gear.QueryRandomAddressH(address)
+            self._interface.send(main_command)
+        elif command == commands[0xC3]:
+            main_command = gear.QueryRandomAddressM(address)
+            self._interface.send(main_command)
+        elif command == commands[0xC4]:
+            main_command = gear.QueryRandomAddressL(address)
+            self._interface.send(main_command)
+        elif command == commands[0xC5]:
+            self._interface.send(gear.DTR1(data))
+            self._interface.send(gear.DTR0(data2))
+            main_command = gear.ReadMemoryLocation(address)
+            self._interface.send(main_command)
+        elif command == commands[0xFF]:
+            main_command = gear.QueryExtendedVersionNumber(address)
+            self._interface.send(main_command)
         return main_command.is_query
