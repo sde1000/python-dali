@@ -18,7 +18,7 @@ import time
 class Device(object):
     """Any DALI slave device that has been configured with a short address."""
 
-    def __init__(self, address, randomAddress=None, deviceType=None, group=None, bus=None):
+    def __init__(self, address, randomAddress=None, deviceType=None, groups=None, bus=None):
         if not isinstance(address, int) or address < 0 or address > 63:
             raise ValueError("address must be an integer in the range 0..63")
         self.address = address
@@ -28,7 +28,7 @@ class Device(object):
             self.bind(bus)
         self.randomAddress = randomAddress
         self.deviceType = deviceType
-        self.group = group
+        self.groups = groups
 
     def bind(self, bus):
         """Bind this device object to a particular DALI bus."""
@@ -133,7 +133,10 @@ class Bus(object):
                     if r.value is not True:
                         ProgramShortAddressFailure(new_addr)
                         print(f"Error in programming short address {new_addr}")
+                    #groups1 = i.send(gear.QueryGroupsZeroToSeven(new_addr))
+                    #groups2 = i.send(gear.QueryGroupsEightToFifteen(new_addr))
                     i.send(gear.Withdraw())
+                    #Device(address=new_addr, randomAddress=low, groups=(groups1.value & (groups2.value << 8)), bus=self)
                     Device(address=new_addr, randomAddress=low, bus=self)
                 else:
                     i.send(gear.Terminate())
@@ -156,6 +159,7 @@ class Bus(object):
         self._devices = {}
         self.search_bus(broadcast=True)
         self.query_device_types()
+        self.query_groups()
 
     def query_device_types(self):
         """Find the device types of the devices in the bus
@@ -164,3 +168,12 @@ class Bus(object):
         for sa in range(64):
             if sa in self._devices:
                 self._devices[sa].deviceType = i.send(gear.QueryDeviceType(sa))
+
+    def query_groups(self):
+        """Find the groups of the devices in the bus
+        """
+        i = self.get_interface()
+        for sa in range(64):
+            if sa in self._devices:
+                group1 = i.send(gear.QueryGroupsZeroToSeven(sa))
+                self._devices[sa].groups = group1.value
