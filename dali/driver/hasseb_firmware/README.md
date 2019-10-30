@@ -91,7 +91,7 @@ Bytes 7–9 must be set to zero.
 * Byte 3 is the incrementing sequence number of the command. Sequence
   is incremented by one every frame sent. If a response is expected, the
   sequence number of the response frame equals the sequence number of the
-  sent frame.
+  sent frame. Sequence number have to be in range 1-255, zero is not an allowed sequence number.
   
 * Byte 4 is the length of the DALI data frame in bits. The default is 16
   bits. 24-bit frames will be supported in future.
@@ -105,41 +105,18 @@ Bytes 7–9 must be set to zero.
 
 * Bytes 8-10: Data bytes sent to DALI bus.
 
-XXX I haven't finished assigning data to bits and bytes in this
-section yet!  What do we need?
-
-* Frame length 0-31  (for 1-32 bits)  (4 bits)
-* Expect reply? (1 bit)
-* Transmitter settling time in multiples of 0.1ms (8 bits)
-* Send twice settling time in multiples of 0.1ms (8 bits)
-* Frame data (up to 32 bits)
-
-The device responds with a transmission report.  If sending twice,
-responds with TWO transmission reports.  (NB no reply is expected when
-sending twice.)
-
-Settling time is used to implement transactions.  IEC 62386-101
-defines a range of settling times for each "priority" in table 22, and
-recommends that the precise settling time for each transmission is
-chosen at random within the acceptable range.  Simply specifying
-settling time in the command allows us to move this logic into the
-driver rather than having to implement it in the device.
-
 Reports from interface to host
 ------------------------------
 
-* Byte 0: preamble, alway 0xAA
+* Byte 0: preamble, always 0xAA
 * Byte 1: report type
 * Byte 2: sequence number
 * Bytes 3–9: report dependent
 
 Reports generated in response to a command from the host will include
 the sequence number of the command in byte 2.  Reports generated
-otherwise (for example in response to bus activity) set byte 2 to
-zero.  By convention, the host should not send a command with serial
-number zero.
-
-Any bits or bytes not described below should be set to zero.
+otherwise (for example in response to bus activity) byte 2 is set to
+zero. Commands with sequence number zero are not   allowed from host.
 
 ### List of report types
 
@@ -150,11 +127,11 @@ Any bits or bytes not described below should be set to zero.
 * 0x04: bus status
 * 0x05: unused
 * 0x06: bus configuration
-* 0x07: transmission report
+* 0x07: Transmission report
 
 ### Report descriptions
 
-#### Hardware type
+#### Hardware type, NOT IMPLEMENTED
 
 * Byte 2: capability bits
 ** Has internal power supply
@@ -167,12 +144,12 @@ Any bits or bytes not described below should be set to zero.
 * Byte 2: major version
 * Byte 3: minor version
 
-#### Device serial number
+#### Device serial number, NOT IMPLEMENTED
 
 * Byte 2: length of serial number in bytes; zero means "unsupported"
 * Byte 3–n: serial number, LSB first
 
-#### Bus status
+#### Bus status, NOT IMPLEMENTED
 
 This report can be sent spontaneously when the bus status changes, as
 well as in response to a "read bus status" command.
@@ -184,7 +161,7 @@ well as in response to a "read bus status" command.
 ** Bus shorted
 ** Bus overvoltage
 
-#### Bus configuration
+#### Bus configuration, NOT IMPLEMENTED
 
 * Byte 2: internal power supply maximum current.  If configurable,
   this is the actual maximum current.  If no internal power supply is
@@ -201,26 +178,19 @@ well as in response to a "read bus status" command.
 
 #### Transmission report
 
-Sent spontaneously when a forward frame (and possible corresponding
-backward frame) is observed on the bus.  Sent once or twice in
-response to a "send frame" command.  (If the "send frame" command
-specified send-twice, but the first transmission failed, there will be
-no attempt to transmit a second time and no second transmission
-report.)
+A report sent to host when a DALI message received from the bus.
 
-XXX I haven't finished assigning data to bits and bytes in this
-section yet!  What does this include?
+* Byte 2: Sequence number. If the report is a backward frame, the sequence
+  number equals the sequence number of the forward frame. For a 
+  sniffing byte, the sequence number is zero.
+  
+* Byte 3: Report type
+** 0x01: No response received
+** 0x02: Response data received
+** 0x03: Invalid data
+** 0x04: Answer too early
+** 0x05: Sniffing byte
+** 0x06: Sniffing byte error
 
-Forward frame - up to 32 bits
-Backward frame - 8 bits
-Observed settling time - 16 bits
-Transmission failure flag - 1 bit (never set for reception)
-Backward frame present - 1 bit
-Backward frame framing error - 1 bit
-Backward frame early - 1 bit
+* Byte 4: Data
 
-(Framing errors on backward frames are an expected part of the
-protocol: they mean "multiple units replied".  If there are multiple
-logical units sharing a single physical transmitter, that transmitter
-is *required* to transmit a frame with a framing error if multiple
-logical units are replying.)

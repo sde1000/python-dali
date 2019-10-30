@@ -77,22 +77,26 @@ class HassebDALIUSBDriver(DALIDriver):
     """``DALIDriver`` implementation for Hasseb DALI USB device.
     """
     logger = logging.getLogger('HassebDALIUSBDriver')
+    sn = 0
 
     def construct(self, command):
-        sn = 0  # sequence number
+        # sequence number
+        self.sn = self.sn+1
+        if self.sn > 255:
+            self.sn = 1
         frame_length = 16
         if command.is_query:
             expect_reply = 1
         else:
             expect_reply = 0
         transmitter_settling_time = 0
-        if command.is_config == True:
+        if command.is_config:
             send_twice = 1
         else:
             send_twice = 0
         frame = command.frame.as_byte_sequence
         byte_a, byte_b = frame
-        data = struct.pack('BBBBBBBBBB', 0xAA, HASSEB_DALI_FRAME, sn,
+        data = struct.pack('BBBBBBBBBB', 0xAA, HASSEB_DALI_FRAME, self.sn,
                            frame_length, expect_reply,
                            transmitter_settling_time, send_twice,
                            byte_a, byte_b,
@@ -107,14 +111,14 @@ class HassebDALIUSBDriver(DALIDriver):
             self.logger.debug("No Data Available")
             return HassebDALIUSBNoDataAvailable()
         elif data[1] == HASSEB_DALI_FRAME:
-            response_status = data[2]
+            response_status = data[3]
             if response_status == HASSEB_DRIVER_NO_ANSWER:
                 # 1: "No Answer"
                 self.logger.debug("No Answer")
                 return HassebDALIUSBNoAnswer()
             elif response_status == HASSEB_DRIVER_OK:
                 # 2: "OK"
-                return BackwardFrame(data[3])
+                return BackwardFrame(data[4])
             elif response_status == HASSEB_DRIVER_INVALID_ANSWER:
                 # 3: "Invalid Answer"
                 return BackwardFrameError(255)
@@ -136,7 +140,6 @@ class HassebDALIUSBDriver(DALIDriver):
             self.device = hidapi.hid_open(HASSEB_USB_VENDOR, HASSEB_USB_PRODUCT, None)
             self.device_found = 1
         except:
-            print("No USB DALI Master device found")
             self.device_found = None
 
     def readFirmwareVersion(self):

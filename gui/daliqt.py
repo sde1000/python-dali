@@ -265,13 +265,13 @@ class tabsWidget(QWidget):
             index = dali_message_received.index(min(dali_message_received))
             if dali_message_type[index] == MESSAGE_TYPE_DALI_PC:
                 text = '|| DALI -> PC |'
-                for i in range(2,4):
+                for i in range(3,5):
                     text += '| ' + "0x{:02x}".format(dali_rec_buffer[index][i]) + ' '
                 text += '|| '
                 if response_expected:
                     self.tab1.responseByte.clear()
                     self.tab1.responseCommand.clear()
-                    self.tab1.responseByte.setText(f"{dali_rec_buffer[index][3]}")
+                    self.tab1.responseByte.setText(f"{dali_rec_buffer[index][4]}")
                     self.tab1.responseCommand.setText(f"{DALI_device.extract(dali_rec_buffer[index])}")
             elif dali_message_type[index] == MESSAGE_TYPE_PC_DALI:
                 text = '|| PC -> DALI |'
@@ -322,7 +322,7 @@ class tabsWidget(QWidget):
         for i in range(len(DALI_bus._devices)):
             l1 = QTreeWidgetItem([ f"{DALI_bus._devices[i].address}",
                                    f"{DALI_bus._devices[i].randomAddress}",
-                                   f"{DALI_bus._devices[i].group}",
+                                   f"{DALI_bus._devices[i].groups}",
                                    f"{DALI_bus._devices[i].deviceType}" ])
             self.tab1.treeWidget.addTopLevelItem(l1)
         for i in range(4):
