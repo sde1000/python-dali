@@ -130,10 +130,7 @@ class Bus(object):
                     if r.value is not True:
                         ProgramShortAddressFailure(new_addr)
                         print(f"Error in programming short address {new_addr}")
-                    #groups1 = i.send(gear.QueryGroupsZeroToSeven(new_addr))
-                    #groups2 = i.send(gear.QueryGroupsEightToFifteen(new_addr))
                     i.send(gear.Withdraw())
-                    #Device(address=new_addr, randomAddress=low, groups=(groups1.value & (groups2.value << 8)), bus=self)
                     Device(address=new_addr, randomAddress=low, bus=self)
                 else:
                     i.send(gear.Terminate())
@@ -149,6 +146,8 @@ class Bus(object):
         if not self._bus_scanned:
             self.scan()
         self.search_bus(broadcast=False)
+        self.query_device_types()
+        self.query_groups()
 
     def initialize_bus(self):
         """Initialize bus
@@ -173,4 +172,49 @@ class Bus(object):
         for sa in range(64):
             if sa in self._devices:
                 group1 = i.send(gear.QueryGroupsZeroToSeven(sa))
-                self._devices[sa].groups = group1.value
+                group2 = i.send(gear.QueryGroupsEightToFifteen(sa))
+                try:
+                    group1 = group1.value.as_integer
+                    group2 = group2.value.as_integer
+                except:
+                    self._devices[sa].group = None
+                else:
+                    self._devices[sa].groups = self.parse_groups(group1, group2)
+
+    def parse_groups(self, group1, group2):
+        groups = ""
+        if (group1 & 1<<0) != 0:
+            groups += "0, "
+        if (group1 & 1<<1) != 0:
+            groups += "1, "
+        if (group1 & 1<<2) != 0:
+            groups += "2, "
+        if (group1 & 1<<3) != 0:
+            groups += "3, "
+        if (group1 & 1<<4) != 0:
+            groups += "4, "
+        if(group1 & 1 << 5) != 0:
+            groups += "5, "
+        if (group1 & 1 << 6) != 0:
+            groups += "6, "
+        if (group1 & 1 << 7) != 0:
+            groups += "7, "
+        if (group2 & 1 << 0) != 0:
+            groups += "8, "
+        if (group2 & 1 << 1) != 0:
+            groups += "9, "
+        if (group2 & 1 << 2) != 0:
+            groups += "10, "
+        if (group2 & 1 << 3) != 0:
+            groups += "11, "
+        if (group2 & 1 << 4) != 0:
+            groups += "12, "
+        if (group2 & 1 << 5) != 0:
+            groups += "13, "
+        if (group2 & 1 << 6) != 0:
+            groups += "14, "
+        if (group2 & 1 << 7) != 0:
+            groups += "15, "
+        groups = groups[:-2]
+
+        return groups
