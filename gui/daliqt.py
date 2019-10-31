@@ -274,10 +274,10 @@ class tabsWidget(QWidget):
                     self.tab1.responseByte.setText(f"{dali_rec_buffer[index][4]}")
                     self.tab1.responseCommand.setText(f"{DALI_device.extract(dali_rec_buffer[index])}")
             elif dali_message_type[index] == MESSAGE_TYPE_PC_DALI:
-                text = '|| PC -> DALI |'
+                text = '|| PC -> DALI || '
                 for data in dali_rec_buffer[index]:
-                    text += '| ' + "0x{:02x}".format(data) + ' '
-                    text += '|| '
+                    text += " 0x{:02x}".format(data) + ' |'
+                text += '|'
             dali_message_received[index] = float('inf')
 
             self.tab2.log_textarea.appendPlainText(f"{text}")

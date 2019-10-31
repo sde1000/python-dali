@@ -89,7 +89,7 @@ class HassebDALIUSBDriver(DALIDriver):
             expect_reply = 0
         transmitter_settling_time = 0
         if command.is_config:
-            send_twice = 1
+            send_twice = 10 # 10 ms delay between messages
         else:
             send_twice = 0
         frame = command.frame.as_byte_sequence
