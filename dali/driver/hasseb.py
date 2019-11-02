@@ -141,15 +141,18 @@ class HassebDALIUSBDriver(DALIDriver):
             self.device_found = None
 
     def readFirmwareVersion(self):
+        self.sn = self.sn + 1
+        if self.sn > 255:
+            self.sn = 1
         data = struct.pack('BBBBBBBBBB', 0xAA, HASSEB_READ_FIRMWARE_VERSION,
-                            0, 0, 0, 0, 0, 0, 0, 0)
+                            self.sn, 0, 0, 0, 0, 0, 0, 0)
         hidapi.hid_write(self.device, data)
         data = hidapi.hid_read(self.device, 10)
         for i in range(0,100):
             if data[1] != HASSEB_READ_FIRMWARE_VERSION:
                 data = hidapi.hid_read(self.device, 10)
             else:
-                return f"{data[2]}.{data[3]}"
+                return f"{data[3]}.{data[4]}"
         return f"VERSION_ERROR"
 
 
