@@ -67,7 +67,7 @@ a message including the device serial number.
 
 The device responds with a bus status message.
 
-#### 0X05, Enter firmware update mode, NOT IMPLEMENTED
+#### 0x05, Enter firmware update mode, NOT IMPLEMENTED
 
 The device restarts in firmware update mode.
 

@@ -73,7 +73,7 @@ class mainWindow(QMainWindow):
 
     def __init__(self, app):
         super(mainWindow, self).__init__()
-        self.title = 'DALI Controller'
+        self.title = 'DALI2Controller'
         screen_resolution = app.desktop().screenGeometry()
         self.width, self.height = screen_resolution.width()/2, screen_resolution.height()/2
         self.left = screen_resolution.width()/2-self.width/2
@@ -228,10 +228,6 @@ class tabsWidget(QWidget):
         # Add tabs to the widget
         self.layout.addWidget(self.tabs)
         self.setLayout(self.layout)
-
-        for i in range(10):
-            l1 = QTreeWidgetItem([ f"{i}",  f"{i}",  "0", "asdf" ])
-            self.tab1.treeWidget.addTopLevelItem(l1)
 
     def onAddressRadioClicked(self):
         if self.tab1.addressAll.isChecked():
