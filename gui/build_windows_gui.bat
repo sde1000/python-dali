@@ -1,3 +1,8 @@
+rmdir /q/s __pycache__
+rmdir /q/s build
+rmdir /q/s dist
+del install.exe
+
 pyinstaller --add-binary hidapi.dll;. dali_gui.py
 pyinstaller --add-binary hidapi.dll;. --add-binary hasseb_icon.ico;. --icon hasseb_icon.ico -F --noconsole dali_gui.py
 copy hidapi.dll dist\

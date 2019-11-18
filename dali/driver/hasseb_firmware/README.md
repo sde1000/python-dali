@@ -28,10 +28,10 @@ reserved for future use.
 Reports from host to interface
 ------------------------------
 
-* Byte 0: preamble, always 0xAA
-* Byte 1: command code
-* Byte 2: sequence number
-* Bytes 3–9: command dependent
+* Byte 0: Preamble, always 0xAA
+* Byte 1: Command code
+* Byte 2: Sequence number
+* Bytes 3–9: Command dependent
 
 ### List of command codes
 
@@ -40,7 +40,7 @@ Reports from host to interface
 * 0x02: Read firmware version
 * 0x03: Read device serial number
 * 0x04: Read bus status
-* 0x05: Enter firmware update mode
+* 0x05: Configure device
 * 0x06: Configure bus
 * 0x07: Send frame
 
@@ -67,9 +67,12 @@ a message including the device serial number.
 
 The device responds with a bus status message.
 
-#### 0x05, Enter firmware update mode, NOT IMPLEMENTED
+#### 0x05, Configure device
 
-The device restarts in firmware update mode.
+* Byte 3: Mode
+  * 0x00: Default mode
+  * 0x01: Data sniffing mode, in this mode the device is only listening the
+          DALI bus and can not send DALI frames
 
 #### 0x06, Configure bus, NOT IMPLEMENTED
 
@@ -123,10 +126,10 @@ current status.
 Reports from interface to host
 ------------------------------
 
-* Byte 0: preamble, always 0xAA
-* Byte 1: report type
-* Byte 2: sequence number
-* Bytes 3–9: report dependent
+* Byte 0: Preamble, always 0xAA
+* Byte 1: Report type
+* Byte 2: Sequence number
+* Bytes 3–9: Report dependent
 
 Reports generated in response to a command from the host will include
 the sequence number of the command in byte 2. Reports generated
@@ -135,13 +138,13 @@ zero. Commands with sequence number zero are not allowed from host.
 
 ### List of report types
 
-* 0x00: no operation, ignore this report
-* 0x01: hardware type
-* 0x02: firmware version
-* 0x03: device serial number
-* 0x04: bus status
-* 0x05: unused
-* 0x06: bus configuration
+* 0x00: No operation, ignore this report
+* 0x01: Hardware type
+* 0x02: Firmware version
+* 0x03: Device serial number
+* 0x04: Bus status
+* 0x05: Unused
+* 0x06: Bus configuration
 * 0x07: Transmission report
 
 ### Report descriptions
@@ -149,9 +152,9 @@ zero. Commands with sequence number zero are not allowed from host.
 #### Hardware type, NOT IMPLEMENTED
 
 * Byte 3: capability bits
-  * Has internal power supply
-  * Internal power supply can be switched in software
-  * Can detect bus over voltage
+  * Bit0: Has internal power supply
+  * Bit1: Internal power supply can be switched in software
+  * Bit2: Can detect bus over voltage
 * Bytes 4–n: reserved, zero
 
 #### Firmware version
@@ -207,5 +210,7 @@ A report sent to host when a DALI message is received from the bus.
   * 0x05: Sniffing byte
   * 0x06: Sniffing byte error
 
-* Byte 4: Data
+* Byte 4: Data length in bits
+
+* Byte 5-7: Data
 

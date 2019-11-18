@@ -27,6 +27,7 @@ HASSEB_USB_VENDOR = 0x04cc
 HASSEB_USB_PRODUCT = 0x0802
 
 HASSEB_READ_FIRMWARE_VERSION    = 0x02
+HASSEB_CONFIGURE_DEVICE         = 0x05
 HASSEB_DALI_FRAME               = 0X07
 
 HASSEB_DRIVER_NO_DATA_AVAILABLE = 0
@@ -116,9 +117,9 @@ class HassebDALIUSBDriver(DALIDriver):
                 # 1: "No Answer"
                 self.logger.debug("No Answer")
                 return HassebDALIUSBNoAnswer()
-            elif response_status == HASSEB_DRIVER_OK:
+            elif response_status == HASSEB_DRIVER_OK and data[4] == 1:
                 # 2: "OK"
-                return BackwardFrame(data[4])
+                return BackwardFrame(data[5])
             elif response_status == HASSEB_DRIVER_INVALID_ANSWER:
                 # 3: "Invalid Answer"
                 return BackwardFrameError(255)
@@ -151,11 +152,30 @@ class HassebDALIUSBDriver(DALIDriver):
         hidapi.hid_write(self.device, data)
         data = hidapi.hid_read(self.device, 10)
         for i in range(0,100):
-            if data[1] != HASSEB_READ_FIRMWARE_VERSION:
-                data = hidapi.hid_read(self.device, 10)
+            if len(data)==10:
+                if data[1] != HASSEB_READ_FIRMWARE_VERSION:
+                    data = hidapi.hid_read(self.device, 10)
+                else:
+                    return f"{data[3]}.{data[4]}"
             else:
-                return f"{data[3]}.{data[4]}"
+                data = hidapi.hid_read(self.device, 10)
         return f"VERSION_ERROR"
+
+    def enableSniffing(self):
+        self.sn = self.sn + 1
+        if self.sn > 255:
+            self.sn = 1
+        data = struct.pack('BBBBBBBBBB', 0xAA, HASSEB_CONFIGURE_DEVICE,
+                            self.sn, 0x01, 0, 0, 0, 0, 0, 0)
+        hidapi.hid_write(self.device, data)
+
+    def disableSniffing(self):
+        self.sn = self.sn + 1
+        if self.sn > 255:
+            self.sn = 1
+        data = struct.pack('BBBBBBBBBB', 0xAA, HASSEB_CONFIGURE_DEVICE,
+                            self.sn, 0, 0, 0, 0, 0, 0, 0)
+        hidapi.hid_write(self.device, data)
 
 
 class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
@@ -171,7 +191,7 @@ class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
     send_message = None
 
     def send(self, command):
-        time.sleep(0.05)    # a delay between sent messages for better reliability
+        time.sleep(0.02)    # a delay between sent messages need to be at lest 22*417 µs
         self._response_message = None
         data = self.construct(command)
         self.send_message = struct.pack('BB', data[7], data[8])
@@ -187,7 +207,7 @@ class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
             return
 
     def receive(self):
-        data = hidapi.hid_read(self.device, 6)
+        data = hidapi.hid_read(self.device, 10)
         frame = self.extract(data)
         if isinstance(frame, HassebDALIUSBNoDataAvailable):
             return
@@ -198,8 +218,6 @@ class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
             elif self._pending and isinstance(frame, HassebDALIUSBNoAnswer):
                 self._response_message = None
                 self._pending = None
-            else:
-                self.logger.error("Received frame for no pending command")
         return data
 
     def wait_for_response(self):

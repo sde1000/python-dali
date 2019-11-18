@@ -97,10 +97,12 @@ class mainWindow(QMainWindow):
         self.show()
 
 class tabsWidget(QWidget):
+    global response_expected
     response_expected = False
 
     def __init__(self, parent):
         super(QWidget, self).__init__(parent)
+        self.parent = parent
         self.layout = QHBoxLayout(self)
 
         # Initialize tab screen
@@ -133,6 +135,10 @@ class tabsWidget(QWidget):
         self.tab1.initializeButton.clicked.connect(self.initializeButtonClick)
         self.tab1.scanButton = QPushButton('Scan bus')
         self.tab1.scanButton.clicked.connect(self.scanButtonClick)
+        self.tab1.sniffEnableButton = QPushButton('Enable sniffing')
+        self.tab1.sniffEnableButton.clicked.connect(self.sniffEnableButtonClick)
+        self.tab1.sniffDisableButton = QPushButton('Disable sniffing')
+        self.tab1.sniffDisableButton.clicked.connect(self.sniffDisableButtonClick)
         # TreeWidget
         self.tab1.treeWidget = QTreeWidget(self)
         self.tab1.treeWidget.setColumnCount(4)
@@ -178,6 +184,8 @@ class tabsWidget(QWidget):
         # Buttons
         self.tab1.layout_controls.addWidget(self.tab1.initializeButton)
         self.tab1.layout_controls.addWidget(self.tab1.scanButton)
+        self.tab1.layout_controls.addWidget(self.tab1.sniffEnableButton)
+        self.tab1.layout_controls.addWidget(self.tab1.sniffDisableButton)
         # Treeview
         self.tab1.layout_treeWidget.addWidget(self.tab1.treeWidget)
         self.tab1.layout_treeWidget.addWidget(self.tab1.sendCommandGroupBox)
@@ -260,8 +268,11 @@ class tabsWidget(QWidget):
         while dali_message_received.count(float('inf')) != DALI_BUFFER_LENGTH:
             index = dali_message_received.index(min(dali_message_received))
             if dali_message_type[index] == MESSAGE_TYPE_DALI_PC:
-                text = '|| DALI -> PC |'
-                for i in range(3,5):
+                if dali_rec_buffer[index][3] == 0x05 or dali_rec_buffer[index][3] == 0x06:
+                    text = '|| SNIF |'
+                else:
+                    text = '|| DALI -> PC |'
+                for i in range(5,(5+dali_rec_buffer[index][4])):
                     text += '| ' + "0x{:02x}".format(dali_rec_buffer[index][i]) + ' '
                 text += '|| '
                 if response_expected:
@@ -270,7 +281,7 @@ class tabsWidget(QWidget):
                     self.tab1.responseByte.setText(f"{dali_rec_buffer[index][4]}")
                     self.tab1.responseCommand.setText(f"{DALI_device.extract(dali_rec_buffer[index])}")
             elif dali_message_type[index] == MESSAGE_TYPE_PC_DALI:
-                text = '|| PC -> DALI || '
+                text = '|| PC -> DALI ||'
                 for data in dali_rec_buffer[index]:
                     text += " 0x{:02x}".format(data) + ' |'
                 text += '|'
@@ -285,15 +296,14 @@ class tabsWidget(QWidget):
         '''Read selected short or group address from the treeWidget if selected, else do nothing
         '''
         selectedItem = self.tab1.treeWidget.selectedItems()
-        if selectedItem and self.tab1.commandsComboBox.currentText():
+        if self.tab1.commandsComboBox.currentText():
             if self.tab1.addressAll.isChecked():
                 self.tab1.addressByte.setEnabled(False)
                 self.tab1.addressByte.clear()
             elif self.tab1.addressGroup.isChecked():
                 self.tab1.addressByte.setRange(0, 15)
                 self.tab1.addressByte.setEnabled(True)
-                self.tab1.addressByte.setValue(int(selectedItem[0].text(2)))
-            elif self.tab1.addressShort.isChecked():
+            elif selectedItem and self.tab1.addressShort.isChecked():
                 self.tab1.addressByte.setRange(0, 255)
                 self.tab1.addressByte.setEnabled(True)
                 self.tab1.addressByte.setValue(int(selectedItem[0].text(0)))
@@ -339,6 +349,18 @@ class tabsWidget(QWidget):
         self.tab1.treeWidget.clear()
         DALI_bus.assign_short_addresses()
         self.updateDeviceList()
+
+
+    @pyqtSlot()
+    def sniffEnableButtonClick(self):
+        DALI_device.enableSniffing()
+        self.parent.statusBar().showMessage("Sniffing enabled")
+
+
+    @pyqtSlot()
+    def sniffDisableButtonClick(self):
+        DALI_device.enableSniffing()
+        self.parent.statusBar().showMessage("Sniffing disabled")
 
 
     @pyqtSlot()

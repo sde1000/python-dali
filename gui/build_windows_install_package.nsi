@@ -55,7 +55,7 @@ Section "" ;No components page, name is not important
   
   ; Write the uninstall keys for Windows
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Dali2Controller" "DisplayName" "hasseb Dali2Controller"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Dali2Controller" "UninstallString" '"$INSTDIR\uninstall.exe"'
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Dali2Controller" "UninstallString" "$INSTDIR\uninstall.exe"
   WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Dali2Controller" "NoModify" 1
   WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Dali2Controller" "NoRepair" 1
   WriteUninstaller "$INSTDIR\uninstall.exe"

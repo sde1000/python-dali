@@ -10,9 +10,12 @@ git clone https://github.com/hasseb/python-dali.git
 sudo apt-get install python3-pip  
 sudo apt install python3-distutils  
 sudo pip3 install setuptools  
+cd python-dali  
 sudo python3 setup.py install  
 sudo pip3 install PyQt5  
 sudo pip3 install pyusb  
+
+cd ..  
 
 To install hidapi:  
 sudo apt update  
@@ -45,7 +48,11 @@ pip install PyQt5
 pip install pyusb  
 pip install hidapi
 
+cd ..
+
 To install pyhidapi:  
 git clone https://github.com/awelkie/pyhidapi.git  
 cd pyhidapi  
 sudo python3 setup.py install  
+
+To build the Windows installer package, you need to have NSIS installed in your Program Files folder.
