@@ -68,7 +68,7 @@ commands = {
     0xC2:'QUERY RANDOM ADDRESS (H)',
     0xC3:'QUERY RANDOM ADDRESS (M)',
     0xC4:'QUERY RANDOM ADDRESS (L)',
-    0xC5:'READ MEMORY LOCATION (memory bank, location',
+    0xC5:'READ MEMORY LOCATION (memory bank, location)',
     0xFF:'QUERY EXTENDED VERSION NUMBER',
 }
 

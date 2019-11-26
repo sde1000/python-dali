@@ -268,8 +268,10 @@ class tabsWidget(QWidget):
         while dali_message_received.count(float('inf')) != DALI_BUFFER_LENGTH:
             index = dali_message_received.index(min(dali_message_received))
             if dali_message_type[index] == MESSAGE_TYPE_DALI_PC:
-                if dali_rec_buffer[index][3] == 0x05 or dali_rec_buffer[index][3] == 0x06:
+                if dali_rec_buffer[index][3] == 0x05:
                     text = '|| SNIF |'
+                elif dali_rec_buffer[index][3] == 0x06:
+                    text = '|| SNIF ERROR |'
                 else:
                     text = '|| DALI -> PC |'
                 for i in range(5,(5+dali_rec_buffer[index][4])):

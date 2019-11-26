@@ -71,8 +71,7 @@ The device responds with a bus status message.
 
 * Byte 3: Mode
   * 0x00: Default mode
-  * 0x01: Data sniffing mode, in this mode the device is only listening the
-          DALI bus and can not send DALI frames
+  * 0x01: Data sniffing mode, in this mode the device can also sniff the bus
 
 #### 0x06, Configure bus, NOT IMPLEMENTED
 
