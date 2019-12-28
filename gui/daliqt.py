@@ -361,7 +361,7 @@ class tabsWidget(QWidget):
 
     @pyqtSlot()
     def sniffDisableButtonClick(self):
-        DALI_device.enableSniffing()
+        DALI_device.disableSniffing()
         self.parent.statusBar().showMessage("Sniffing disabled")
 
 
