@@ -12,7 +12,7 @@ sudo apt install python3-distutils
 sudo pip3 install setuptools  
 cd python-dali  
 sudo python3 setup.py install  
-sudo pip3 install PyQt5  
+sudo pip3 install PyQt5==5.14.0  
 sudo pip3 install pyusb  
 
 cd ..  
