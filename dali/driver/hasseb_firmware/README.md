@@ -5,10 +5,14 @@ hasseb USB DALI Master firmware
 
 The firmware of hasseb USB DALI Master can be updated through USB. By booting
 the device with jumper JP1 short circuited, the device appears as a mass
-storage to your computer. The firmware can be update by removing the old
+storage to your computer. In Windows operating system the firmware can be update by removing the old
 firmware.bin file from the mass storage and copying the new firmware to the
 device. The name of the firmware file does not need to be changed. The most
 resent firmware can be found in this folder.
+
+In Linux operating systems you need to run the update_firmware.sh script using
+  
+```sudo bash update_firmware.sh```
 
 ## hasseb USB DALI Master protocol
 
