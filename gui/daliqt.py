@@ -3,6 +3,7 @@
 from PyQt5 import QtGui
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
+from PyQt5.QtWidgets import QApplication
 
 from dali.driver import hasseb
 from dali import bus
@@ -11,6 +12,7 @@ import DALICommands
 
 # Create hasseb USB DALI driver instance to handle messages
 DALI_device = hasseb.AsyncHassebDALIUSBDriver()
+DALI_device.setEventHandler(QApplication.processEvents)
 # Create DALI bus
 DALI_bus = bus.Bus('hasseb DALI bus',   DALI_device)
 # Instance to send individual DALI commands
@@ -349,7 +351,10 @@ class tabsWidget(QWidget):
     @pyqtSlot()
     def scanButtonClick(self):
         self.tab1.treeWidget.clear()
-        DALI_bus.assign_short_addresses()
+        try:
+            DALI_bus.assign_short_addresses()
+        except Exception as err:
+            print(str(err))
         self.updateDeviceList()
 
 

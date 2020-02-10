@@ -128,8 +128,8 @@ class Bus(object):
                     i.send(gear.ProgramShortAddress(new_addr))
                     r = i.send(gear.VerifyShortAddress(new_addr))
                     if r.value is not True:
-                        ProgramShortAddressFailure(new_addr)
-                        print(f"Error in programming short address {new_addr}")
+                        raise ProgramShortAddressFailure(new_addr)
+                        #print(f"Error in programming short address {new_addr}")
                     i.send(gear.Withdraw())
                     Device(address=new_addr, randomAddress=low, bus=self)
                 else:
