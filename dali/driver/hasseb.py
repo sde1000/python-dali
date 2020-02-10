@@ -15,8 +15,6 @@ from dali.exceptions import ResponseError, MissingResponse
 
 from dali.gear.general import *
 
-from PyQt5.QtWidgets import QApplication
-
 import time
 
 import hidapi
@@ -88,6 +86,9 @@ class HassebDALIUSBDriver(DALIDriver):
             self.device_found = 1
         except:
             self.device_found = None
+
+    def wait_for_response(self):
+        raise NotImplementedError()
 
     def construct(self, command):
         # sequence number
@@ -214,8 +215,15 @@ class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
     """Asynchronous ``DALIDriver`` implementation for Hasseb DALI USB device.
        Using asynchronous driver requires a separate thread for receiving
        DALI messages. receive() function needs to be called continously
-       from the thread.
+       from the thread. You can also define an event processor function which
+       is called when wating for a response to prevent hangin of the program.
     """
+
+    #def __init__(self, processEvents):
+    #    self._processEvents = processEvents
+
+    def setEventHandler(self, processEvents):
+        self._processEvents = processEvents
 
     def wait_for_response(self):
         """Wait for response message. Timeout 2000 ms.
@@ -224,7 +232,7 @@ class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
             if not self._pending:
                 return
             else:
-                QApplication.processEvents()
+                self._processEvents()
                 time.sleep(0.01)
 
 
