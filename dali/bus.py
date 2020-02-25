@@ -15,7 +15,7 @@ import time
 class Device(object):
     """Any DALI slave device that has been configured with a short address."""
 
-    def __init__(self, address, randomAddress=None, deviceType=None, groups=None, bus=None):
+    def __init__(self, address, name=None, bus=None, randomAddress=None, deviceType=None, groups=None):
         if not isinstance(address, int) or address < 0 or address > 63:
             raise ValueError("address must be an integer in the range 0..63")
         self.address = address
