@@ -132,6 +132,21 @@ class TestCommands(unittest.TestCase):
                 self.assertHasAttr(
                     c._response(None), 'raw_value')
 
+    def test_queryextendedversionnumber(self):
+        """all gear types implement QueryExtendedVersionNumber"""
+        # dali.gear.general.QueryExtendedVersionNumber is an oddity:
+        # it is only used when preceded by EnableDeviceType with
+        # devicetype != 0.  Ensure that there is an implementation of
+        # this command for all supported device types.
+        qevn_frame = generalgear.QueryExtendedVersionNumber(
+            address.Broadcast()).frame
+        for devicetype in command.Command._supported_devicetypes:
+            qevn = command.from_frame(qevn_frame, devicetype=devicetype)
+            self.assertIsNotNone(qevn)
+            self.assertEqual(qevn.devicetype, devicetype)
+            self.assertEqual(qevn.__class__.__name__,
+                             'QueryExtendedVersionNumber')
+
 
 if __name__ == '__main__':
     unittest.main()

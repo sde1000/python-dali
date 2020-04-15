@@ -2,7 +2,7 @@
 
 from __future__ import unicode_literals
 from dali import command
-from dali.gear.general import _StandardCommand
+from dali.gear.general import _StandardCommand, QueryExtendedVersionNumberMixin
 
 
 class _EmergencyLightingCommand(_StandardCommand):
@@ -359,3 +359,7 @@ class PerformDTRSelectedFunction(_EmergencyLightingControlCommand):
     0 - restore factory default settings
     """
     _cmdval = 0xfe
+
+class QueryExtendedVersionNumber(QueryExtendedVersionNumberMixin,
+                                 _EmergencyLightingCommand):
+    pass

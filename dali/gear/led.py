@@ -2,7 +2,7 @@
 
 from __future__ import unicode_literals
 from dali import command
-from dali.gear.general import _StandardCommand
+from dali.gear.general import _StandardCommand, QueryExtendedVersionNumberMixin
 
 
 class _LEDCommand(_StandardCommand):
@@ -210,3 +210,7 @@ class QueryFastFadeTime(_LEDCommand):
 class QueryMinFastFadeTime(_LEDCommand):
     _response = command.Response
     _cmdval = 0xfe
+
+class QueryExtendedVersionNumber(QueryExtendedVersionNumberMixin,
+                                 _LEDCommand):
+    pass

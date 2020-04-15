@@ -908,17 +908,27 @@ class ReadMemoryLocation(_StandardCommand):
     _response = command.Response
 
 
-class QueryExtendedVersionNumber(_StandardCommand):
+class QueryExtendedVersionNumberMixin:
     """Query Extended Version Number
 
     This command must be preceded by an appropriate EnableDeviceType
     command; if it is not then it will be ignored.  Returns the
     version number of Part 2xx of IEC 62386 for the corresponding
     device type as an 8-bit number.
+
+    Device type implementations must provide their own implementation
+    of QueryExtendedVersionNumber using this mixin.
     """
     _cmdval = 0xff
     _response = command.NumericResponse
 
+class QueryExtendedVersionNumber(QueryExtendedVersionNumberMixin,
+                                 _StandardCommand):
+    """Query Extended Version Number
+
+    For device type 0, this command is ignored.
+    """
+    pass
 
 ###############################################################################
 # Commands from Table 16 start here

@@ -2,7 +2,7 @@
 
 from __future__ import unicode_literals
 from dali import command
-from dali.gear.general import _StandardCommand
+from dali.gear.general import _StandardCommand, QueryExtendedVersionNumberMixin
 
 
 class _IncandescentCommand(_StandardCommand):
@@ -280,3 +280,7 @@ class QueryReferenceMeasurementFailed(_IncandescentCommand):
     """
     _cmdval = 0xfa
     _response = command.YesNoResponse
+
+class QueryExtendedVersionNumber(QueryExtendedVersionNumberMixin,
+                                 _IncandescentCommand):
+    pass

@@ -26,6 +26,11 @@ class CommandTracker(type):
         else:
             if cls.__name__[0] != '_':
                 cls._commands.append(cls)
+        if not hasattr(cls, '_supported_devicetypes'):
+            cls._supported_devicetypes = set()
+        else:
+            if cls.devicetype != 0:
+                cls._supported_devicetypes.add(cls.devicetype)
 
     @classmethod
     def commands(cls):
