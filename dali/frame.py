@@ -1,23 +1,10 @@
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-from dali.compat import python_2_unicode_compatible
 import struct
-import sys
-
-
-if sys.version_info < (3,):
-    _integer_types = (int, long)
-else:
-    _integer_types = (int,)
-
 
 _bad_init_data = TypeError(
     "data must be a sequence of integers all in the range 0..255 or an integer")
 
 
-@python_2_unicode_compatible
-class Frame(object):
+class Frame:
     """A DALI frame.
 
     A Frame consists of one start bit, n data bits, and one stop
@@ -40,7 +27,7 @@ class Frame(object):
             raise ValueError(
                 "Frames must contain at least 1 data bit")
         self._bits = bits
-        if isinstance(data, _integer_types):
+        if isinstance(data, int):
             self._data = data
         else:
             d = 0
@@ -133,7 +120,7 @@ class Frame(object):
         """
         if isinstance(key, slice):
             hi, lo = self._readslice(key)
-            if not isinstance(value, _integer_types):
+            if not isinstance(value, int):
                 raise TypeError("value must be an integer")
             if value.bit_length() > (hi + 1 - lo):
                 raise ValueError("value will not fit in supplied slice")
@@ -255,7 +242,7 @@ class BackwardFrame(Frame):
     """
 
     def __init__(self, data):
-        Frame.__init__(self, 8, data)
+        super().__init__(8, data)
 
     def __str__(self):
         return "{}({})".format(self.__class__.__name__, self._data)
@@ -270,5 +257,5 @@ class BackwardFrameError(BackwardFrame):
     """
 
     def __init__(self, data):
-        BackwardFrame.__init__(self, data)
+        super().__init__(data)
         self._error = True

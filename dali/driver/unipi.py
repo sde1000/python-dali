@@ -4,7 +4,6 @@
 [unipi axon]: https://kb.unipi.technology/en:hw:01-axon
 [unipi implementation]: https://git.unipi.technology/UniPi/unipi-python-lighting/commit/0975401ba6358d475ef46532ff5271bee46d601a
 """
-from __future__ import print_function, unicode_literals
 
 import logging
 from time import sleep
@@ -111,7 +110,7 @@ class RemoteArm:
         return 3.3 * self.vr2 / self.vr1
 
 
-class DALINoResponse(object):
+class DALINoResponse:
     def __repr__(self):
         return "NO_RESPONSE"
 

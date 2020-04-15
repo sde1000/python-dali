@@ -1,4 +1,3 @@
-from __future__ import print_function
 from dali.command import Command
 from dali.exceptions import CommunicationError
 import dali.frame
@@ -12,7 +11,7 @@ import struct
 ###############################################################################
 
 
-class DaliServer(object):
+class DaliServer:
     """Communicate with daliserver
     (https://github.com/onitake/daliserver)
 
@@ -45,7 +44,7 @@ class DaliServer(object):
         assert isinstance(command, Command)
         message = struct.pack("BB", 2, 0) + command.frame.pack
 
-        logging.info(u"command: {}{}".format(
+        logging.info("command: {}{}".format(
             command, " (twice)" if command.is_config else ""))
 
         # Set a default result which may be used if the first send fails
@@ -66,7 +65,7 @@ class DaliServer(object):
         response = self.unpack_response(command, result)
 
         if response:
-            logging.info(u"  -> {0}".format(response))
+            logging.info("  -> {0}".format(response))
 
         return response
 

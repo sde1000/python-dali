@@ -22,13 +22,13 @@ HASSEB_DRIVER_NO_ANSWER = 1
 HASSEB_DRIVER_OK = 2
 HASSEB_DRIVER_INVALID_ANSWER = 3
 
-class HassebDALIUSBNoDataAvailable(object):
+class HassebDALIUSBNoDataAvailable:
     def __repr__(self):
         return 'NO DATA AVAILABLE'
 
     __str__ = __repr__
 
-class HassebDALIUSBNoAnswer(object):
+class HassebDALIUSBNoAnswer:
     def __repr__(self):
         return 'NO_ANSWER'
 

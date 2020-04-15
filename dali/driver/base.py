@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 import threading
 import usb
 
@@ -7,7 +6,7 @@ import usb
 # driver contracts
 ###############################################################################
 
-class DALIDriver(object):
+class DALIDriver:
     """Object for handling wrapped DALI frames sent to and received from
     DALI drivers.
 
@@ -94,7 +93,7 @@ class AsyncDALIDriver(DALIDriver):
 # backend contracts
 ###############################################################################
 
-class Backend(object):
+class Backend:
     """Object representing a backend.
     """
 

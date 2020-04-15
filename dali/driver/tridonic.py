@@ -1,5 +1,3 @@
-from __future__ import print_function
-from __future__ import unicode_literals
 from dali.command import from_frame
 from dali.driver.base import AsyncDALIDriver
 from dali.driver.base import DALIDriver
@@ -71,7 +69,7 @@ def _log_frame(logger, exco, dr, ty, ec, ad, cm, st, sn):
     ))
 
 
-class TridonicDALIUSBNoResponse(object):
+class TridonicDALIUSBNoResponse:
 
     def __repr__(self):
         return 'NO_RESPONSE'

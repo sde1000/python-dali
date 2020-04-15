@@ -1,6 +1,5 @@
 """Commands and responses from IEC 62386 part 205."""
 
-from __future__ import unicode_literals
 from dali import command
 from dali.gear.general import _StandardCommand, QueryExtendedVersionNumberMixin
 

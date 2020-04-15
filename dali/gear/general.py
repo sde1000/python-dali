@@ -7,13 +7,9 @@ Where a command name is or contains an abbreviation, for example DAPC
 or DTR0, the abbreviation has been kept in capitals.
 """
 
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
 from dali import command
 from dali import address
 from dali import frame
-from dali.compat import python_2_unicode_compatible
 
 
 class _GearCommand(command.Command):
@@ -24,7 +20,6 @@ class _GearCommand(command.Command):
 # Commands from Table 15 start here
 ###############################################################################
 
-@python_2_unicode_compatible
 class _StandardCommand(_GearCommand):
     """A standard command as defined in Table 15 of IEC 62386-102
 
@@ -73,7 +68,7 @@ class _StandardCommand(_GearCommand):
         f = frame.ForwardFrame(16, 0x100 | self._cmdval | param)
         self.destination.add_to_frame(f)
 
-        _GearCommand.__init__(self, f)
+        super().__init__(f)
 
     @classmethod
     def from_frame(cls, frame):
@@ -113,7 +108,6 @@ class _StandardCommand(_GearCommand):
         return "%s(%s)" % (self.__class__.__name__, self.destination)
 
 
-@python_2_unicode_compatible
 class DAPC(_GearCommand):
     """Direct Arc Power Control
 
@@ -146,7 +140,7 @@ class DAPC(_GearCommand):
 
         f = frame.ForwardFrame(16, power)
         self.destination.add_to_frame(f)
-        _GearCommand.__init__(self, f)
+        super().__init__(f)
 
     @classmethod
     def from_frame(cls, f):
@@ -616,7 +610,6 @@ class QueryContentDTR0(_StandardCommand):
     _response = command.NumericResponse
 
 
-@python_2_unicode_compatible
 class QueryDeviceTypeResponse(command.Response):
     _types = {0: "fluorescent lamp",
               1: "emergency lighting",
@@ -766,7 +759,6 @@ class QuerySystemFailureLevel(_StandardCommand):
     _response = command.NumericResponseMask
 
 
-@python_2_unicode_compatible
 class QueryFadeTimeAndRateResponse(command.NumericResponse):
     @property
     def fade_time(self):
@@ -934,7 +926,6 @@ class QueryExtendedVersionNumber(QueryExtendedVersionNumberMixin,
 # Commands from Table 16 start here
 ###############################################################################
 
-@python_2_unicode_compatible
 class _SpecialCommand(_GearCommand):
     """A special command as defined in Table 16 of IEC 62386-102.
 
@@ -985,7 +976,6 @@ class _SpecialCommand(_GearCommand):
         return "{}()".format(self.__class__.__name__)
 
 
-@python_2_unicode_compatible
 class _ShortAddrSpecialCommand(_SpecialCommand):
     """A special command that has a short address as its parameter."""
 
@@ -1032,7 +1022,6 @@ class DTR0(_SpecialCommand):
     _uses_dtr0 = True
 
 
-@python_2_unicode_compatible
 class Initialise(command.Command):
     """This command shall start or re-trigger a timer for 15 minutes; the
     addressing commands shall only be processed within this period.

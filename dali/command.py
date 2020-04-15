@@ -1,12 +1,7 @@
 """Declaration of base types for dali commands and their responses."""
 
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
 from dali import address
 from dali import frame
-from dali.compat import add_metaclass
-from dali.compat import python_2_unicode_compatible
 from dali.exceptions import MissingResponse
 from dali.exceptions import ResponseError
 import warnings
@@ -40,8 +35,7 @@ class CommandTracker(type):
         return cls._commands
 
 
-@python_2_unicode_compatible
-class Response(object):
+class Response:
     """Some DALI commands cause a response from the addressed devices.
 
     The response is either an 8-bit backward frame encoding 8-bit data
@@ -121,9 +115,7 @@ class BitmapResponseBitDict(type):
             cls._bit_properties = bd
 
 
-@python_2_unicode_compatible
-@add_metaclass(BitmapResponseBitDict)
-class BitmapResponse(Response):
+class BitmapResponse(Response, metaclass=BitmapResponseBitDict):
     """A response that consists of several named bits.
 
     Bits are listed in subclasses with the least-sigificant bit first.
@@ -168,9 +160,7 @@ class BitmapResponse(Response):
             return "{}".format(e)
 
 
-@python_2_unicode_compatible
-@add_metaclass(CommandTracker)
-class Command(object):
+class Command(metaclass=CommandTracker):
     """A command frame.
 
     Subclasses must provide a class method "from_frame" which, when

@@ -41,13 +41,9 @@ it may use to address multiple instances at once.  Instances can be
 members of up to three instance groups.
 """
 
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
 from dali import command
 from dali import address
 from dali import frame
-from dali.compat import python_2_unicode_compatible
 
 
 class _DeviceCommand(command.Command):
@@ -59,7 +55,6 @@ class _DeviceCommand(command.Command):
 # Commands from Table 21 start here
 ###############################################################################
 
-@python_2_unicode_compatible
 class _StandardDeviceCommand(_DeviceCommand):
     """A standard command addressed to a control device.
 
@@ -79,7 +74,7 @@ class _StandardDeviceCommand(_DeviceCommand):
         f = frame.ForwardFrame(24, 0x1fe00 | self._opcode)
         self.destination.add_to_frame(f)
 
-        _DeviceCommand.__init__(self, f)
+        super().__init__(f)
 
     @classmethod
     def from_frame(cls, frame):
@@ -419,7 +414,6 @@ class QueryResetState(_StandardDeviceCommand):
     _opcode = 0x48
 
 
-@python_2_unicode_compatible
 class _StandardInstanceCommand(_DeviceCommand):
     """A standard command addressed to a control device instance."""
     _opcode = None
@@ -437,7 +431,7 @@ class _StandardInstanceCommand(_DeviceCommand):
         self.destination.add_to_frame(f)
         self.instance.add_to_frame(f)
 
-        _DeviceCommand.__init__(self, f)
+        super().__init__(f)
 
     @classmethod
     def from_frame(cls, frame):
@@ -628,7 +622,6 @@ QueryEventFilterH = QueryEventFilterSixteenToTwentyThree
 # Commands from Table 22 start here
 ###############################################################################
 
-@python_2_unicode_compatible
 class _SpecialDeviceCommand(_DeviceCommand):
     _addr = None
     _instance = None
@@ -637,8 +630,8 @@ class _SpecialDeviceCommand(_DeviceCommand):
     def __init__(self):
         if self._addr is None or self._instance is None:
             raise NotImplementedError
-        _DeviceCommand.__init__(
-            self, frame.ForwardFrame(24, (
+        super().__init__(
+            frame.ForwardFrame(24, (
                 self._addr, self._instance, self._opcode)))
 
     @classmethod
@@ -655,7 +648,6 @@ class _SpecialDeviceCommand(_DeviceCommand):
         return "{}()".format(self.__class__.__name__)
 
 
-@python_2_unicode_compatible
 class _SpecialDeviceCommandOneParam(_SpecialDeviceCommand):
     def __init__(self, param):
         if not isinstance(param, int):
@@ -663,7 +655,7 @@ class _SpecialDeviceCommandOneParam(_SpecialDeviceCommand):
         if param < 0 or param > 255:
             raise ValueError("parameter must be in the range 0..255")
         self._opcode = param
-        _SpecialDeviceCommand.__init__(self)
+        super().__init__()
 
     @classmethod
     def from_frame(cls, frame):
@@ -678,7 +670,6 @@ class _SpecialDeviceCommandOneParam(_SpecialDeviceCommand):
         return "{}({:02x})".format(self.__class__.__name__, self._opcode)
 
 
-@python_2_unicode_compatible
 class _SpecialDeviceCommandTwoParam(_SpecialDeviceCommand):
     def __init__(self, a, b):
         if not isinstance(a, int) or not isinstance(b, int):
@@ -687,7 +678,7 @@ class _SpecialDeviceCommandTwoParam(_SpecialDeviceCommand):
             raise ValueError("parameters must be in the range 0..255")
         self._instance = a
         self._opcode = b
-        _SpecialDeviceCommand.__init__(self)
+        super().__init__()
 
     @classmethod
     def from_frame(cls, frame):

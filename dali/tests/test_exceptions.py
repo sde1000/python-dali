@@ -1,23 +1,9 @@
-from __future__ import absolute_import
-from __future__ import unicode_literals
 import unittest
 import sys
 import os
 
 
-try:
-    import dali
-except ImportError:
-    # Realign paths, and try import again
-    # Since pyCharm's unittest runner fails on relative imports
-    path = os.path
-    PACKAGE_PARENT = '../..'
-    SCRIPT_DIR = path.dirname(
-        path.realpath(path.join(os.getcwd(), path.expanduser(__file__)))
-    )
-    sys.path.append(path.normpath(path.join(SCRIPT_DIR, PACKAGE_PARENT)))
-
-
+import dali
 from dali import exceptions
 
 

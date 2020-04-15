@@ -20,11 +20,6 @@ Addressing for event messages is described in IEC 62386-103 section
 7.2.2.  Decoding of event messages is currently not implemented.
 """
 
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-from dali.compat import add_metaclass
-from dali.compat import python_2_unicode_compatible
 from dali.exceptions import IncompatibleFrame
 
 
@@ -45,9 +40,7 @@ class AddressTracker(type):
             cls._addrtypes.append(cls)
 
 
-@python_2_unicode_compatible
-@add_metaclass(AddressTracker)
-class Address(object):
+class Address(metaclass=AddressTracker):
     """An address for one or more ballasts."""
 
     @classmethod
@@ -71,7 +64,6 @@ class Address(object):
         return "<no address>"
 
 
-@python_2_unicode_compatible
 class Broadcast(Address):
     """All control gear or devices connected to the network."""
 
@@ -99,7 +91,6 @@ class Broadcast(Address):
         return "<broadcast>"
 
 
-@python_2_unicode_compatible
 class BroadcastUnaddressed(Address):
     """All unaddressed control gear or devices
 
@@ -131,7 +122,6 @@ class BroadcastUnaddressed(Address):
         return "<broadcast unaddressed>"
 
 
-@python_2_unicode_compatible
 class Group(Address):
     """All control gear or devices that are members of the specified group."""
 
@@ -171,7 +161,6 @@ class Group(Address):
         return "<group %d>" % self.group
 
 
-@python_2_unicode_compatible
 class Short(Address):
     """The control gear or device that has this address.
 
@@ -223,7 +212,7 @@ from_frame = Address.from_frame
 # Instance bytes
 ###############################################################################
 
-class Instance(object):
+class Instance:
     def __init__(self):
         raise NotImplementedError
 
@@ -231,7 +220,6 @@ class Instance(object):
         raise NotImplementedError
 
 
-@python_2_unicode_compatible
 class ReservedInstance(Instance):
     """A reserved instance byte."""
 
@@ -247,7 +235,6 @@ class ReservedInstance(Instance):
         return "ReservedInstance({:02x})".format(self._value)
 
 
-@python_2_unicode_compatible
 class _AddressedInstance(Instance):
     _flags = None
     def __init__(self, value):
@@ -266,7 +253,6 @@ class _AddressedInstance(Instance):
         return "{}({})".format(self.__class__.__name__, self._value)
 
 
-@python_2_unicode_compatible
 class _UnaddressedInstance(Instance):
     _val = None
 
