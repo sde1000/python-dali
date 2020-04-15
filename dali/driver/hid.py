@@ -193,8 +193,8 @@ class hid:
             command_sent = False
             while not command_sent:
                 try:
-                    if command._devicetype != 0:
-                        await self._send_raw(EnableDeviceType(command._devicetype))
+                    if command.devicetype != 0:
+                        await self._send_raw(EnableDeviceType(command.devicetype))
                     response = await self._send_raw(command)
                     command_sent = True
                 except CommunicationError:

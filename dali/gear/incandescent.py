@@ -6,7 +6,7 @@ from dali.gear.general import _StandardCommand
 
 
 class _IncandescentCommand(_StandardCommand):
-    _devicetype = 4
+    devicetype = 4
 
 
 class _IncandescentConfigCommand(_IncandescentCommand):

@@ -6,7 +6,7 @@ from dali.gear.general import _StandardCommand
 
 
 class _EmergencyLightingCommand(_StandardCommand):
-    _devicetype = 1
+    devicetype = 1
 
 
 class _EmergencyLightingControlCommand(_EmergencyLightingCommand):

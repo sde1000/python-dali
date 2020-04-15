@@ -9,6 +9,7 @@ from dali.compat import add_metaclass
 from dali.compat import python_2_unicode_compatible
 from dali.exceptions import MissingResponse
 from dali.exceptions import ResponseError
+import warnings
 
 
 class CommandTracker(type):
@@ -189,9 +190,18 @@ class Command(object):
 
     # 16-bit frames may be interpreted differently if they are
     # preceded by the EnableDeviceType command.  If a command needs
-    # EnableDeviceType(foo) to be sent first, override _devicetype to
+    # EnableDeviceType(foo) to be sent first, override devicetype to
     # foo.  This parameter is ignored for all other frame lengths.
-    _devicetype = 0
+    devicetype = 0
+
+    # devicetype used to be called "_devicetype".  This property is
+    # here for compatibility with older code that relied on this.  It
+    # will be removed in a future release.
+    @property
+    def _devicetype(self):
+        warnings.warn("'_devicetype' has been renamed to 'devicetype'",
+                      DeprecationWarning, stacklevel=2)
+        return self.devicetype
 
     def __init__(self, f):
         assert isinstance(f, frame.ForwardFrame)
@@ -215,7 +225,7 @@ class Command(object):
             return
 
         for dc in cls._commands:
-            if dc._devicetype != devicetype:
+            if dc.devicetype != devicetype:
                 continue
             r = dc.from_frame(f)
             if r:

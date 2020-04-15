@@ -6,7 +6,7 @@ from dali.gear.general import _StandardCommand
 
 
 class _LEDCommand(_StandardCommand):
-    _devicetype = 6
+    devicetype = 6
 
 
 class _LEDConfigCommand(_LEDCommand):
