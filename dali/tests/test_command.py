@@ -50,6 +50,12 @@ class TestCommands(unittest.TestCase):
                 'class {} not covered by tests'.format(cls.__name__)
             )
 
+    def test_required_attributes(self):
+        """all command classes support required attributes"""
+        for cls in command.Command._commands:
+            self.assertHasAttr(cls, "appctrl")
+            self.assertIsInstance(cls.appctrl, bool)
+
     def test_roundtrip(self):
         """all frames survive command.from_frame()"""
         for fs, d, dt in _test_pattern():

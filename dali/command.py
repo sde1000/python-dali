@@ -175,7 +175,7 @@ class Command(metaclass=CommandTracker):
     # 16 of IEC 62386-102 and tables 21 and 22 of IEC 62386-103.
     # Override them in subclasses if there is a tick in the
     # appropriate column.
-    _appctrl = False
+    appctrl = False
     _inputdev = False
     _uses_dtr0 = False
     _uses_dtr1 = False
