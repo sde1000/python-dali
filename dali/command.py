@@ -175,12 +175,15 @@ class Command(metaclass=CommandTracker):
     # 16 of IEC 62386-102 and tables 21 and 22 of IEC 62386-103.
     # Override them in subclasses if there is a tick in the
     # appropriate column.
+    #
+    # "response" is None if no response is expected, or a Response
+    # class to process the response.
     appctrl = False
     inputdev = False
     uses_dtr0 = False
     uses_dtr1 = False
     uses_dtr2 = False
-    _response = None
+    response = None
     _sendtwice = False
 
     # 16-bit frames may be interpreted differently if they are
@@ -247,13 +250,18 @@ class Command(metaclass=CommandTracker):
     @property
     def is_query(self):
         """Does this command return a result?"""
-        return self._response is not None
+        return self.response is not None
 
     @property
-    def response(self):
+    def _response(self):
         """If this command returns a result, use this class for the response.
+
+        This property is provided for compatibility with old code.
+        Access the "response" attribute directly.
         """
-        return self._response
+        warnings.warn("Access 'response' directly instead of using '_response'",
+                      DeprecationWarning, stacklevel=2)
+        return self.response
 
     @staticmethod
     def _check_destination(destination):

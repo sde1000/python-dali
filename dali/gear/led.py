@@ -84,7 +84,7 @@ class LEDGearTypeResponse(command.BitmapResponse):
             "d.c. supply possible"]
 
 class QueryGearType(_LEDCommand):
-    _response = LEDGearTypeResponse
+    response = LEDGearTypeResponse
     _cmdval = 0xed
 
 
@@ -94,7 +94,7 @@ class QueryDimmingCurve(_LEDCommand):
     0 - standard
     1 - linear
     """
-    _response = command.Response
+    response = command.Response
     _cmdval = 0xee
 
 
@@ -105,7 +105,7 @@ class LEDOperatingModesResponse(command.BitmapResponse):
             "high current pulse mode"]
 
 class QueryPossibleOperatingModes(_LEDCommand):
-    _response = LEDOperatingModesResponse
+    response = LEDOperatingModesResponse
     _cmdval = 0xef
 
 
@@ -120,7 +120,7 @@ class LEDFeaturesResponse(command.BitmapResponse):
             "physical selection supported"]
 
 class QueryFeatures(_LEDCommand):
-    _response = LEDFeaturesResponse
+    response = LEDFeaturesResponse
     _cmdval = 0xf0
 
 
@@ -135,57 +135,57 @@ class LEDFailureStatusResponse(command.BitmapResponse):
             "reference measurement failed"]
 
 class QueryFailureStatus(_LEDCommand):
-    _response = LEDFailureStatusResponse
+    response = LEDFailureStatusResponse
     _cmdval = 0xf1
 
 
 class QueryShortCircuit(_LEDCommand):
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
     _cmdval = 0xf2
 
 
 class QueryOpenCircuit(_LEDCommand):
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
     _cmdval = 0xf3
 
 
 class QueryLoadDecrease(_LEDCommand):
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
     _cmdval = 0xf4
 
 
 class QueryLoadIncrease(_LEDCommand):
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
     _cmdval = 0xf5
 
 
 class QueryCurrentProtectorActive(_LEDCommand):
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
     _cmdval = 0xf6
 
 
 class QueryThermalShutDown(_LEDCommand):
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
     _cmdval = 0xf7
 
 
 class QueryThermalOverload(_LEDCommand):
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
     _cmdval = 0xf8
 
 
 class QueryReferenceRunning(_LEDCommand):
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
     _cmdval = 0xf9
 
 
 class QueryReferenceMeasurementFailed(_LEDCommand):
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
     _cmdval = 0xfa
 
 
 class QueryCurrentProtectorEnabled(_LEDCommand):
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
     _cmdval = 0xfb
 
 
@@ -197,17 +197,17 @@ class LEDOperatingModeResponse(command.BitmapResponse):
             "non-logarithmic dimming curve active"]
 
 class QueryOperatingMode(_LEDCommand):
-    _response = LEDOperatingModeResponse
+    response = LEDOperatingModeResponse
     _cmdval = 0xfc
 
 
 class QueryFastFadeTime(_LEDCommand):
-    _response = command.Response
+    response = command.Response
     _cmdval = 0xfd
 
 
 class QueryMinFastFadeTime(_LEDCommand):
-    _response = command.Response
+    response = command.Response
     _cmdval = 0xfe
 
 class QueryExtendedVersionNumber(QueryExtendedVersionNumberMixin,

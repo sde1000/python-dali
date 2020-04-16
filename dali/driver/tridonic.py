@@ -297,7 +297,7 @@ class AsyncTridonicDALIUSBDriver(TridonicDALIUSBDriver, AsyncDALIDriver):
             return
         command = request['command']
         if command.response:
-            callback(command._response(frame), **request['kw'])
+            callback(command.response(frame), **request['kw'])
         else:
             callback(frame, **request['kw'])
 

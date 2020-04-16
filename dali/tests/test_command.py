@@ -63,6 +63,9 @@ class TestCommands(unittest.TestCase):
             self.assertIsInstance(cls.uses_dtr1, bool)
             self.assertHasAttr(cls, "uses_dtr2")
             self.assertIsInstance(cls.uses_dtr2, bool)
+            self.assertHasAttr(cls, "response")
+            if cls.response != None:
+                self.assertIsInstance(cls.response(None), command.Response)
 
     def test_roundtrip(self):
         """all frames survive command.from_frame()"""
@@ -97,10 +100,10 @@ class TestCommands(unittest.TestCase):
         for fs, d, dt in _test_pattern():
             f = frame.ForwardFrame(fs, d)
             c = command.from_frame(f, dt)
-            if c._response:
-                self.assertRaises(TypeError, lambda: c._response('wibble'))
+            if c.response:
+                self.assertRaises(TypeError, lambda: c.response('wibble'))
                 self.assertHasAttr(
-                    c._response(None), 'raw_value')
+                    c.response(None), 'raw_value')
 
     def test_queryextendedversionnumber(self):
         """all gear types implement QueryExtendedVersionNumber"""

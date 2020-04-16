@@ -208,7 +208,7 @@ class SyncUnipiDALIDriver(UnipiDALIDriver, SyncDALIDriver):
         self._send_command(command)
 
         # If the command does not expect a response, we're done
-        if command._response is None:
+        if command.response is None:
             return DALI_NO_RESPONSE
 
         # Check for command responses

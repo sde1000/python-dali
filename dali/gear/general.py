@@ -547,25 +547,25 @@ class QueryStatus(_StandardCommand):
       been received since the last power-on
     """
     _cmdval = 0x90
-    _response = QueryStatusResponse
+    response = QueryStatusResponse
 
 
 class QueryControlGearPresent(_StandardCommand):
     """Ask if there is a ballast that is able to communicate."""
     _cmdval = 0x91
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
 
 
 class QueryLampFailure(_StandardCommand):
     """Ask if there is a lamp problem."""
     _cmdval = 0x92
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
 
 
 class QueryLampPowerOn(_StandardCommand):
     """Ask if there is a lamp operating."""
     _cmdval = 0x93
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
 
 
 class QueryLimitError(_StandardCommand):
@@ -574,13 +574,13 @@ class QueryLimitError(_StandardCommand):
     of 0 is always "OFF" and is not an error.)
     """
     _cmdval = 0x94
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
 
 
 class QueryResetState(_StandardCommand):
     """Ask if the ballast is in "RESET STATE"."""
     _cmdval = 0x95
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
 
 
 class QueryMissingShortAddress(_StandardCommand):
@@ -588,7 +588,7 @@ class QueryMissingShortAddress(_StandardCommand):
     that the ballast has no short address.
     """
     _cmdval = 0x96
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
 
 
 class QueryVersionNumber(_StandardCommand):
@@ -600,14 +600,14 @@ class QueryVersionNumber(_StandardCommand):
     The answer shall be the content of memory bank 0 location 0x16.
     """
     _cmdval = 0x97
-    _response = command.NumericResponse
+    response = command.NumericResponse
 
 
 class QueryContentDTR0(_StandardCommand):
     """Return the contents of DTR0."""
     _cmdval = 0x98
     uses_dtr0 = True
-    _response = command.NumericResponse
+    response = command.NumericResponse
 
 
 class QueryDeviceTypeResponse(command.Response):
@@ -655,13 +655,13 @@ class QueryDeviceType(_StandardCommand):
     response will be MASK (0xff).
     """
     _cmdval = 0x99
-    _response = QueryDeviceTypeResponse
+    response = QueryDeviceTypeResponse
 
 
 class QueryPhysicalMinimum(_StandardCommand):
     """Return the physical minimum level for this device."""
     _cmdval = 0x9a
-    _response = command.NumericResponseMask
+    response = command.NumericResponseMask
 
 
 class QueryPowerFailure(_StandardCommand):
@@ -669,27 +669,27 @@ class QueryPowerFailure(_StandardCommand):
     control command since the last power-on.
     """
     _cmdval = 0x9b
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
 
 
 class QueryContentDTR1(_StandardCommand):
     """Return the contents of DTR1."""
     _cmdval = 0x9c
     uses_dtr1 = True
-    _response = command.NumericResponse
+    response = command.NumericResponse
 
 
 class QueryContentDTR2(_StandardCommand):
     """Return the contents of DTR2."""
     _cmdval = 0x9d
     uses_dtr2 = True
-    _response = command.NumericResponse
+    response = command.NumericResponse
 
 
 class QueryOperatingMode(_StandardCommand):
     """Query Operating Mode"""
     _cmdval = 0x9e
-    _response = command.NumericResponse
+    response = command.NumericResponse
 
 
 class QueryLightSourceType(_StandardCommand):
@@ -724,7 +724,7 @@ class QueryLightSourceType(_StandardCommand):
     uses_dtr0 = True
     uses_dtr1 = True
     uses_dtr2 = True
-    _response = command.NumericResponseMask
+    response = command.NumericResponseMask
 
 
 class QueryActualLevel(_StandardCommand):
@@ -732,31 +732,31 @@ class QueryActualLevel(_StandardCommand):
     lamp error occurs the answer will be 0xff ("MASK").
     """
     _cmdval = 0xa0
-    _response = command.NumericResponseMask
+    response = command.NumericResponseMask
 
 
 class QueryMaxLevel(_StandardCommand):
     """Return "MAX LEVEL"."""
     _cmdval = 0xa1
-    _response = command.NumericResponseMask
+    response = command.NumericResponseMask
 
 
 class QueryMinLevel(_StandardCommand):
     """Return "MIN LEVEL"."""
     _cmdval = 0xa2
-    _response = command.NumericResponseMask
+    response = command.NumericResponseMask
 
 
 class QueryPowerOnLevel(_StandardCommand):
     """Return "POWER ON LEVEL"."""
     _cmdval = 0xa3
-    _response = command.NumericResponseMask
+    response = command.NumericResponseMask
 
 
 class QuerySystemFailureLevel(_StandardCommand):
     """Return "SYSTEM FAILURE LEVEL"."""
     _cmdval = 0xa4
-    _response = command.NumericResponseMask
+    response = command.NumericResponseMask
 
 
 class QueryFadeTimeAndRateResponse(command.NumericResponse):
@@ -785,7 +785,7 @@ class QueryFadeTimeFadeRate(_StandardCommand):
     is in the lower four bits of the response.
     """
     _cmdval = 0xa5
-    _response = QueryFadeTimeAndRateResponse
+    response = QueryFadeTimeAndRateResponse
 
 
 class QueryManufacturerSpecificMode(_StandardCommand):
@@ -795,7 +795,7 @@ class QueryManufacturerSpecificMode(_StandardCommand):
     0x80..0xff and NO otherwise.
     """
     _cmdval = 0xa6
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
 
 
 class QueryNextDeviceType(_StandardCommand):
@@ -818,7 +818,7 @@ class QueryNextDeviceType(_StandardCommand):
     QueryDeviceType,QueryNextDeviceType,... as a transaction.
     """
     _cmdval = 0xa7
-    _response = QueryDeviceTypeResponse
+    response = QueryDeviceTypeResponse
 
 
 class QueryExtendedFadeTime(_StandardCommand):
@@ -828,7 +828,7 @@ class QueryExtendedFadeTime(_StandardCommand):
     3:0 are extendedFadeTimeBase.
     """
     _cmdval = 0xa8
-    _response = command.Response
+    response = command.Response
 
 
 class QueryControlGearFailure(_StandardCommand):
@@ -838,7 +838,7 @@ class QueryControlGearFailure(_StandardCommand):
     otherwise.
     """
     _cmdval = 0xaa
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
 
 
 class QuerySceneLevel(_StandardCommand):
@@ -847,7 +847,7 @@ class QuerySceneLevel(_StandardCommand):
     """
     _cmdval = 0xb0
     _hasparam = True
-    _response = command.NumericResponseMask
+    response = command.NumericResponseMask
 
 
 class QueryGroupsZeroToSeven(_StandardCommand):
@@ -855,7 +855,7 @@ class QueryGroupsZeroToSeven(_StandardCommand):
     least-significant bit of the response.
     """
     _cmdval = 0xc0
-    _response = command.Response
+    response = command.Response
 
 
 class QueryGroupsEightToFifteen(_StandardCommand):
@@ -863,25 +863,25 @@ class QueryGroupsEightToFifteen(_StandardCommand):
     least-significant bit of the response.
     """
     _cmdval = 0xc1
-    _response = command.Response
+    response = command.Response
 
 
 class QueryRandomAddressH(_StandardCommand):
     """Return the 8 high bits of the random address."""
     _cmdval = 0xc2
-    _response = command.Response
+    response = command.Response
 
 
 class QueryRandomAddressM(_StandardCommand):
     """Return the 8 mid bits of the random address."""
     _cmdval = 0xc3
-    _response = command.Response
+    response = command.Response
 
 
 class QueryRandomAddressL(_StandardCommand):
     """Return the 8 low bits of the random address."""
     _cmdval = 0xc4
-    _response = command.Response
+    response = command.Response
 
 
 class ReadMemoryLocation(_StandardCommand):
@@ -897,7 +897,7 @@ class ReadMemoryLocation(_StandardCommand):
     _cmdval = 0xc5
     uses_dtr0 = True
     uses_dtr1 = True
-    _response = command.Response
+    response = command.Response
 
 
 class QueryExtendedVersionNumberMixin:
@@ -912,7 +912,7 @@ class QueryExtendedVersionNumberMixin:
     of QueryExtendedVersionNumber using this mixin.
     """
     _cmdval = 0xff
-    _response = command.NumericResponse
+    response = command.NumericResponse
 
 class QueryExtendedVersionNumber(QueryExtendedVersionNumberMixin,
                                  _StandardCommand):
@@ -1097,7 +1097,7 @@ class Compare(_SpecialCommand):
     shall generate a query "YES".
     """
     _cmdval = 0xa9
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
 
 
 class Withdraw(_SpecialCommand):
@@ -1164,7 +1164,7 @@ class VerifyShortAddress(_ShortAddrSpecialCommand):
     address is equal to its own short address.
     """
     _cmdval = 0xb9
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
 
 
 # XXX response class for QueryShortAddress here?
@@ -1177,7 +1177,7 @@ class QueryShortAddress(_SpecialCommand):
     address stored.
     """
     _cmdval = 0xbb
-    _response = command.NumericResponseMask
+    response = command.NumericResponseMask
 
 
 class EnableDeviceType(_SpecialCommand):
@@ -1223,7 +1223,7 @@ class WriteMemoryLocation(_SpecialCommand):
     _hasparam = True
     uses_dtr0 = True
     uses_dtr1 = True
-    _response = command.Response
+    response = command.Response
 
 
 class WriteMemoryLocationNoReply(_SpecialCommand):

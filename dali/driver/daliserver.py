@@ -83,16 +83,16 @@ class DaliServer:
         ver, status, rval, pad = struct.unpack("BBBB", result)
         response = None
 
-        if command._response:
+        if command.response:
             if status == 0:
-                response = command._response(None)
+                response = command.response(None)
             elif status == 1:
-                response = command._response(dali.frame.BackwardFrame(rval))
+                response = command.response(dali.frame.BackwardFrame(rval))
             elif status == 255:
                 # This is "failure" - daliserver seems to be reporting
                 # this for a garbled response when several ballasts
                 # reply.  It should be interpreted as "Yes".
-                response = command._response(dali.frame.BackwardFrameError(255))
+                response = command.response(dali.frame.BackwardFrameError(255))
             else:
                 raise CommunicationError("status was %d" % status)
 

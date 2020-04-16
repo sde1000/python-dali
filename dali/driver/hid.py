@@ -363,11 +363,11 @@ class tridonic(hid):
                 elif rtype == self._RESPONSE_NO_FRAME:
                     response = "no"
             del self._outstanding[seq], event, messages
-            if command._response:
+            if command.response:
                 # Construct response and return it
                 if response == "no":
-                    return command._response(None)
-                return command._response(response)
+                    return command.response(None)
+                return command.response(response)
 
     async def _bus_watch(self):
         # Why is this a task, and not just run from _handle_read()?
