@@ -100,28 +100,28 @@ class _StandardDeviceCommand(_DeviceCommand):
 
 class IdentifyDevice(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _sendtwice = True
     _opcode = 0x00
 
 
 class ResetPowerCycleSeen(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _sendtwice = True
     _opcode = 0x01
 
 
 class Reset(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _sendtwice = True
     _opcode = 0x10
 
 
 class ResetMemoryBank(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _uses_dtr0 = True
     _sendtwice = True
     _opcode = 0x11
@@ -129,7 +129,7 @@ class ResetMemoryBank(_StandardDeviceCommand):
 
 class SetShortAddress(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _uses_dtr0 = True
     _sendtwice = True
     _opcode = 0x14
@@ -137,7 +137,7 @@ class SetShortAddress(_StandardDeviceCommand):
 
 class EnableWriteMemory(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _sendtwice = True
     _opcode = 0x15
 
@@ -156,7 +156,7 @@ class DisableApplicationController(_StandardDeviceCommand):
 
 class SetOperatingMode(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _uses_dtr0 = True
     _sendtwice = True
     _opcode = 0x18
@@ -164,7 +164,7 @@ class SetOperatingMode(_StandardDeviceCommand):
 
 class AddToDeviceGroupsZeroToFifteen(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _uses_dtr1 = True
     _uses_dtr2 = True
     _sendtwice = True
@@ -173,7 +173,7 @@ class AddToDeviceGroupsZeroToFifteen(_StandardDeviceCommand):
 
 class AddToDeviceGroupsSixteenToThirtyOne(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _uses_dtr1 = True
     _uses_dtr2 = True
     _sendtwice = True
@@ -182,7 +182,7 @@ class AddToDeviceGroupsSixteenToThirtyOne(_StandardDeviceCommand):
 
 class RemoveFromDeviceGroupsZeroToFifteen(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _uses_dtr1 = True
     _uses_dtr2 = True
     _sendtwice = True
@@ -191,7 +191,7 @@ class RemoveFromDeviceGroupsZeroToFifteen(_StandardDeviceCommand):
 
 class RemoveFromDeviceGroupsSixteenToThirtyOne(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _uses_dtr1 = True
     _uses_dtr2 = True
     _sendtwice = True
@@ -200,84 +200,84 @@ class RemoveFromDeviceGroupsSixteenToThirtyOne(_StandardDeviceCommand):
 
 class StartQuiescentMode(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _sendtwice = True
     _opcode = 0x1d
 
 
 class StopQuiescentMode(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _sendtwice = True
     _opcode = 0x1e
 
 
 class EnablePowerCycleNotification(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _sendtwice = True
     _opcode = 0x1f
 
 
 class DisablePowerCycleNotification(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _sendtwice = True
     _opcode = 0x20
 
 
 class SavePersistentVariables(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _sendtwice = True
     _opcode = 0x21
 
 
 class QueryDeviceStatus(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x30
 
 
 class QueryApplicationControllerError(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x31
 
 
 class QueryInputDeviceError(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x32
 
 
 class QueryMissingShortAddress(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x33
 
 
 class QueryVersionNumber(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x34
 
 
 class QueryNumberOfInstances(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x35
 
 
 class QueryContentDTR0(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _uses_dtr0 = True
     _response = command.Response
     _opcode = 0x36
@@ -285,7 +285,7 @@ class QueryContentDTR0(_StandardDeviceCommand):
 
 class QueryContentDTR1(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _uses_dtr1 = True
     _response = command.Response
     _opcode = 0x37
@@ -293,7 +293,7 @@ class QueryContentDTR1(_StandardDeviceCommand):
 
 class QueryContentDTR2(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _uses_dtr2 = True
     _response = command.Response
     _opcode = 0x38
@@ -301,28 +301,28 @@ class QueryContentDTR2(_StandardDeviceCommand):
 
 class QueryRandomAddressH(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x39
 
 
 class QueryRandomAddressM(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x3a
 
 
 class QueryRandomAddressL(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x3b
 
 
 class ReadMemoryLocation(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _uses_dtr0 = True
     _uses_dtr1 = True
     _response = command.Response
@@ -331,77 +331,77 @@ class ReadMemoryLocation(_StandardDeviceCommand):
 
 class QueryApplicationControlEnabled(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x3d
 
 
 class QueryOperatingMode(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x3e
 
 
 class QueryManufacturerSpecificMode(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x3f
 
 
 class QueryQuiescentMode(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x40
 
 
 class QueryDeviceGroupsZeroToSeven(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x41
 
 
 class QueryDeviceGroupsEightToFifteen(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x42
 
 
 class QueryDeviceGroupsSixteenToTwentyThree(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x43
 
 
 class QueryDeviceGroupsTwentyFourToThirtyOne(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x44
 
 
 class QueryPowerCycleNotification(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x45
 
 
 class QueryDeviceCapabilities(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x46
 
 
 class QueryExtendedVersionNumber(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _uses_dtr0 = True
     _response = command.Response
     _opcode = 0x47
@@ -409,7 +409,7 @@ class QueryExtendedVersionNumber(_StandardDeviceCommand):
 
 class QueryResetState(_StandardDeviceCommand):
     appctrl = True
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x48
 
@@ -458,54 +458,54 @@ class _StandardInstanceCommand(_DeviceCommand):
 
 
 class SetEventPriority(_StandardInstanceCommand):
-    _inputdev = True
+    inputdev = True
     _uses_dtr0 = True
     _sendtwice = True
     _opcode = 0x61
 
 
 class EnableInstance(_StandardInstanceCommand):
-    _inputdev = True
+    inputdev = True
     _sendtwice = True
     _opcode = 0x62
 
 
 class DisableInstance(_StandardInstanceCommand):
-    _inputdev = True
+    inputdev = True
     _sendtwice = True
     _opcode = 0x63
 
 
 class SetPrimaryInstanceGroup(_StandardInstanceCommand):
-    _inputdev = True
+    inputdev = True
     _uses_dtr0 = True
     _sendtwice = True
     _opcode = 0x64
 
 
 class SetInstanceGroup1(_StandardInstanceCommand):
-    _inputdev = True
+    inputdev = True
     _uses_dtr0 = True
     _sendtwice = True
     _opcode = 0x65
 
 
 class SetInstanceGroup2(_StandardInstanceCommand):
-    _inputdev = True
+    inputdev = True
     _uses_dtr0 = True
     _sendtwice = True
     _opcode = 0x66
 
 
 class SetEventScheme(_StandardInstanceCommand):
-    _inputdev = True
+    inputdev = True
     _uses_dtr0 = True
     _sendtwice = True
     _opcode = 0x67
 
 
 class SetEventFilter(_StandardInstanceCommand):
-    _inputdev = True
+    inputdev = True
     _uses_dtr0 = True
     _uses_dtr1 = True
     _uses_dtr2 = True
@@ -514,105 +514,105 @@ class SetEventFilter(_StandardInstanceCommand):
 
 
 class QueryInstanceType(_StandardInstanceCommand):
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x80
 
 
 class QueryResolution(_StandardInstanceCommand):
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x81
 
 
 class QueryInstanceError(_StandardInstanceCommand):
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x82
 
 
 class QueryInstanceStatus(_StandardInstanceCommand):
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x83
 
 
 class QueryEventPriority(_StandardInstanceCommand):
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x84
 
 
 class QueryInstanceEnabled(_StandardInstanceCommand):
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x86
 
 
 class QueryPrimaryInstanceGroup(_StandardInstanceCommand):
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x88
 
 
 class QueryInstanceGroup1(_StandardInstanceCommand):
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x89
 
 
 class QueryInstanceGroup2(_StandardInstanceCommand):
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x8a
 
 
 class QueryEventScheme(_StandardInstanceCommand):
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x8b
 
 
 class QueryInputValue(_StandardInstanceCommand):
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x8c
 
 
 class QueryInputValueLatch(_StandardInstanceCommand):
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x8d
 
 
 class QueryFeatureType(_StandardInstanceCommand):
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x8e
 
 
 class QueryNextFeatureType(_StandardInstanceCommand):
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x8f
 
 
 class QueryEventFilterZeroToSeven(_StandardInstanceCommand):
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x90
 QueryEventFilterL = QueryEventFilterZeroToSeven
 
 
 class QueryEventFilterEightToFifteen(_StandardInstanceCommand):
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x91
 QueryEventFilterM = QueryEventFilterEightToFifteen
 
 
 class QueryEventFilterSixteenToTwentyThree(_StandardInstanceCommand):
-    _inputdev = True
+    inputdev = True
     _response = command.Response
     _opcode = 0x92
 QueryEventFilterH = QueryEventFilterSixteenToTwentyThree

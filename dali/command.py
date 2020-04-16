@@ -176,7 +176,7 @@ class Command(metaclass=CommandTracker):
     # Override them in subclasses if there is a tick in the
     # appropriate column.
     appctrl = False
-    _inputdev = False
+    inputdev = False
     _uses_dtr0 = False
     _uses_dtr1 = False
     _uses_dtr2 = False
