@@ -12,14 +12,14 @@ class _EmergencyLightingControlCommand(_EmergencyLightingCommand):
     """An emergency lighting control command as defined in section
     11.3.4.1 of IEC 62386-202:2009
     """
-    _sendtwice = True
+    sendtwice = True
 
 
 class _EmergencyLightingConfigCommand(_EmergencyLightingCommand):
     """An emergency lighting configuration command as defined in section
     11.3.4.2 of IEC 62386-202:2009
     """
-    _sendtwice = True
+    sendtwice = True
 
 
 class _EmergencyLightingQueryCommand(_EmergencyLightingCommand):

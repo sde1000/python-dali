@@ -325,7 +325,7 @@ class tridonic(hid):
             assert seq not in self._outstanding
             self._outstanding[seq] = (event, messages)
             data = self._cmd(self._CMD_SEND, seq,
-                             flags=self._SEND_FLAGS_SENDTWICE if command.is_config else 0,
+                             flags=self._SEND_FLAGS_SENDTWICE if command.sendtwice else 0,
                              ftype=self._SEND_FRAMESIZE_16, frame=frame.pack_len(3))
             try:
                 os.write(self._f, data)
@@ -336,7 +336,7 @@ class tridonic(hid):
                 self.disconnect(reconnect=True)
                 raise CommunicationError
 
-            outstanding_transmissions = 2 if command.is_config else 1
+            outstanding_transmissions = 2 if command.sendtwice else 1
             response = None
             while outstanding_transmissions or response is None:
                 if len(messages) == 0:
@@ -423,11 +423,11 @@ class tridonic(hid):
                 # current_command will be a config command or a
                 # command that expects a response.  It cannot be
                 # EnableDeviceType()
-                if current_command.is_config:
-                    # We are waiting for a repeat of the config command
+                if current_command.sendtwice:
+                    # We are waiting for a repeat of the command
                     if timeout:
-                        # We didn't get it: report a failed config command
-                        self._log.debug("Failed config command: %s", current_command)
+                        # We didn't get it: report a failed command
+                        self._log.debug("Failed sendtwice command: %s", current_command)
                         self.bus_traffic._invoke(current_command, None, True)
                         current_command = None
                         continue
@@ -485,7 +485,7 @@ class tridonic(hid):
             elif isinstance(frame, dali.frame.ForwardFrame):
                 command = dali.command.from_frame(frame, devicetype=devicetype)
                 devicetype = 0
-                if command.is_config or command.response:
+                if command.sendtwice or command.response:
                     # We need more information.  Stash the command and wait.
                     current_command = command
                 else:
@@ -592,7 +592,7 @@ class hasseb(hid):
             raise UnsupportedFrameTypeError
         await self.connected.wait()
         async with self._command_lock:
-            times = 2 if command.is_config else 1
+            times = 2 if command.sendtwice else 1
             for rep in range(times):
                 os.write(self._f, frame.pack_len(2))
             # Earlier commands may have left a response available that

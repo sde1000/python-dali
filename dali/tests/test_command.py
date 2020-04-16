@@ -66,6 +66,8 @@ class TestCommands(unittest.TestCase):
             self.assertHasAttr(cls, "response")
             if cls.response != None:
                 self.assertIsInstance(cls.response(None), command.Response)
+            self.assertHasAttr(cls, "sendtwice")
+            self.assertIsInstance(cls.sendtwice, bool)
 
     def test_roundtrip(self):
         """all frames survive command.from_frame()"""

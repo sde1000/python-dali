@@ -92,7 +92,7 @@ class TestUnipiDALIDriver(unittest.TestCase):
         mock_frame.__len__.return_value = 24
         mock_frame.as_byte_sequence = (1, 2, 3)
         mock_command.frame = mock_frame
-        mock_command.is_config = False
+        mock_command.sendtwice = False
         self.assertEqual(driver.construct(mock_command), (769, 515))
 
     def test_construct_length_24_config(self):
@@ -102,7 +102,7 @@ class TestUnipiDALIDriver(unittest.TestCase):
         mock_frame.__len__.return_value = 24
         mock_frame.as_byte_sequence = (1, 2, 3)
         mock_command.frame = mock_frame
-        mock_command.is_config = True
+        mock_command.sendtwice = True
         self.assertEqual(driver.construct(mock_command), (2817, 515))
 
     def test_construct_non_standard_length(self):
@@ -161,7 +161,7 @@ class TestSyncUnipiDALIDriver(unittest.TestCase):
         mock_frame.__len__.return_value = 16
         mock_frame.as_byte_sequence = (1, 2)
         mock_command.frame = mock_frame
-        mock_command.is_config = False
+        mock_command.sendtwice = False
         self.mock_backend.read_regs.return_value = (1,)
 
         self.assertEqual(self.sync_driver.send(mock_command), DALI_NO_RESPONSE)
@@ -172,7 +172,7 @@ class TestSyncUnipiDALIDriver(unittest.TestCase):
         mock_frame.__len__.return_value = 16
         mock_frame.as_byte_sequence = (1, 2)
         mock_command.frame = mock_frame
-        mock_command.is_config = False
+        mock_command.sendtwice = False
         mock_command._response = 1
         mock_command.response.return_value = "foo"
         self.mock_backend.read_regs.side_effect = [(1,), (2,), (3, 0x100, 0x11)]
@@ -185,7 +185,7 @@ class TestSyncUnipiDALIDriver(unittest.TestCase):
         mock_frame.__len__.return_value = 16
         mock_frame.as_byte_sequence = (1, 2)
         mock_command.frame = mock_frame
-        mock_command.is_config = False
+        mock_command.sendtwice = False
         mock_command._response = 1
         mock_command._cmdval = 0xA9
         self.mock_backend.read_regs.side_effect = [(1,), (2,), (3, 0x200, 0x11), (4,)]

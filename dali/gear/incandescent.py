@@ -12,7 +12,7 @@ class _IncandescentConfigCommand(_IncandescentCommand):
     """An incandescent lighting configuration command as defined in
     section 11.3.4.1 of IEC 62386-205:2009.
     """
-    _sendtwice = True
+    sendtwice = True
 
 
 ###############################################################################

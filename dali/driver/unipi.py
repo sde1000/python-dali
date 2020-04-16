@@ -140,14 +140,14 @@ class UnipiDALIDriver(DALIDriver):
         frame = command.frame
         if len(frame) == 16:
             opt = 0x2
-            if command.is_config:
+            if command.sendtwice:
                 opt |= DA_OPT_TWICE
             ad, cm1 = frame.as_byte_sequence
             reg1 = opt << 8
             reg2 = (ad << 8) | cm1
         elif len(frame) == 24:
             opt = 0x3
-            if command.is_config:
+            if command.sendtwice:
                 opt |= DA_OPT_TWICE
             ad, cm1, cm2 = frame.as_byte_sequence
             reg1 = (opt << 8) | ad
@@ -187,7 +187,7 @@ class SyncUnipiDALIDriver(UnipiDALIDriver, SyncDALIDriver):
         sleep(0.05)
         registers = self.construct(command)
         self.backend.write_regs(self._sendreg, registers)
-        if command.is_config:
+        if command.sendtwice:
             sleep(0.05)
             self.backend.write_regs(self._sendreg, registers)
 

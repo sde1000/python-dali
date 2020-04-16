@@ -12,7 +12,7 @@ class _LEDConfigCommand(_LEDCommand):
     """A LED lighting configuration command as defined in section 11.3.4.1
     of IEC 62386-207:2009.
     """
-    _sendtwice = True
+    sendtwice = True
 
 
 ###############################################################################

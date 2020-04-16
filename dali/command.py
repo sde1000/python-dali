@@ -184,7 +184,7 @@ class Command(metaclass=CommandTracker):
     uses_dtr1 = False
     uses_dtr2 = False
     response = None
-    _sendtwice = False
+    sendtwice = False
 
     # 16-bit frames may be interpreted differently if they are
     # preceded by the EnableDeviceType command.  If a command needs
@@ -239,13 +239,17 @@ class Command(metaclass=CommandTracker):
         """The forward frame to be transmitted for this command."""
         return self._data
 
-    # XXX rename to send_twice ?
     @property
     def is_config(self):
         """Is this a configuration command?  (Does it need repeating to
         take effect?)
+
+        Use of this property is deprecated: access the "sendtwice"
+        attribute directly.
         """
-        return self._sendtwice
+        warnings.warn("Access 'sendtwice' directly instead of using 'is_config'",
+                      DeprecationWarning, stacklevel=2)
+        return self.sendtwice
 
     @property
     def is_query(self):

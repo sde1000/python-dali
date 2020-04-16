@@ -303,7 +303,7 @@ class Reset(_StandardCommand):
     this command.
     """
     _cmdval = 0x20
-    _sendtwice = True
+    sendtwice = True
 
 
 class StoreActualLevelInDTR0(_StandardCommand):
@@ -312,7 +312,7 @@ class StoreActualLevelInDTR0(_StandardCommand):
     """
     _cmdval = 0x21
     uses_dtr0 = True
-    _sendtwice = True
+    sendtwice = True
 
 
 class SavePersistentVariables(_StandardCommand):
@@ -324,7 +324,7 @@ class SavePersistentVariables(_StandardCommand):
     recommended to be used typically after commissioning.
     """
     _cmdval = 0x22
-    _sendtwice = True
+    sendtwice = True
 
 
 class SetOperatingMode(_StandardCommand):
@@ -335,7 +335,7 @@ class SetOperatingMode(_StandardCommand):
     """
     _cmdval = 0x23
     uses_dtr0 = True
-    _sendtwice = True
+    sendtwice = True
 
 
 class ResetMemoryBank(_StandardCommand):
@@ -352,7 +352,7 @@ class ResetMemoryBank(_StandardCommand):
     """
     _cmdval = 0x24
     uses_dtr0 = True
-    _sendtwice = True
+    sendtwice = True
 
 
 class IdentifyDevice(_StandardCommand):
@@ -368,14 +368,14 @@ class IdentifyDevice(_StandardCommand):
     IdentifyDevice.
     """
     _cmdval = 0x25
-    _sendtwice = True
+    sendtwice = True
 
 
 class SetMaxLevel(_StandardCommand):
     """Save the value in DTR0 as the new "MAX LEVEL"."""
     _cmdval = 0x2a
     uses_dtr0 = True
-    _sendtwice = True
+    sendtwice = True
 
 
 class SetMinLevel(_StandardCommand):
@@ -385,21 +385,21 @@ class SetMinLevel(_StandardCommand):
     """
     _cmdval = 0x2b
     uses_dtr0 = True
-    _sendtwice = True
+    sendtwice = True
 
 
 class SetSystemFailureLevel(_StandardCommand):
     """Save the value in DTR0 as the new "SYSTEM FAILURE LEVEL"."""
     _cmdval = 0x2c
     uses_dtr0 = True
-    _sendtwice = True
+    sendtwice = True
 
 
 class SetPowerOnLevel(_StandardCommand):
     """Save the value in DTR0 as the new "POWER ON LEVEL"."""
     _cmdval = 0x2d
     uses_dtr0 = True
-    _sendtwice = True
+    sendtwice = True
 
 
 class SetFadeTime(_StandardCommand):
@@ -422,7 +422,7 @@ class SetFadeTime(_StandardCommand):
     """
     _cmdval = 0x2e
     uses_dtr0 = True
-    _sendtwice = True
+    sendtwice = True
 
 
 class SetFadeRate(_StandardCommand):
@@ -439,7 +439,7 @@ class SetFadeRate(_StandardCommand):
     """
     _cmdval = 0x2f
     uses_dtr0 = True
-    _sendtwice = True
+    sendtwice = True
 
 
 class SetExtendedFadeTime(_StandardCommand):
@@ -456,7 +456,7 @@ class SetExtendedFadeTime(_StandardCommand):
     """
     _cmdval = 0x30
     uses_dtr0 = True
-    _sendtwice = True
+    sendtwice = True
 
 
 class SetScene(_StandardCommand):
@@ -466,7 +466,7 @@ class SetScene(_StandardCommand):
     _cmdval = 0x40
     _hasparam = True
     uses_dtr0 = True
-    _sendtwice = True
+    sendtwice = True
 
 
 class RemoveFromScene(_StandardCommand):
@@ -476,21 +476,21 @@ class RemoveFromScene(_StandardCommand):
     """
     _cmdval = 0x50
     _hasparam = True
-    _sendtwice = True
+    sendtwice = True
 
 
 class AddToGroup(_StandardCommand):
     """Add the ballast to the specified group."""
     _cmdval = 0x60
     _hasparam = True
-    _sendtwice = True
+    sendtwice = True
 
 
 class RemoveFromGroup(_StandardCommand):
     """Remove the ballast from the specified group."""
     _cmdval = 0x70
     _hasparam = True
-    _sendtwice = True
+    sendtwice = True
 
 
 class SetShortAddress(_StandardCommand):
@@ -502,7 +502,7 @@ class SetShortAddress(_StandardCommand):
     """
     _cmdval = 0x80
     uses_dtr0 = True
-    _sendtwice = True
+    sendtwice = True
 
 
 class EnableWriteMemory(_StandardCommand):
@@ -515,7 +515,7 @@ class EnableWriteMemory(_StandardCommand):
     banks will set writeEnableState to DISABLED.
     """
     _cmdval = 0x81
-    _sendtwice = True
+    sendtwice = True
 
 
 class QueryStatusResponse(command.BitmapResponse):
@@ -1040,7 +1040,7 @@ class Initialise(command.Command):
       ballasts with the address supplied shall react
     """
     _cmdval = 0xa5
-    _sendtwice = True
+    sendtwice = True
 
     def __init__(self, broadcast=False, address=None):
         if broadcast and address is not None:
@@ -1086,7 +1086,7 @@ class Randomise(_SpecialCommand):
     random address shall be available within a time period of 100ms.
     """
     _cmdval = 0xa7
-    _sendtwice = True
+    sendtwice = True
 
 
 class Compare(_SpecialCommand):

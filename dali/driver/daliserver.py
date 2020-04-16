@@ -45,7 +45,7 @@ class DaliServer:
         message = struct.pack("BB", 2, 0) + command.frame.pack
 
         logging.info("command: {}{}".format(
-            command, " (twice)" if command.is_config else ""))
+            command, " (twice)" if command.sendtwice else ""))
 
         # Set a default result which may be used if the first send fails
         result = "\x02\xff\x00\x00"
@@ -53,7 +53,7 @@ class DaliServer:
         try:
             s.send(message)
             result = s.recv(4)
-            if command.is_config:
+            if command.sendtwice:
                 s.send(message)
                 result = s.recv(4)
         except:

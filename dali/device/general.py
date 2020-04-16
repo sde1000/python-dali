@@ -101,21 +101,21 @@ class _StandardDeviceCommand(_DeviceCommand):
 class IdentifyDevice(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    _sendtwice = True
+    sendtwice = True
     _opcode = 0x00
 
 
 class ResetPowerCycleSeen(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    _sendtwice = True
+    sendtwice = True
     _opcode = 0x01
 
 
 class Reset(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    _sendtwice = True
+    sendtwice = True
     _opcode = 0x10
 
 
@@ -123,7 +123,7 @@ class ResetMemoryBank(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
     uses_dtr0 = True
-    _sendtwice = True
+    sendtwice = True
     _opcode = 0x11
 
 
@@ -131,26 +131,26 @@ class SetShortAddress(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
     uses_dtr0 = True
-    _sendtwice = True
+    sendtwice = True
     _opcode = 0x14
 
 
 class EnableWriteMemory(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    _sendtwice = True
+    sendtwice = True
     _opcode = 0x15
 
 
 class EnableApplicationController(_StandardDeviceCommand):
     appctrl = True
-    _sendtwice = True
+    sendtwice = True
     _opcode = 0x16
 
 
 class DisableApplicationController(_StandardDeviceCommand):
     appctrl = True
-    _sendtwice = True
+    sendtwice = True
     _opcode = 0x17
 
 
@@ -158,7 +158,7 @@ class SetOperatingMode(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
     uses_dtr0 = True
-    _sendtwice = True
+    sendtwice = True
     _opcode = 0x18
 
 
@@ -167,7 +167,7 @@ class AddToDeviceGroupsZeroToFifteen(_StandardDeviceCommand):
     inputdev = True
     uses_dtr1 = True
     uses_dtr2 = True
-    _sendtwice = True
+    sendtwice = True
     _opcode = 0x19
 
 
@@ -176,7 +176,7 @@ class AddToDeviceGroupsSixteenToThirtyOne(_StandardDeviceCommand):
     inputdev = True
     uses_dtr1 = True
     uses_dtr2 = True
-    _sendtwice = True
+    sendtwice = True
     _opcode = 0x1a
 
 
@@ -185,7 +185,7 @@ class RemoveFromDeviceGroupsZeroToFifteen(_StandardDeviceCommand):
     inputdev = True
     uses_dtr1 = True
     uses_dtr2 = True
-    _sendtwice = True
+    sendtwice = True
     _opcode = 0x1b
 
 
@@ -194,42 +194,42 @@ class RemoveFromDeviceGroupsSixteenToThirtyOne(_StandardDeviceCommand):
     inputdev = True
     uses_dtr1 = True
     uses_dtr2 = True
-    _sendtwice = True
+    sendtwice = True
     _opcode = 0x1c
 
 
 class StartQuiescentMode(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    _sendtwice = True
+    sendtwice = True
     _opcode = 0x1d
 
 
 class StopQuiescentMode(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    _sendtwice = True
+    sendtwice = True
     _opcode = 0x1e
 
 
 class EnablePowerCycleNotification(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    _sendtwice = True
+    sendtwice = True
     _opcode = 0x1f
 
 
 class DisablePowerCycleNotification(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    _sendtwice = True
+    sendtwice = True
     _opcode = 0x20
 
 
 class SavePersistentVariables(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    _sendtwice = True
+    sendtwice = True
     _opcode = 0x21
 
 
@@ -460,47 +460,47 @@ class _StandardInstanceCommand(_DeviceCommand):
 class SetEventPriority(_StandardInstanceCommand):
     inputdev = True
     uses_dtr0 = True
-    _sendtwice = True
+    sendtwice = True
     _opcode = 0x61
 
 
 class EnableInstance(_StandardInstanceCommand):
     inputdev = True
-    _sendtwice = True
+    sendtwice = True
     _opcode = 0x62
 
 
 class DisableInstance(_StandardInstanceCommand):
     inputdev = True
-    _sendtwice = True
+    sendtwice = True
     _opcode = 0x63
 
 
 class SetPrimaryInstanceGroup(_StandardInstanceCommand):
     inputdev = True
     uses_dtr0 = True
-    _sendtwice = True
+    sendtwice = True
     _opcode = 0x64
 
 
 class SetInstanceGroup1(_StandardInstanceCommand):
     inputdev = True
     uses_dtr0 = True
-    _sendtwice = True
+    sendtwice = True
     _opcode = 0x65
 
 
 class SetInstanceGroup2(_StandardInstanceCommand):
     inputdev = True
     uses_dtr0 = True
-    _sendtwice = True
+    sendtwice = True
     _opcode = 0x66
 
 
 class SetEventScheme(_StandardInstanceCommand):
     inputdev = True
     uses_dtr0 = True
-    _sendtwice = True
+    sendtwice = True
     _opcode = 0x67
 
 
@@ -509,7 +509,7 @@ class SetEventFilter(_StandardInstanceCommand):
     uses_dtr0 = True
     uses_dtr1 = True
     uses_dtr2 = True
-    _sendtwice = True
+    sendtwice = True
     _opcode = 0x68
 
 
@@ -702,13 +702,13 @@ class Terminate(_SpecialDeviceCommand):
 class Initialise(_SpecialDeviceCommandOneParam):
     _addr = 0xc1
     _instance = 0x01
-    _sendtwice = True
+    sendtwice = True
 
 
 class Randomise(_SpecialDeviceCommand):
     _addr = 0xc1
     _instance = 0x02
-    _sendtwice = True
+    sendtwice = True
 
 
 class Compare(_SpecialDeviceCommand):
