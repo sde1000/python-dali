@@ -117,8 +117,8 @@ class QueryFeatures(_IncandescentCommand):
     transferred to DTR1.
     """
     _cmdval = 0xf0
-    _uses_dtr0 = True
-    _uses_dtr1 = True
+    uses_dtr0 = True
+    uses_dtr1 = True
     _response = FeaturesByte1Response
 
 
@@ -156,7 +156,7 @@ class QueryFailureStatus(_IncandescentCommand):
     the control gear.
     """
     _cmdval = 0xf1
-    _uses_dtr1 = True
+    uses_dtr1 = True
     _response = FailureStatusByte1Response
 
 
@@ -245,7 +245,7 @@ class QueryRealLoadPower(_IncandescentCommand):
     Control gear without this feature shall not react.
     """
     _cmdval = 0xf7
-    _uses_dtr0 = True
+    uses_dtr0 = True
     _response = command.Response
 
 

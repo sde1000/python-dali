@@ -122,7 +122,7 @@ class Reset(_StandardDeviceCommand):
 class ResetMemoryBank(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    _uses_dtr0 = True
+    uses_dtr0 = True
     _sendtwice = True
     _opcode = 0x11
 
@@ -130,7 +130,7 @@ class ResetMemoryBank(_StandardDeviceCommand):
 class SetShortAddress(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    _uses_dtr0 = True
+    uses_dtr0 = True
     _sendtwice = True
     _opcode = 0x14
 
@@ -157,7 +157,7 @@ class DisableApplicationController(_StandardDeviceCommand):
 class SetOperatingMode(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    _uses_dtr0 = True
+    uses_dtr0 = True
     _sendtwice = True
     _opcode = 0x18
 
@@ -165,8 +165,8 @@ class SetOperatingMode(_StandardDeviceCommand):
 class AddToDeviceGroupsZeroToFifteen(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    _uses_dtr1 = True
-    _uses_dtr2 = True
+    uses_dtr1 = True
+    uses_dtr2 = True
     _sendtwice = True
     _opcode = 0x19
 
@@ -174,8 +174,8 @@ class AddToDeviceGroupsZeroToFifteen(_StandardDeviceCommand):
 class AddToDeviceGroupsSixteenToThirtyOne(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    _uses_dtr1 = True
-    _uses_dtr2 = True
+    uses_dtr1 = True
+    uses_dtr2 = True
     _sendtwice = True
     _opcode = 0x1a
 
@@ -183,8 +183,8 @@ class AddToDeviceGroupsSixteenToThirtyOne(_StandardDeviceCommand):
 class RemoveFromDeviceGroupsZeroToFifteen(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    _uses_dtr1 = True
-    _uses_dtr2 = True
+    uses_dtr1 = True
+    uses_dtr2 = True
     _sendtwice = True
     _opcode = 0x1b
 
@@ -192,8 +192,8 @@ class RemoveFromDeviceGroupsZeroToFifteen(_StandardDeviceCommand):
 class RemoveFromDeviceGroupsSixteenToThirtyOne(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    _uses_dtr1 = True
-    _uses_dtr2 = True
+    uses_dtr1 = True
+    uses_dtr2 = True
     _sendtwice = True
     _opcode = 0x1c
 
@@ -278,7 +278,7 @@ class QueryNumberOfInstances(_StandardDeviceCommand):
 class QueryContentDTR0(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    _uses_dtr0 = True
+    uses_dtr0 = True
     _response = command.Response
     _opcode = 0x36
 
@@ -286,7 +286,7 @@ class QueryContentDTR0(_StandardDeviceCommand):
 class QueryContentDTR1(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    _uses_dtr1 = True
+    uses_dtr1 = True
     _response = command.Response
     _opcode = 0x37
 
@@ -294,7 +294,7 @@ class QueryContentDTR1(_StandardDeviceCommand):
 class QueryContentDTR2(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    _uses_dtr2 = True
+    uses_dtr2 = True
     _response = command.Response
     _opcode = 0x38
 
@@ -323,8 +323,8 @@ class QueryRandomAddressL(_StandardDeviceCommand):
 class ReadMemoryLocation(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    _uses_dtr0 = True
-    _uses_dtr1 = True
+    uses_dtr0 = True
+    uses_dtr1 = True
     _response = command.Response
     _opcode = 0x3c
 
@@ -402,7 +402,7 @@ class QueryDeviceCapabilities(_StandardDeviceCommand):
 class QueryExtendedVersionNumber(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    _uses_dtr0 = True
+    uses_dtr0 = True
     _response = command.Response
     _opcode = 0x47
 
@@ -459,7 +459,7 @@ class _StandardInstanceCommand(_DeviceCommand):
 
 class SetEventPriority(_StandardInstanceCommand):
     inputdev = True
-    _uses_dtr0 = True
+    uses_dtr0 = True
     _sendtwice = True
     _opcode = 0x61
 
@@ -478,37 +478,37 @@ class DisableInstance(_StandardInstanceCommand):
 
 class SetPrimaryInstanceGroup(_StandardInstanceCommand):
     inputdev = True
-    _uses_dtr0 = True
+    uses_dtr0 = True
     _sendtwice = True
     _opcode = 0x64
 
 
 class SetInstanceGroup1(_StandardInstanceCommand):
     inputdev = True
-    _uses_dtr0 = True
+    uses_dtr0 = True
     _sendtwice = True
     _opcode = 0x65
 
 
 class SetInstanceGroup2(_StandardInstanceCommand):
     inputdev = True
-    _uses_dtr0 = True
+    uses_dtr0 = True
     _sendtwice = True
     _opcode = 0x66
 
 
 class SetEventScheme(_StandardInstanceCommand):
     inputdev = True
-    _uses_dtr0 = True
+    uses_dtr0 = True
     _sendtwice = True
     _opcode = 0x67
 
 
 class SetEventFilter(_StandardInstanceCommand):
     inputdev = True
-    _uses_dtr0 = True
-    _uses_dtr1 = True
-    _uses_dtr2 = True
+    uses_dtr0 = True
+    uses_dtr1 = True
+    uses_dtr2 = True
     _sendtwice = True
     _opcode = 0x68
 
@@ -757,60 +757,60 @@ class QueryShortAddress(_SpecialDeviceCommand):
 class WriteMemoryLocation(_SpecialDeviceCommandOneParam):
     _addr = 0xc1
     _instance = 0x20
-    _uses_dtr0 = True
-    _uses_dtr1 = True
+    uses_dtr0 = True
+    uses_dtr1 = True
     _response = command.Response
 
 
 class WriteMemoryLocationNoReply(_SpecialDeviceCommandOneParam):
     _addr = 0xc1
     _instance = 0x21
-    _uses_dtr0 = True
-    _uses_dtr1 = True
+    uses_dtr0 = True
+    uses_dtr1 = True
 
 
 class DTR0(_SpecialDeviceCommandOneParam):
     _addr = 0xc1
     _instance = 0x30
-    _uses_dtr0 = True
+    uses_dtr0 = True
 
 
 class DTR1(_SpecialDeviceCommandOneParam):
     _addr = 0xc1
     _instance = 0x31
-    _uses_dtr1 = True
+    uses_dtr1 = True
 
 
 class DTR2(_SpecialDeviceCommandOneParam):
     _addr = 0xc1
     _instance = 0x32
-    _uses_dtr2 = True
+    uses_dtr2 = True
 
 
 class SendTestframe(_SpecialDeviceCommandOneParam):
     _addr = 0xc1
     _instance = 0x33
-    _uses_dtr0 = True
-    _uses_dtr1 = True
-    _uses_dtr2 = True
+    uses_dtr0 = True
+    uses_dtr1 = True
+    uses_dtr2 = True
 
 
 class DirectWriteMemory(_SpecialDeviceCommandTwoParam):
     _addr = 0xc5
-    _uses_dtr0 = True
-    _uses_dtr1 = True
+    uses_dtr0 = True
+    uses_dtr1 = True
     _response = command.Response
 
 
 class DTR1DTR0(_SpecialDeviceCommandTwoParam):
     _addr = 0xc7
-    _uses_dtr0 = True
-    _uses_dtr1 = True
+    uses_dtr0 = True
+    uses_dtr1 = True
 
 
 class DTR2DTR1(_SpecialDeviceCommandTwoParam):
     _addr = 0xc9
-    _uses_dtr1 = True
-    _uses_dtr2 = True
+    uses_dtr1 = True
+    uses_dtr2 = True
 
 

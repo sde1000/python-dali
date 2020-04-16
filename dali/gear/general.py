@@ -311,7 +311,7 @@ class StoreActualLevelInDTR0(_StandardCommand):
     current light intensity.
     """
     _cmdval = 0x21
-    _uses_dtr0 = True
+    uses_dtr0 = True
     _sendtwice = True
 
 
@@ -334,7 +334,7 @@ class SetOperatingMode(_StandardCommand):
     command shall be ignored.
     """
     _cmdval = 0x23
-    _uses_dtr0 = True
+    uses_dtr0 = True
     _sendtwice = True
 
 
@@ -351,7 +351,7 @@ class ResetMemoryBank(_StandardCommand):
     commands for up to 10s.
     """
     _cmdval = 0x24
-    _uses_dtr0 = True
+    uses_dtr0 = True
     _sendtwice = True
 
 
@@ -374,7 +374,7 @@ class IdentifyDevice(_StandardCommand):
 class SetMaxLevel(_StandardCommand):
     """Save the value in DTR0 as the new "MAX LEVEL"."""
     _cmdval = 0x2a
-    _uses_dtr0 = True
+    uses_dtr0 = True
     _sendtwice = True
 
 
@@ -384,21 +384,21 @@ class SetMinLevel(_StandardCommand):
     "PHYSICAL MIN LEVEL" as the new "MIN LEVEL".
     """
     _cmdval = 0x2b
-    _uses_dtr0 = True
+    uses_dtr0 = True
     _sendtwice = True
 
 
 class SetSystemFailureLevel(_StandardCommand):
     """Save the value in DTR0 as the new "SYSTEM FAILURE LEVEL"."""
     _cmdval = 0x2c
-    _uses_dtr0 = True
+    uses_dtr0 = True
     _sendtwice = True
 
 
 class SetPowerOnLevel(_StandardCommand):
     """Save the value in DTR0 as the new "POWER ON LEVEL"."""
     _cmdval = 0x2d
-    _uses_dtr0 = True
+    uses_dtr0 = True
     _sendtwice = True
 
 
@@ -421,7 +421,7 @@ class SetFadeTime(_StandardCommand):
     process, the running fade process is not affected.
     """
     _cmdval = 0x2e
-    _uses_dtr0 = True
+    uses_dtr0 = True
     _sendtwice = True
 
 
@@ -438,7 +438,7 @@ class SetFadeRate(_StandardCommand):
     process, the running fade process is not affected.
     """
     _cmdval = 0x2f
-    _uses_dtr0 = True
+    uses_dtr0 = True
     _sendtwice = True
 
 
@@ -455,7 +455,7 @@ class SetExtendedFadeTime(_StandardCommand):
     running fade process is not affected.
     """
     _cmdval = 0x30
-    _uses_dtr0 = True
+    uses_dtr0 = True
     _sendtwice = True
 
 
@@ -465,7 +465,7 @@ class SetScene(_StandardCommand):
     """
     _cmdval = 0x40
     _hasparam = True
-    _uses_dtr0 = True
+    uses_dtr0 = True
     _sendtwice = True
 
 
@@ -501,7 +501,7 @@ class SetShortAddress(_StandardCommand):
     - 255 (i.e. 11111111) to remove the short address
     """
     _cmdval = 0x80
-    _uses_dtr0 = True
+    uses_dtr0 = True
     _sendtwice = True
 
 
@@ -606,7 +606,7 @@ class QueryVersionNumber(_StandardCommand):
 class QueryContentDTR0(_StandardCommand):
     """Return the contents of DTR0."""
     _cmdval = 0x98
-    _uses_dtr0 = True
+    uses_dtr0 = True
     _response = command.NumericResponse
 
 
@@ -675,14 +675,14 @@ class QueryPowerFailure(_StandardCommand):
 class QueryContentDTR1(_StandardCommand):
     """Return the contents of DTR1."""
     _cmdval = 0x9c
-    _uses_dtr1 = True
+    uses_dtr1 = True
     _response = command.NumericResponse
 
 
 class QueryContentDTR2(_StandardCommand):
     """Return the contents of DTR2."""
     _cmdval = 0x9d
-    _uses_dtr2 = True
+    uses_dtr2 = True
     _response = command.NumericResponse
 
 
@@ -721,9 +721,9 @@ class QueryLightSourceType(_StandardCommand):
     three then DTR2 shall be MASK.
     """
     _cmdval = 0x9f
-    _uses_dtr0 = True
-    _uses_dtr1 = True
-    _uses_dtr2 = True
+    uses_dtr0 = True
+    uses_dtr1 = True
+    uses_dtr2 = True
     _response = command.NumericResponseMask
 
 
@@ -895,8 +895,8 @@ class ReadMemoryLocation(_StandardCommand):
     below 0xff, then DTR0 is incremented by 1.
     """
     _cmdval = 0xc5
-    _uses_dtr0 = True
-    _uses_dtr1 = True
+    uses_dtr0 = True
+    uses_dtr1 = True
     _response = command.Response
 
 
@@ -1019,7 +1019,7 @@ class DTR0(_SpecialCommand):
     """This is a broadcast command to set the value of the DTR0 register."""
     _cmdval = 0xa3
     _hasparam = True
-    _uses_dtr0 = True
+    uses_dtr0 = True
 
 
 class Initialise(command.Command):
@@ -1193,14 +1193,14 @@ class DTR1(_SpecialCommand):
     """This is a broadcast command to set the value of the DTR1 register."""
     _cmdval = 0xc3
     _hasparam = True
-    _uses_dtr1 = True
+    uses_dtr1 = True
 
 
 class DTR2(_SpecialCommand):
     """This is a broadcast command to set the value of the DTR2 register."""
     _cmdval = 0xc5
     _hasparam = True
-    _uses_dtr2 = True
+    uses_dtr2 = True
 
 
 class WriteMemoryLocation(_SpecialCommand):
@@ -1221,8 +1221,8 @@ class WriteMemoryLocation(_SpecialCommand):
     """
     _cmdval = 0xc7
     _hasparam = True
-    _uses_dtr0 = True
-    _uses_dtr1 = True
+    uses_dtr0 = True
+    uses_dtr1 = True
     _response = command.Response
 
 
@@ -1234,5 +1234,5 @@ class WriteMemoryLocationNoReply(_SpecialCommand):
     """
     _cmdval = 0xc9
     _hasparam = True
-    _uses_dtr0 = True
-    _uses_dtr1 = True
+    uses_dtr0 = True
+    uses_dtr1 = True

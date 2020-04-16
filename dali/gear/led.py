@@ -58,7 +58,7 @@ class SelectDimmingCurve(_LEDConfigCommand):
     0 - standard
     1 - linear
     """
-    _uses_dtr0 = True
+    uses_dtr0 = True
     _cmdval = 0xe3
 
 
@@ -69,7 +69,7 @@ class StoreDTRAsFastFadeTime(_LEDConfigCommand):
     the fast fade time.  If it is greater than 27 then 27 is stored as
     the fast fade time.
     """
-    _uses_dtr0 = True
+    uses_dtr0 = True
     _cmdval = 0xe4
 
 

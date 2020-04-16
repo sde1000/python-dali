@@ -177,9 +177,9 @@ class Command(metaclass=CommandTracker):
     # appropriate column.
     appctrl = False
     inputdev = False
-    _uses_dtr0 = False
-    _uses_dtr1 = False
-    _uses_dtr2 = False
+    uses_dtr0 = False
+    uses_dtr1 = False
+    uses_dtr2 = False
     _response = None
     _sendtwice = False
 

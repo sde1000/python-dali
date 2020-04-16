@@ -57,6 +57,12 @@ class TestCommands(unittest.TestCase):
             self.assertIsInstance(cls.appctrl, bool)
             self.assertHasAttr(cls, "inputdev")
             self.assertIsInstance(cls.inputdev, bool)
+            self.assertHasAttr(cls, "uses_dtr0")
+            self.assertIsInstance(cls.uses_dtr0, bool)
+            self.assertHasAttr(cls, "uses_dtr1")
+            self.assertIsInstance(cls.uses_dtr1, bool)
+            self.assertHasAttr(cls, "uses_dtr2")
+            self.assertIsInstance(cls.uses_dtr2, bool)
 
     def test_roundtrip(self):
         """all frames survive command.from_frame()"""
