@@ -3,12 +3,6 @@ from collections import namedtuple
 
 from dali.gear.general import ReadMemoryLocation, DTR0, DTR1
 
-MemoryBank = namedtuple('MemoryBank', [
-    'bank',      # Memory bank as integer.
-    'mandatory', # Is this bank mandatory or optional?
-    'locations'  # Tuple of MemoryLocations. Index equals address.
-])
-
 class MemoryType(Enum):
     ROM = auto()      # ROM
     RAM_RO = auto()   # RAM-RO
@@ -31,14 +25,64 @@ class MemoryValue:
     """Memory locations that belong to this value. Sorted from MSB to LSB."""
     locations = ()
 
+    """Retrieves this memory value through a DALI query.
+
+    @param driver: instance of SyncDALIDriver
+    @param dali_address: address of the DALI device (Address)
+    """
     @classmethod
-    def retrieve(cls, driver, dali_address):
+    def retrieve(cls, sync_driver, dali_address):
         result = []
         for location in cls.locations:
-            driver.send(DTR1(location.bank))
-            driver.send(DTR0(location.address))
-            result.append(driver.send(ReadMemoryLocation(dali_address)).value.as_integer)
+            sync_driver.send(DTR1(location.bank))
+            sync_driver.send(DTR0(location.address))
+            result.append(sync_driver.send(ReadMemoryLocation(dali_address)).value.as_integer)
         return bytes(result)
+
+    """Checks whether this value is adressable by querying the value of the last addressable memory location
+    for this memory bank.
+
+    @param driver: instance of SyncDALIDriver
+    @param dali_address: address of the DALI device (Address)
+    """
+    @classmethod
+    def is_addressable(cls, sync_driver, dali_address):
+        last_location = cls.locations[-1]
+        sync_driver.send(DTR1(last_location.bank))
+        sync_driver.send(DTR0(0x00))
+        last_addressable = sync_driver.send(ReadMemoryLocation(dali_address)).value.as_integer
+
+        return last_addressable > last_location.address
+
+
+class LockableValueMixin:
+
+    """Check whether this value is locked. Returns True is value is locked or read-only. Returns false for values
+    that can not be locked.
+
+    @param driver: instance of SyncDALIDriver
+    @param dali_address: address of the DALI device (Address)
+    """
+    @classmethod
+    def is_locked(cls, sync_driver, dali_address):
+        memory_type = cls.locations[0].type_
+        if memory_type == MemoryType.ROM:
+            return True
+        elif memory_type == MemoryType.RAM_RO:
+            return True
+        elif memory_type == MemoryType.RAM_RW:
+            return False
+        elif memory_type == MemoryType.NVM_RO:
+            return True
+        elif memory_type == MemoryType.NVM_RW:
+            return False
+        elif memory_type == MemoryType.NVM_RW_P:
+            sync_driver.send(DTR1(cls.locations[0].bank))
+            sync_driver.send(DTR0(0x02))
+            lock_byte = cls.retrieve(sync_driver, dali_address)[0]
+            return lock_byte != 0x55
+        else:
+            raise ValueError('Undefined MemoryType.')
 
 class NumericValue(MemoryValue):
 
@@ -46,9 +90,9 @@ class NumericValue(MemoryValue):
     unit = 1
 
     @classmethod
-    def retrieve(cls, driver, dali_address):
+    def retrieve(cls, sync_driver, dali_address):
         result = 0
-        raw_values = super().retrieve(driver, dali_address)
+        raw_values = super().retrieve(sync_driver, dali_address)
         for shift, value in enumerate(raw_values[::-1]):
             result += value << (shift*8)
         return result
@@ -59,15 +103,15 @@ class ScaledNumericValue(NumericValue):
     scale_location = None
 
     @classmethod
-    def retrieve(cls, driver, dali_address):
-        result = super().retrieve(driver, dali_address)
+    def retrieve(cls, sync_driver, dali_address):
+        result = super().retrieve(sync_driver, dali_address)
 
         # setup to read back scale value
-        driver.send(DTR1(cls.scale_location.bank))
-        driver.send(DTR0(cls.scale_location.address))
+        sync_driver.send(DTR1(cls.scale_location.bank))
+        sync_driver.send(DTR0(cls.scale_location.address))
 
         # read scale value and convert it from twos-complement to an integer
-        scale_raw = driver.send(ReadMemoryLocation(dali_address)).value.as_integer
+        scale_raw = sync_driver.send(ReadMemoryLocation(dali_address)).value.as_integer
         scale = int.from_bytes(bytes([scale_raw]), byteorder='big', signed=True)
 
         return result * 10.**scale
@@ -75,9 +119,9 @@ class ScaledNumericValue(NumericValue):
 class StringValue(MemoryValue):
 
     @classmethod
-    def retrieve(cls, driver, dali_address):
+    def retrieve(cls, sync_driver, dali_address):
         result = ''
-        raw_values = super().retrieve(driver, dali_address)
+        raw_values = super().retrieve(sync_driver, dali_address)
         for value in raw_values:
             result += chr(value)
         return result
