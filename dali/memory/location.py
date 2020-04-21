@@ -14,7 +14,6 @@ class MemoryType(Enum):
 MemoryLocation = namedtuple('MemoryLocation', [
     'bank',        # Memory bank to which the location belongs (mandatory).
     'address',     # Memory address as integer (mandatory).
-    'description', # Description of the location as noted in the IEC 62386 standard or its extensions.
     'default',     # Default value of the memory location. None if undefined or manufacturer specific. -1 if answers NO.
     'reset',       # Reset value of the memory location. None for no change.
     'type_'        # Memory type.
@@ -66,23 +65,13 @@ class LockableValueMixin:
     @classmethod
     def is_locked(cls, sync_driver, dali_address):
         memory_type = cls.locations[0].type_
-        if memory_type == MemoryType.ROM:
-            return True
-        elif memory_type == MemoryType.RAM_RO:
-            return True
-        elif memory_type == MemoryType.RAM_RW:
-            return False
-        elif memory_type == MemoryType.NVM_RO:
-            return True
-        elif memory_type == MemoryType.NVM_RW:
-            return False
-        elif memory_type == MemoryType.NVM_RW_P:
+        if memory_type == MemoryType.NVM_RW_P:
             sync_driver.send(DTR1(cls.locations[0].bank))
             sync_driver.send(DTR0(0x02))
             lock_byte = cls.retrieve(sync_driver, dali_address)[0]
             return lock_byte != 0x55
         else:
-            raise ValueError('Undefined MemoryType.')
+            raise ValueError('MemoryType does not support locking')
 
 class NumericValue(MemoryValue):
 
@@ -116,6 +105,15 @@ class ScaledNumericValue(NumericValue):
 
         return result * 10.**scale
 
+class FixedScaleNumericValue(NumericValue):
+
+    """Fixed scaling factor."""
+    scaling_factor = 1
+
+    @classmethod
+    def retrieve(cls, sync_driver, dali_address):
+        return cls.scaling_factor * super().retrieve(sync_driver, dali_address)
+
 class StringValue(MemoryValue):
 
     @classmethod
@@ -123,5 +121,29 @@ class StringValue(MemoryValue):
         result = ''
         raw_values = super().retrieve(sync_driver, dali_address)
         for value in raw_values:
-            result += chr(value)
+            if value == 0:
+                break # string is Null terminated
+            else:
+                result += chr(value)
         return result
+
+class BinaryValue(MemoryValue):
+
+    @classmethod
+    def retrieve(cls, sync_driver, dali_address):
+        if super().retrieve(sync_driver, dali_address) == 1:
+            return True
+        else:
+            return False
+
+class TemperatureValue(NumericValue):
+
+    unit = '°C'
+
+    @classmethod
+    def retrieve(cls, sync_driver, dali_address):
+        return super().retrieve(sync_driver, dali_address) - 60
+
+class ManufacturerSpecificValue(MemoryValue):
+
+    pass
