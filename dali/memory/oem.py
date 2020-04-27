@@ -1,5 +1,8 @@
 from .location import MemoryLocation, MemoryType, MemoryValue, NumericValue, StringValue, LockableValueMixin, ManufacturerSpecificValue
 
+"""The mememory bank definitions from
+DiiA Specification, DALI Part 251 - Memory Bank 1 Extension, Version 1.1, October 2019"""
+
 class ManufacturerGTIN(MemoryValue, LockableValueMixin):
     """Luminaire manufacturer GTIN with manufacturer specific prefix to derive manufacturer name"""
 
@@ -99,7 +102,7 @@ class LightOutputNominal(NumericValue, LockableValueMixin):
 class CRI(NumericValue, LockableValueMixin):
     """CRI"""
 
-    locations = (BANK_1.locations[0x20])
+    locations = (MemoryLocation(bank=1, address=0x20, default=0xff, reset=None, type_=MemoryType.NVM_RW_P))
 
 class CCT(NumericValue, LockableValueMixin):
     """CCT in K"""

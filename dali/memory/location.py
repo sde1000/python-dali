@@ -53,7 +53,6 @@ class MemoryValue:
 
         return last_addressable > last_location.address
 
-
 class LockableValueMixin:
 
     """Check whether this value is locked. Returns True is value is locked or read-only. Returns false for values
