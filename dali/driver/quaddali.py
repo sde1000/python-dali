@@ -1,6 +1,13 @@
+"""Driver implementation for Quad-DALI-USB-Interface with integrated DALI-PSU
+
+Contains four [EFM8-DALI-UART-Bridge] modules and one Silabs CP2108.
+
+[EFM8-DALI-UART-Bridge]: https://git.rwth-aachen.de/Ferdinand.Keil/efm8-dali-uart-bridge
+"""
+
 import logging
 import struct
-from time import sleep
+from time import sleep, perf_counter
 import serial
 
 from dali.driver.base import DALIDriver
@@ -33,7 +40,15 @@ class QuadDALIUSBDriver(DALIDriver):
         return None
 
 class SerialBackend(Backend):
+    """``Backend`` implementation for Quad-DALI-USB-Interface. Uses serial connection."""
 
+    """Open connection to the DALI interface.
+
+    @param port: valid serial port (e.g. /dev/ttyUSB0 or COM1)
+    @param baudrate: serial baudrate; default is 115.200
+    @param bytesize: number of bits per byte; default is 8
+    @param parity: configures parity bit; default is none
+    @param stopbits: number of stopbits per byte; default is one"""
     def __init__(self, port, baudrate=115200, bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE,
                  stopbits=serial.STOPBITS_ONE):
         self._serial = serial.Serial(port=port, baudrate=baudrate, bytesize=bytesize, parity=parity, stopbits=stopbits)
@@ -54,24 +69,40 @@ class SerialBackend(Backend):
         sleep(0.050) # just a precaution if the previous command causes data to be sent
         self._reset_input_buffer()
 
+    """Read data from the DALI interface.
+
+    @param timeout: read timeout in seconds; set to 0 or None to disable
+    @return data read from the interface"""
     def read(self, timeout=None):
-        self._serial.timeout = timeout
+        # internal read timeout is set to 10 ms to increase responsiveness
+        self._serial.timeout = 0.010
+        # to compensate for the short read timeout and to use the timeout argument, the read is repeated until
+        # more time than specified has elapsed
+        start = perf_counter()
+        while timeout and abs(start-perf_counter()) < timeout:
+            data = self._serial.read(1)
+            if len(data) > 0:
+                break
         # DALI backframes are max. 1 Byte long, so that is all that is needed
-        data = self._serial.read(1)
-        #print(f'retrieved {len(data)} Bytes') # XXX
         if len(data) <= 1:
             return data
         else:
             raise ValueError(f'read method returned too many bytes ({len(data)})')
 
+    """Write data to the DALI interface.
+
+    @param data: data to write
+    @return number of bytes written"""
     def write(self, data):
         bytes_written = self._serial.write(data)
         self._serial.flush()
         return bytes_written
 
+    """Close connection to the DALI interface."""
     def close(self):
         self._serial.close()
 
+"""Specifies the firmware version expected by this driver."""
 REQUIRED_FIRMWARE_VERSION = 0o104
 
 class SyncQuadDALIUSBDriver(QuadDALIUSBDriver, SyncDALIDriver):
@@ -84,7 +115,7 @@ class SyncQuadDALIUSBDriver(QuadDALIUSBDriver, SyncDALIDriver):
 
         # retrieve firmware version - ensures we're talking to the correct port
         self.backend.write(bytes.fromhex('facade00'))
-        firmware_version = self.backend.read(timeout=0.010)
+        firmware_version = self.backend.read(timeout=2.000)
         try:
             self.firmware_version = f'{firmware_version[0]:o}'
         except (IndexError, ValueError, TypeError):
@@ -97,16 +128,16 @@ class SyncQuadDALIUSBDriver(QuadDALIUSBDriver, SyncDALIDriver):
             self.backend.close()
             raise RuntimeError(f'unsupported device - firmware version too old ({self.firmware_version}<{REQUIRED_FIRMWARE_VERSION:o})')
 
-    def send(self, command, timeout=2000):
+    def send(self, command, timeout=1000):
         # construct & send forward frame
         self.backend.write(self.construct(command))
         # wait until the forward frame has finished sending
         # 38 Te (sending) + 22 Te (backoff) = 60 Te ~= 25 ms
-        sleep(0.030)
+        sleep(0.050)
 
         if command.response is not None:
             # timeout 10 ms is approx. 22 Te as per 62386-102 8.9
-            response = self.backend.read(timeout=timeout/1000)
+            response = self.backend.read(timeout=timeout/1000.)
             if response is None:
                 #print('response was none') # XXX
                 return command.response(self.extract(bytes([0])))
@@ -115,20 +146,26 @@ class SyncQuadDALIUSBDriver(QuadDALIUSBDriver, SyncDALIDriver):
                 return command.response(self.extract(response))
 
 if __name__ == '__main__':
+    import argparse
     from dali.address import Broadcast, Short
     from dali.gear.general import RecallMinLevel, RecallMaxLevel, EnableDeviceType
     from dali.gear.led import QueryGearType
 
-    iface = SyncQuadDALIUSBDriver(port='/dev/ttyS24')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-n', help='repeat query n times', type=int, default=1)
+    parser.add_argument('port', help='serial port to connect to', type=str)
+    args = parser.parse_args()
 
-    #for i in range(3):
-    #    iface.send(RecallMaxLevel(Short(0)))
-    #    sleep(0.1)
-    #    iface.send(RecallMinLevel(Broadcast()))
-    #    sleep(0.1)
-    for i in range(100):
-        iface.send(EnableDeviceType(6))
-        resp = iface.send(QueryGearType(Short(0)))
-        #print(resp)
+    iface = SyncQuadDALIUSBDriver(port=args.port)
+
+    for i in range(args.n):
+        print(f'Run #{i+1}')
+        print('max level... ', end='')
+        iface.send(RecallMaxLevel(Short(0)))
+        sleep(0.3)
+        print('min level...')
+        iface.send(RecallMinLevel(Broadcast()))
+        sleep(0.2)
+        print()
 
     iface.backend.close()
