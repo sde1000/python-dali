@@ -1,5 +1,7 @@
 __all__ = [
     'location',
     'oem',
-    'energy'
+    'energy',
+    'diagnostics',
+    'maintenance'
 ]
