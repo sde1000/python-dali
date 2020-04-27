@@ -1,5 +1,8 @@
 from .location import MemoryLocation, MemoryType, MemoryValue, NumericValue, StringValue, ScaledNumericValue, LockableValueMixin
 
+"""The mememory bank definitions from
+DiiA Specification, DALI Part 252 - Energy Reporting, Version 1.1, October 2019"""
+
 class ActiveEnergy(ScaledNumericValue, LockableValueMixin):
     """Active Energy in Wh"""
 
@@ -113,6 +116,8 @@ if __name__ == '__main__':
             f'{ActiveEnergyLoadside.unit}')
         print(f'ActivePowerLoadside: {ActivePowerLoadside.retrieve(iface, Short(args.s)):.3f} ' + \
             f'{ActivePowerLoadside.unit}')
+        print()
+        print(f'PowerFactor: {ActivePower.retrieve(iface, Short(args.s))/ApparentPower.retrieve(iface, Short(args.s)):.3f}')
         print()
 
     iface.backend.close()
