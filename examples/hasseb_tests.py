@@ -3,12 +3,11 @@
 import sys
 
 from dali.driver import hasseb
-from dali import bus
 
 # Create hasseb USB DALI driver instance to handle messages
 DALI_device = hasseb.SyncHassebDALIUSBDriver()
 # Create DALI bus
-DALI_bus = bus.Bus('hasseb DALI bus',   DALI_device)
+DALI_bus = hasseb.Bus('hasseb DALI bus',   DALI_device)
 
 # Print help if no arguments
 if len(sys.argv) == 1:

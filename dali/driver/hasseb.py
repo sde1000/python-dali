@@ -15,6 +15,7 @@ from dali.exceptions import NotConnected
 from dali.exceptions import ProgramShortAddressFailure
 
 import dali.gear.general as gear
+from dali.address import Short
 
 import time
 
@@ -282,6 +283,11 @@ class Bus(object):
         self.name = name
         self._interface = interface
 
+    def get_interface(self):
+        if not self._interface:
+            raise NotConnected()
+        return self._interface
+
     def add_device(self, device):
         if device.bus and device.bus != self:
             raise DeviceAlreadyBound()
@@ -306,16 +312,16 @@ class Bus(object):
         for sa in range(64):
             if sa in self._devices:
                 continue
-            response = i.send(QueryControlGearPresent(address.Short(sa)))
+            response = i.send(gear.QueryControlGearPresent(Short(sa)))
             if response.value:
                 Device(address=sa, bus=self)
         self._bus_scanned = True
 
     def set_search_addr(self, addr):
         i = self.get_interface()
-        i.send(SetSearchAddrH((addr >> 16) & 0xff))
-        i.send(SetSearchAddrM((addr >> 8) & 0xff))
-        i.send(SetSearchAddrL(addr & 0xff))
+        i.send(gear.SetSearchAddrH((addr >> 16) & 0xff))
+        i.send(gear.SetSearchAddrM((addr >> 8) & 0xff))
+        i.send(gear.SetSearchAddrL(addr & 0xff))
 
     def find_next(self, low, high):
         """Find the ballast with the lowest random address.  The caller
@@ -335,7 +341,7 @@ class Bus(object):
             if response.value is True:
                 return low
             return None
-        response = i.send(Compare())
+        response = i.send(gear.Compare())
         if response.value is True:
             midpoint = (low + high) // 2
             return self.find_next(low, midpoint) \
@@ -347,9 +353,9 @@ class Bus(object):
         """
         addrs = self.unused_addresses()
         i = self.get_interface()
-        i.send(Terminate())
-        i.send(Initialise(broadcast=broadcast, address=None))
-        i.send(Randomise())
+        i.send(gear.Terminate())
+        i.send(gear.Initialise(broadcast=broadcast, address=None))
+        i.send(gear.Randomise())
         # Randomise may take up to 100ms
         time.sleep(0.1)
         low = 0
@@ -359,18 +365,17 @@ class Bus(object):
             if low is not None:
                 if addrs:
                     new_addr = addrs.pop(0)
-                    i.send(ProgramShortAddress(new_addr))
-                    r = i.send(VerifyShortAddress(new_addr))
+                    i.send(gear.ProgramShortAddress(new_addr))
+                    r = i.send(gear.VerifyShortAddress(new_addr))
                     if r.value is not True:
-                        raise ProgramShortAddressFailure(new_addr)
-                        #print(f"Error in programming short address {new_addr}")
+                        print(f"Error in programming short address {new_addr}")
                     i.send(gear.Withdraw())
                     Device(address=new_addr, randomAddress=low, bus=self)
                 else:
-                    i.send(Terminate())
+                    i.send(gear.Terminate())
                     raise NoFreeAddress()
                 low = low + 1
-        i.send(Terminate())
+        i.send(gear.Terminate())
 
     def assign_short_addresses(self):
         """Search for devices on the bus with no short address allocated, and
