@@ -60,7 +60,3 @@ class CommunicationError(DriverError):
 class UnsupportedFrameTypeError(DriverError):
     """Device driver does not support this type of frame
     """
-
-class BusError(DriverError):
-    """An invalid state was detected on the DALI bus
-    """

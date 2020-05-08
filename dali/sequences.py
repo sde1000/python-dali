@@ -166,7 +166,7 @@ class Commissioning:
                             yield ProgramShortAddress(new_addr)
                             r = yield VerifyShortAddress(new_addr)
                             if r.value is not True:
-                                raise ProgramShortAddressFailure()
+                                raise ProgramShortAddressFailure(new_addr)
                     else:
                         yield progress(
                             message="Device found but no short addresses left")
