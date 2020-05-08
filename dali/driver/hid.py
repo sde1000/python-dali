@@ -11,6 +11,8 @@ import logging
 import random
 import glob
 from dali.exceptions import UnsupportedFrameTypeError, CommunicationError
+from dali.sequences import sleep as seq_sleep
+from dali.sequences import progress as seq_progress
 import dali.frame
 
 # dali.command and dali.gear are required for the bus traffic callback
@@ -205,8 +207,30 @@ class hid:
             if not in_transaction:
                 self.transaction_lock.release()
 
-    def _initialise_device(self):
+    async def run_sequence(self, seq, progress=None):
+        await self.transaction_lock.acquire()
+        response = None
+        try:
+            while True:
+                try:
+                    cmd = seq.send(response)
+                except StopIteration:
+                    return
+                response = None
+                if isinstance(cmd, seq_sleep):
+                    await asyncio.sleep(cmd.delay)
+                elif isinstance(cmd, seq_progress):
+                    if progress:
+                        progress(cmd)
+                else:
+                    if cmd.devicetype != 0:
+                        await self._send_raw(EnableDeviceType(cmd.devicetype))
+                    response = await self._send_raw(cmd)
+        finally:
+            self.transaction_lock.release()
+            seq.close()
 
+    def _initialise_device(self):
         """Send any device-specific initialisation commands
         """
         # Some devices may need to send initialisation commands and await
