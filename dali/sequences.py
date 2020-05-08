@@ -113,9 +113,10 @@ class Commissioning:
         if not self.readdress:
             # We need to know which short addresses are already in use
             for a in range(0, 64):
-                in_use = yield QueryControlGearPresent(Short(a))
-                if in_use.value and in_use.value in available_addresses:
-                    available_addresses.remove(a)
+                if a in available_addresses:
+                    in_use = yield QueryControlGearPresent(Short(a))
+                    if in_use.value:
+                        available_addresses.remove(a)
             yield progress(
                 message=f"Available addresses: {available_addresses}")
 
