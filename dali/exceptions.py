@@ -38,6 +38,9 @@ class ResponseError(CommandError):
 # sequences
 ###############################################################################
 
+class DALISequenceError(DALIError):
+    """An error occurred during execution of a command sequence."""
+    pass
 
 class ProgramShortAddressFailure(DALIError):
     """A device did not accept programming of its short address."""

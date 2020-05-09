@@ -49,10 +49,11 @@ async def main(args, loop):
     await d.connected.wait()
     log.info("Connected to device %s with %s driver", args.device, args.driver)
 
-    seq = Commissioning(readdress=args.mode=="readdress",
-                        dry_run=args.dry_run)
+    await d.run_sequence(
+        Commissioning(readdress=args.mode=="readdress",
+                      dry_run=args.dry_run),
+        progress=print_progress)
 
-    await d.run_sequence(seq.run(), progress=print_progress)
     d.disconnect()
 
 if __name__ == "__main__":

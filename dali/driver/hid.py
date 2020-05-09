@@ -207,7 +207,13 @@ class hid:
             if not in_transaction:
                 self.transaction_lock.release()
 
-    async def run_sequence(self, seq, progress=None):
+    async def run_sequence(self, cmd_seq, progress=None):
+        """Run a command sequence as a transaction
+        """
+        if hasattr(cmd_seq, 'run'):
+            seq = cmd_seq.run()
+        else:
+            seq = cmd_seq
         await self.transaction_lock.acquire()
         response = None
         try:
@@ -215,6 +221,8 @@ class hid:
                 try:
                     cmd = seq.send(response)
                 except StopIteration:
+                    if hasattr(cmd_seq, 'result'):
+                        return cmd_seq.result
                     return
                 response = None
                 if isinstance(cmd, seq_sleep):

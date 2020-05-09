@@ -1,13 +1,29 @@
 # Useful sequences of commands
 
-# These sequences can be passed to a driver for execution as a
+# These command sequences can be passed to a driver for execution as a
 # transaction.
 
-# Sequences may raise exceptions.
-from dali.exceptions import DALIError
+# A command sequence is a class.  Any arguments to be passed into it
+# are passed to the class constructor.  Class instances must have a
+# "run" method that is a generator co-routine that takes no arguments,
+# and may have a "result" attribute which is the value to be returned
+# by the driver to the caller.  They may support other methods and
+# attributes if they wish; the "run_sequence" method of drivers must
+# also support being passed a generator instead of class instance.
 
-class DALISequenceError(DALIError):
-    pass
+# The generator co-routine can yield the following types of object:
+#
+# * dali.command.Command instances for execution; the response must be
+#   passed back into the sequence via .send() on the generator
+#
+# * dali.sequence.sleep instances to request a delay in execution
+#
+# * dali.sequence.progress instances to provide updates on sequence execution
+
+# Sequences may raise exceptions, which the driver should pass to the
+# caller.
+
+from dali.exceptions import DALISequenceError
 
 from dali.gear.general import *
 from dali.address import Broadcast
@@ -39,29 +55,33 @@ class QueryDeviceTypes:
     """
     def __init__(self, addr):
         self.addr = addr
-        self.device_types = []
+        self.result = None
 
     def run(self):
         r = yield QueryDeviceType(self.addr)
         if r.raw_value is None:
             raise DALISequenceError("No response to initial query")
         if r.raw_value.as_integer < 254:
-            self.device_types.append(r.raw_value.as_integer)
+            self.result = [r.raw_value.as_integer]
             return
         if r.raw_value.as_integer == 255:
             last_seen = 0
+            self.result = []
             while True:
                 r = yield QueryNextDeviceType(addr)
                 if not r.raw_value:
                     raise DALISequenceError(
                         "No response to QueryNextDeviceType()")
                 if r.raw_value.as_integer == 254:
+                    if len(self.result) == 0:
+                        raise DALISequenceError(
+                            "No device types returned by QueryNextDeviceType")
                     return
                 if r.raw_value.as_integer <= last_seen:
                     # The gear is required to return device types in
                     # ascending order, without repeats
                     raise DALISequenceError("Device type received out of order")
-                self.device_types.append(r.raw_value.as_integer)
+                self.result.append(r.raw_value.as_integer)
 
 class Commissioning:
     """Assign short addresses to control gear

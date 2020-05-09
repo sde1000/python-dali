@@ -38,13 +38,11 @@ async def main(self):
     await d.connected.wait()
 
     for addr in range(0, 64):
-        qds = QueryDeviceTypes(Short(addr))
         try:
-            await d.run_sequence(qds.run())
+            device_types = await d.run_sequence(QueryDeviceTypes(Short(addr)))
         except DALISequenceError:
             # The device isn't present; skip it
             continue
-        device_types = qds.device_types
         print(f"{addr}: {device_types}")
 
         s = await d.send(QueryStatus(Short(addr)))
