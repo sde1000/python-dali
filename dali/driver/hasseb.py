@@ -15,7 +15,10 @@ from dali.exceptions import NotConnected
 from dali.exceptions import ProgramShortAddressFailure
 
 import dali.gear.general as gear
+<<<<<<< HEAD
 from dali.address import Short
+=======
+>>>>>>> 300173044abf09535d6f2c9950b811553d168d2d
 
 import time
 
@@ -37,6 +40,10 @@ HASSEB_DRIVER_INVALID_ANSWER = 3
 HASSEB_DRIVER_TOO_EARLY = 4
 HASSEB_DRIVER_SNIFFER_BYTE = 5
 HASSEB_DRIVER_SNIFFER_BYTE_ERROR = 6
+<<<<<<< HEAD
+=======
+
+>>>>>>> 300173044abf09535d6f2c9950b811553d168d2d
 
 class HassebDALIUSBNoDataAvailable:
     def __repr__(self):
@@ -44,7 +51,12 @@ class HassebDALIUSBNoDataAvailable:
 
     __str__ = __repr__
 
+<<<<<<< HEAD
 class HassebDALIUSBNoAnswer:
+=======
+
+class HassebDALIUSBNoAnswer(object):
+>>>>>>> 300173044abf09535d6f2c9950b811553d168d2d
     def __repr__(self):
         return 'NO_ANSWER'
 
