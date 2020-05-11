@@ -2,5 +2,6 @@ __all__ = [
     "base",
     "daliserver",
     "hasseb",
-    "tridonic"
+    "tridonic",
+    "quaddali"
 ]
