@@ -84,6 +84,8 @@ Contributors
 
 - Martijn Hemeryck
 
+- Hans Baumgartner
+
 
 Copyright
 ---------
