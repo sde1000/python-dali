@@ -23,10 +23,10 @@
 # Sequences may raise exceptions, which the driver should pass to the
 # caller.
 
-from dali.exceptions import DALISequenceError
+from dali.exceptions import DALISequenceError, ProgramShortAddressFailure
 
 from dali.gear.general import *
-from dali.address import Broadcast
+from dali.address import Broadcast, Short
 
 class sleep:
     """Delay for a while
@@ -50,12 +50,18 @@ class progress:
         self.completed = completed
         self.size = size
 
+    def __str__(self):
+        if self.message:
+            return self.message
+        if self.completed is not None and self.size is not None:
+            return f"Progress: {self.completed}/{self.size}"
+
 class QueryDeviceTypes:
     """Obtain a list of part 2xx device types supported by control gear
     """
     def __init__(self, addr):
         self.addr = addr
-        self.result = None
+        self.result = []
 
     def run(self):
         r = yield QueryDeviceType(self.addr)
@@ -66,9 +72,8 @@ class QueryDeviceTypes:
             return
         if r.raw_value.as_integer == 255:
             last_seen = 0
-            self.result = []
             while True:
-                r = yield QueryNextDeviceType(addr)
+                r = yield QueryNextDeviceType(self.addr)
                 if not r.raw_value:
                     raise DALISequenceError(
                         "No response to QueryNextDeviceType()")
@@ -99,7 +104,10 @@ class Commissioning:
     """
     def __init__(self, available_addresses=None, readdress=False,
                  dry_run=False):
-        self.available_addresses = available_addresses
+        if available_addresses is None:
+            self.available_addresses = list(range(64))
+        else:
+            self.available_addresses = list(available_addresses)
         self.readdress = readdress
         self.dry_run = dry_run
 
@@ -120,7 +128,7 @@ class Commissioning:
         if r.value == True:
             midpoint = (low + high) // 2
             yield from self._find_next(low, midpoint)
-            if self._find_next_result:
+            if self._find_next_result is not None:
                 return
             yield from self._find_next(midpoint + 1, high)
             return
@@ -128,17 +136,15 @@ class Commissioning:
         self._find_next_result = None
 
     def run(self):
-        available_addresses = self.available_addresses or list(range(0, 64))
-
         if not self.readdress:
             # We need to know which short addresses are already in use
             for a in range(0, 64):
-                if a in available_addresses:
+                if a in self.available_addresses:
                     in_use = yield QueryControlGearPresent(Short(a))
                     if in_use.value:
-                        available_addresses.remove(a)
+                        self.available_addresses.remove(a)
             yield progress(
-                message=f"Available addresses: {available_addresses}")
+                message=f"Available addresses: {self.available_addresses}")
 
         if self.readdress:
             if self.dry_run:
@@ -174,9 +180,9 @@ class Commissioning:
                     break
                 if low is not None:
                     yield progress(
-                        message="Ballast found at address %x" % low)
-                    if available_addresses:
-                        new_addr = available_addresses.pop(0)
+                        message=f"Ballast found at address {low:#x}")
+                    if self.available_addresses:
+                        new_addr = self.available_addresses.pop(0)
                         if self.dry_run:
                             yield progress(
                                 message="Not programming short address "
@@ -192,7 +198,11 @@ class Commissioning:
                         yield progress(
                             message="Device found but no short addresses left")
                     yield Withdraw()
-                    low = low + 1 if low < high else None
+                    if low < high:
+                        low = low + 1
+                    else:
+                        low = None
+                        finished = True
                 else:
                     finished = True
         yield Terminate()
