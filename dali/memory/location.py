@@ -24,28 +24,29 @@ class MemoryValue:
     """Memory locations that belong to this value. Sorted from MSB to LSB."""
     locations = ()
 
-    """Retrieves this memory value through a DALI query.
-
-    @param driver: instance of SyncDALIDriver
-    @param dali_address: address of the DALI device (Address)
-    """
     @classmethod
     def retrieve(cls, sync_driver, dali_address):
+        """Retrieves this memory value through a DALI query.
+
+        @param driver: instance of SyncDALIDriver
+        @param dali_address: address of the DALI device (Address)
+        """
         result = []
         for location in cls.locations:
             sync_driver.send(DTR1(location.bank))
             sync_driver.send(DTR0(location.address))
-            result.append(sync_driver.send(ReadMemoryLocation(dali_address)).value.as_integer)
+            memory_location = sync_driver.send(ReadMemoryLocation(dali_address))
+            result.append(memory_location.value.as_integer)
         return bytes(result)
 
-    """Checks whether this value is adressable by querying the value of the last addressable memory location
-    for this memory bank.
-
-    @param driver: instance of SyncDALIDriver
-    @param dali_address: address of the DALI device (Address)
-    """
     @classmethod
     def is_addressable(cls, sync_driver, dali_address):
+        """Checks whether this value is adressable by querying the value of the last addressable memory location
+        for this memory bank.
+
+        @param driver: instance of SyncDALIDriver
+        @param dali_address: address of the DALI device (Address)
+        """
         last_location = cls.locations[-1]
         sync_driver.send(DTR1(last_location.bank))
         sync_driver.send(DTR0(0x00))
@@ -55,14 +56,14 @@ class MemoryValue:
 
 class LockableValueMixin:
 
-    """Check whether this value is locked. Returns True is value is locked or read-only. Returns false for values
-    that can not be locked.
-
-    @param driver: instance of SyncDALIDriver
-    @param dali_address: address of the DALI device (Address)
-    """
     @classmethod
     def is_locked(cls, sync_driver, dali_address):
+        """Check whether this value is locked. Returns True is value is locked or read-only. Returns false for values
+        that can not be locked.
+
+        @param driver: instance of SyncDALIDriver
+        @param dali_address: address of the DALI device (Address)
+        """
         memory_type = cls.locations[0].type_
         if memory_type == MemoryType.NVM_RW_P:
             sync_driver.send(DTR1(cls.locations[0].bank))
