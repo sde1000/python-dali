@@ -36,11 +36,7 @@ Library structure
 
   - ``address`` - Device addressing
 
-  - ``bus`` - DALI bus and attached devices
-
   - ``command`` - Command registry, interface to command decoding
-
-  - ``compat`` - Compatibility code for Python 2 and 3
 
   - ``device`` - DALI control devices as defined in IEC 62386
 
@@ -88,11 +84,13 @@ Contributors
 
 - Martijn Hemeryck
 
+- Hans Baumgartner
+
 
 Copyright
 ---------
 
-python-dali is Copyright (C) 2013–2019 Stephen Early <steve@assorted.org.uk>
+python-dali is Copyright (C) 2013–2020 Stephen Early <steve@assorted.org.uk>
 
 It is distributed under the terms of the GNU Lesser General Public
 License as published by the Free Software Foundation, either version 3

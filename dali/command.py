@@ -1,14 +1,10 @@
 """Declaration of base types for dali commands and their responses."""
 
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
 from dali import address
 from dali import frame
-from dali.compat import add_metaclass
-from dali.compat import python_2_unicode_compatible
 from dali.exceptions import MissingResponse
 from dali.exceptions import ResponseError
+import warnings
 
 
 class CommandTracker(type):
@@ -25,6 +21,11 @@ class CommandTracker(type):
         else:
             if cls.__name__[0] != '_':
                 cls._commands.append(cls)
+        if not hasattr(cls, '_supported_devicetypes'):
+            cls._supported_devicetypes = set()
+        else:
+            if cls.devicetype != 0:
+                cls._supported_devicetypes.add(cls.devicetype)
 
     @classmethod
     def commands(cls):
@@ -34,8 +35,7 @@ class CommandTracker(type):
         return cls._commands
 
 
-@python_2_unicode_compatible
-class Response(object):
+class Response:
     """Some DALI commands cause a response from the addressed devices.
 
     The response is either an 8-bit backward frame encoding 8-bit data
@@ -115,9 +115,7 @@ class BitmapResponseBitDict(type):
             cls._bit_properties = bd
 
 
-@python_2_unicode_compatible
-@add_metaclass(BitmapResponseBitDict)
-class BitmapResponse(Response):
+class BitmapResponse(Response, metaclass=BitmapResponseBitDict):
     """A response that consists of several named bits.
 
     Bits are listed in subclasses with the least-sigificant bit first.
@@ -162,9 +160,7 @@ class BitmapResponse(Response):
             return "{}".format(e)
 
 
-@python_2_unicode_compatible
-@add_metaclass(CommandTracker)
-class Command(object):
+class Command(metaclass=CommandTracker):
     """A command frame.
 
     Subclasses must provide a class method "from_frame" which, when
@@ -179,19 +175,31 @@ class Command(object):
     # 16 of IEC 62386-102 and tables 21 and 22 of IEC 62386-103.
     # Override them in subclasses if there is a tick in the
     # appropriate column.
-    _appctrl = False
-    _inputdev = False
-    _uses_dtr0 = False
-    _uses_dtr1 = False
-    _uses_dtr2 = False
-    _response = None
-    _sendtwice = False
+    #
+    # "response" is None if no response is expected, or a Response
+    # class to process the response.
+    appctrl = False
+    inputdev = False
+    uses_dtr0 = False
+    uses_dtr1 = False
+    uses_dtr2 = False
+    response = None
+    sendtwice = False
 
     # 16-bit frames may be interpreted differently if they are
     # preceded by the EnableDeviceType command.  If a command needs
-    # EnableDeviceType(foo) to be sent first, override _devicetype to
+    # EnableDeviceType(foo) to be sent first, override devicetype to
     # foo.  This parameter is ignored for all other frame lengths.
-    _devicetype = 0
+    devicetype = 0
+
+    # devicetype used to be called "_devicetype".  This property is
+    # here for compatibility with older code that relied on this.  It
+    # will be removed in a future release.
+    @property
+    def _devicetype(self):
+        warnings.warn("'_devicetype' has been renamed to 'devicetype'",
+                      DeprecationWarning, stacklevel=2)
+        return self.devicetype
 
     def __init__(self, f):
         assert isinstance(f, frame.ForwardFrame)
@@ -215,7 +223,7 @@ class Command(object):
             return
 
         for dc in cls._commands:
-            if dc._devicetype != devicetype:
+            if dc.devicetype != devicetype:
                 continue
             r = dc.from_frame(f)
             if r:
@@ -231,24 +239,33 @@ class Command(object):
         """The forward frame to be transmitted for this command."""
         return self._data
 
-    # XXX rename to send_twice ?
     @property
     def is_config(self):
         """Is this a configuration command?  (Does it need repeating to
         take effect?)
+
+        Use of this property is deprecated: access the "sendtwice"
+        attribute directly.
         """
-        return self._sendtwice
+        warnings.warn("Access 'sendtwice' directly instead of using 'is_config'",
+                      DeprecationWarning, stacklevel=2)
+        return self.sendtwice
 
     @property
     def is_query(self):
         """Does this command return a result?"""
-        return self._response is not None
+        return self.response is not None
 
     @property
-    def response(self):
+    def _response(self):
         """If this command returns a result, use this class for the response.
+
+        This property is provided for compatibility with old code.
+        Access the "response" attribute directly.
         """
-        return self._response
+        warnings.warn("Access 'response' directly instead of using '_response'",
+                      DeprecationWarning, stacklevel=2)
+        return self.response
 
     @staticmethod
     def _check_destination(destination):

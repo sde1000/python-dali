@@ -1,19 +1,18 @@
 """Commands and responses from IEC 62386 part 205."""
 
-from __future__ import unicode_literals
 from dali import command
-from dali.gear.general import _StandardCommand
+from dali.gear.general import _StandardCommand, QueryExtendedVersionNumberMixin
 
 
 class _IncandescentCommand(_StandardCommand):
-    _devicetype = 4
+    devicetype = 4
 
 
 class _IncandescentConfigCommand(_IncandescentCommand):
     """An incandescent lighting configuration command as defined in
     section 11.3.4.1 of IEC 62386-205:2009.
     """
-    _sendtwice = True
+    sendtwice = True
 
 
 ###############################################################################
@@ -60,7 +59,7 @@ class QueryDimmingCurve(_IncandescentCommand):
     1 = linear
     """
     _cmdval = 0xee
-    _response = command.Response
+    response = command.Response
 
 
 class DimmerStatusResponse(command.BitmapResponse):
@@ -72,7 +71,7 @@ class DimmerStatusResponse(command.BitmapResponse):
 class QueryDimmerStatus(_IncandescentCommand):
     """Query Dimmer Status"""
     _cmdval = 0xef
-    _response = DimmerStatusResponse
+    response = DimmerStatusResponse
 
 
 class FeaturesByte1Response(command.BitmapResponse):
@@ -118,9 +117,9 @@ class QueryFeatures(_IncandescentCommand):
     transferred to DTR1.
     """
     _cmdval = 0xf0
-    _uses_dtr0 = True
-    _uses_dtr1 = True
-    _response = FeaturesByte1Response
+    uses_dtr0 = True
+    uses_dtr1 = True
+    response = FeaturesByte1Response
 
 
 class FailureStatusByte1Response(command.BitmapResponse):
@@ -157,8 +156,8 @@ class QueryFailureStatus(_IncandescentCommand):
     the control gear.
     """
     _cmdval = 0xf1
-    _uses_dtr1 = True
-    _response = FailureStatusByte1Response
+    uses_dtr1 = True
+    response = FailureStatusByte1Response
 
 
 class QueryDimmerTemperature(_IncandescentCommand):
@@ -173,7 +172,7 @@ class QueryDimmerTemperature(_IncandescentCommand):
     """
     _cmdval = 0xf2
     # XXX add a temperature response class?
-    _response = command.Response
+    response = command.Response
 
 
 class VoltageResponse(command.Response):
@@ -190,7 +189,7 @@ class QueryRMSSupplyVoltage(_IncandescentCommand):
     Control gear without this feature shall not react.
     """
     _cmdval = 0xf3
-    _response = VoltageResponse
+    response = VoltageResponse
 
 
 class QuerySupplyFrequency(_IncandescentCommand):
@@ -203,7 +202,7 @@ class QuerySupplyFrequency(_IncandescentCommand):
     Control gear without this feature shall not react.
     """
     _cmdval = 0xf4
-    _response = command.Response
+    response = command.Response
 
 
 class QueryRMSLoadVoltage(_IncandescentCommand):
@@ -216,7 +215,7 @@ class QueryRMSLoadVoltage(_IncandescentCommand):
     Control gear without this feature shall not react.
     """
     _cmdval = 0xf5
-    _response = VoltageResponse
+    response = VoltageResponse
 
 
 class QueryRMSLoadCurrent(_IncandescentCommand):
@@ -231,7 +230,7 @@ class QueryRMSLoadCurrent(_IncandescentCommand):
     Control gear without this feature shall not react.
     """
     _cmdval = 0xf6
-    _response = command.Response
+    response = command.Response
 
 
 class QueryRealLoadPower(_IncandescentCommand):
@@ -246,8 +245,8 @@ class QueryRealLoadPower(_IncandescentCommand):
     Control gear without this feature shall not react.
     """
     _cmdval = 0xf7
-    _uses_dtr0 = True
-    _response = command.Response
+    uses_dtr0 = True
+    response = command.Response
 
 
 class QueryLoadRating(_IncandescentCommand):
@@ -260,7 +259,7 @@ class QueryLoadRating(_IncandescentCommand):
     Control gear without this feature shall not react.
     """
     _cmdval = 0xf8
-    _response = command.Response
+    response = command.Response
 
 
 class QueryReferenceRunning(_IncandescentCommand):
@@ -269,7 +268,7 @@ class QueryReferenceRunning(_IncandescentCommand):
     Asks if the ReferenceSystemPower measurement is running.
     """
     _cmdval = 0xf9
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
 
 
 class QueryReferenceMeasurementFailed(_IncandescentCommand):
@@ -279,4 +278,8 @@ class QueryReferenceMeasurementFailed(_IncandescentCommand):
     failed.
     """
     _cmdval = 0xfa
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
+
+class QueryExtendedVersionNumber(QueryExtendedVersionNumberMixin,
+                                 _IncandescentCommand):
+    pass

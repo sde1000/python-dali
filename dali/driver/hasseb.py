@@ -2,31 +2,48 @@ import logging
 import struct
 from time import sleep
 
-from dali.command import Command
 from dali.driver.base import AsyncDALIDriver
 from dali.driver.base import DALIDriver
 from dali.driver.base import SyncDALIDriver
-from dali.driver.base import USBBackend
-from dali.driver.base import USBListener
 from dali.frame import BackwardFrame
 from dali.frame import BackwardFrameError
-from dali.frame import ForwardFrame
-from dali.exceptions import ResponseError, MissingResponse
+from dali.exceptions import BadDevice
+from dali.exceptions import DeviceAlreadyBound
+from dali.exceptions import DuplicateDevice
+from dali.exceptions import NoFreeAddress
+from dali.exceptions import NotConnected
+from dali.exceptions import ProgramShortAddressFailure
 
+import dali.gear.general as gear
+
+import time
+
+import hidapi
+
+hidapi.hid_init()
 
 HASSEB_USB_VENDOR = 0x04cc
 HASSEB_USB_PRODUCT = 0x0802
+
+HASSEB_READ_FIRMWARE_VERSION    = 0x02
+HASSEB_CONFIGURE_DEVICE         = 0x05
+HASSEB_DALI_FRAME               = 0X07
 
 HASSEB_DRIVER_NO_DATA_AVAILABLE = 0
 HASSEB_DRIVER_NO_ANSWER = 1
 HASSEB_DRIVER_OK = 2
 HASSEB_DRIVER_INVALID_ANSWER = 3
+HASSEB_DRIVER_TOO_EARLY = 4
+HASSEB_DRIVER_SNIFFER_BYTE = 5
+HASSEB_DRIVER_SNIFFER_BYTE_ERROR = 6
 
-class HassebDALIUSBNoDataAvailable(object):
+
+class HassebDALIUSBNoDataAvailable:
     def __repr__(self):
         return 'NO DATA AVAILABLE'
 
     __str__ = __repr__
+
 
 class HassebDALIUSBNoAnswer(object):
     def __repr__(self):
@@ -34,160 +51,203 @@ class HassebDALIUSBNoAnswer(object):
 
     __str__ = __repr__
 
+
+class HassebDALIUSBAnswerTooEarly(object):
+    def __repr__(self):
+        return 'ANSWER_TOO_EARLY'
+
+    __str__ = __repr__
+
+
+class HassebDALIUSBSnifferByte(object):
+    def __repr__(self):
+        return 'SNIFFER_BYTE'
+
+    __str__ = __repr__
+
+
+class HassebDALIUSBSnifferByteError(object):
+    def __repr__(self):
+        return 'SNIFFER_BYTE_ERROR'
+
+    __str__ = __repr__
+
+
 class HassebDALIUSBDriver(DALIDriver):
     """``DALIDriver`` implementation for Hasseb DALI USB device.
-
-    This code borrows from the HassebDALIUSBDriver.
     """
+    device_found = None
     logger = logging.getLogger('HassebDALIUSBDriver')
+    sn = 0
+    send_message = None
+    _pending = None
+    _response_message = None
+
+    def __init__(self):
+        try:
+            self.device = hidapi.hid_open(HASSEB_USB_VENDOR, HASSEB_USB_PRODUCT, None)
+            self.device_found = 1
+        except:
+            self.device_found = None
+
+    def wait_for_response(self):
+        raise NotImplementedError()
 
     def construct(self, command):
+        # sequence number
+        self.sn = self.sn+1
+        if self.sn > 255:
+            self.sn = 1
+        frame_length = 16
+        if command.is_query:
+            expect_reply = 1
+        else:
+            expect_reply = 0
+        transmitter_settling_time = 0
+        if command.is_config:
+            send_twice = 10 # 10 ms delay between messages
+        else:
+            send_twice = 0
         frame = command.frame.as_byte_sequence
         byte_a, byte_b = frame
-        data = struct.pack('BB', byte_a, byte_b)
-
+        data = struct.pack('BBBBBBBBBB', 0xAA, HASSEB_DALI_FRAME, self.sn,
+                           frame_length, expect_reply,
+                           transmitter_settling_time, send_twice,
+                           byte_a, byte_b,
+                           0)
         return data
 
     def extract(self, data):
-        if len(data) >= 2:
-            response_status = data[0]
-            if response_status == HASSEB_DRIVER_NO_DATA_AVAILABLE:
-                # 0: "No Data Available"
-                self.logger.debug("No Data Available")
-                return HassebDALIUSBNoDataAvailable()
-            elif response_status == HASSEB_DRIVER_NO_ANSWER:
+        if data == None:
+            return None
+        elif data[1] == HASSEB_DRIVER_NO_DATA_AVAILABLE:
+            # 0: "No Data Available"
+            self.logger.debug("No Data Available")
+            return HassebDALIUSBNoDataAvailable()
+        elif data[1] == HASSEB_DALI_FRAME:
+            response_status = data[3]
+            if response_status == HASSEB_DRIVER_NO_ANSWER:
                 # 1: "No Answer"
                 self.logger.debug("No Answer")
                 return HassebDALIUSBNoAnswer()
-            elif response_status == HASSEB_DRIVER_OK:
+            elif response_status == HASSEB_DRIVER_OK and data[4] == 1:
                 # 2: "OK"
-                return BackwardFrame(data[1])
+                return BackwardFrame(data[5])
             elif response_status == HASSEB_DRIVER_INVALID_ANSWER:
                 # 3: "Invalid Answer"
                 return BackwardFrameError(255)
+            elif response_status == HASSEB_DRIVER_TOO_EARLY:
+                # 4: "Answer too early"
+                self.logger.debug("Answer too early")
+                return HassebDALIUSBAnswerTooEarly()
+            elif response_status == HASSEB_DRIVER_SNIFFER_BYTE:
+                # 5: "Sniffer byte"
+                return HassebDALIUSBSnifferByte()
+            elif response_status == HASSEB_DRIVER_SNIFFER_BYTE_ERROR:
+                # 6: "Sniffer byte error"
+                return HassebDALIUSBSnifferByteError()
         self.logger.error("Invalid Frame")
         return None
+
+    def send(self, command):
+        time.sleep(0.02)    # a delay between sent messages need to be at lest 22*417 µs
+        self._response_message = None
+        data = self.construct(command)
+        self.send_message = struct.pack('BB', data[7], data[8])
+        if command.response is not None:
+            self._pending = command
+            self._response_message = None
+            hidapi.hid_write(self.device, data)
+            self.wait_for_response()
+            return command.response(self.extract(self._response_message))
+        else:
+            self._pending = None
+            hidapi.hid_write(self.device, data)
+            return
+
+    def receive(self):
+        data = hidapi.hid_read(self.device, 10)
+        frame = self.extract(data)
+        if isinstance(frame, HassebDALIUSBNoDataAvailable):
+            return
+        elif isinstance(frame, BackwardFrame) or isinstance(frame, HassebDALIUSBNoAnswer):
+            if self._pending and isinstance(frame, BackwardFrame):
+                self._response_message = data
+                self._pending = None
+            elif self._pending and isinstance(frame, HassebDALIUSBNoAnswer):
+                self._response_message = None
+                self._pending = None
+        return data
+
+    def readFirmwareVersion(self):
+        self.sn = self.sn + 1
+        if self.sn > 255:
+            self.sn = 1
+        data = struct.pack('BBBBBBBBBB', 0xAA, HASSEB_READ_FIRMWARE_VERSION,
+                            self.sn, 0, 0, 0, 0, 0, 0, 0)
+        hidapi.hid_write(self.device, data)
+        data = hidapi.hid_read(self.device, 10)
+        for i in range(0,100):
+            if len(data)==10:
+                if data[1] != HASSEB_READ_FIRMWARE_VERSION:
+                    data = hidapi.hid_read(self.device, 10)
+                else:
+                    return f"{data[3]}.{data[4]}"
+            else:
+                data = hidapi.hid_read(self.device, 10)
+        return f"VERSION_ERROR"
+
+    def enableSniffing(self):
+        self.sn = self.sn + 1
+        if self.sn > 255:
+            self.sn = 1
+        data = struct.pack('BBBBBBBBBB', 0xAA, HASSEB_CONFIGURE_DEVICE,
+                            self.sn, 0x01, 0, 0, 0, 0, 0, 0)
+        hidapi.hid_write(self.device, data)
+
+    def disableSniffing(self):
+        self.sn = self.sn + 1
+        if self.sn > 255:
+            self.sn = 1
+        data = struct.pack('BBBBBBBBBB', 0xAA, HASSEB_CONFIGURE_DEVICE,
+                            self.sn, 0, 0, 0, 0, 0, 0, 0)
+        hidapi.hid_write(self.device, data)
+
+
+class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
+    """Asynchronous ``DALIDriver`` implementation for Hasseb DALI USB device.
+       Using asynchronous driver requires a separate thread for receiving
+       DALI messages. receive() function needs to be called continously
+       from the thread. You can also define an event processor function which
+       is called when wating for a response to prevent hangin of the program.
+    """
+
+    #def __init__(self, processEvents):
+    #    self._processEvents = processEvents
+
+    def setEventHandler(self, processEvents):
+        self._processEvents = processEvents
+
+    def wait_for_response(self):
+        """Wait for response message. Timeout 2000 ms.
+        """
+        for i in range(200):
+            if not self._pending:
+                return
+            else:
+                self._processEvents()
+                time.sleep(0.01)
+
 
 class SyncHassebDALIUSBDriver(HassebDALIUSBDriver, SyncDALIDriver):
     """Synchronous ``DALIDriver`` implementation for Hasseb DALI USB device.
     """
 
-    def __init__(self, bus=None, port_numbers=None, interface=0):
-        self.backend = USBBackend(
-            HASSEB_USB_VENDOR,
-            HASSEB_USB_PRODUCT,
-            bus=bus,
-            port_numbers=port_numbers,
-            interface=interface
-        )
-
-    def send(self, command, timeout=2000):
-        self.backend.write(self.construct(command))
-        frame = None
-        backoff = 0.010
-
-        if command.response is not None:
-            for i in range(7):
-                frame = self.extract(self.backend.read(timeout=timeout))
-                if isinstance(frame, HassebDALIUSBNoAnswer):
-                    self.backend.write(self.construct(command))
-                if isinstance(frame, BackwardFrame):
-                    if command.response:
-                        return command.response(frame)
-                    return frame
-                backoff += backoff
-                sleep(backoff)
-            raise MissingResponse()
-        return None
-
-class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
-    """Asynchronous ``DALIDriver`` implementation for Hasseb DALI USB device.
-       This driver is FAKE, since Hasseb does NOT support async communication.
-    """
-    _pending = None
-
-    def __init__(self, bus=None, port_numbers=None, interface=0):
-        self.backend = USBListener(
-            self,
-            HASSEB_USB_VENDOR,
-            HASSEB_USB_PRODUCT,
-            bus=bus,
-            port_numbers=port_numbers,
-            interface=interface
-        )
-
-    def send(self, command, callback=None, **kw):
-        data = self.construct(command)
-        if command.response is not None:
-            self._pending = command, callback, kw
-        else:
-            self._pending = None
-        self.backend.write(data)
-
-    def receive(self, data):
-        frame = self.extract(data)
-        if isinstance(frame, HassebDALIUSBNoDataAvailable):
-            return
-        elif isinstance(frame, BackwardFrame):
-            if self._pending:
-                command, callback, kw = self._pending
-                callback(command.response(frame), **kw)
+    def wait_for_response(self):
+        """Wait for response message.
+        """
+        for i in range(200):
+            if not self._pending:
+                return
             else:
-                logger.error("Received frame for no pending command")
-        else:
-            logger.error("Received frame is not BackwardFrame")
-
-
-def _test_async(logger, command):
-    print('Test async driver')
-    driver = AsyncHassebDALIUSBDriver()
-    driver.logger = logger
-
-    # async response callback
-    def response_received(response):
-        print('Response received: {}'.format(response))
-
-    driver.send(command, callback=response_received)
-
-    # exit callback
-    def signal_handler(signal, frame):
-        driver.backend.close()
-        sys.exit(0)
-
-    import signal
-    signal.signal(signal.SIGINT, signal_handler)
-    print('Press Ctrl+C')
-    signal.pause()
-
-def _test_sync(logger, command):
-    print('Test sync driver')
-    driver = SyncHassebDALIUSBDriver()
-    driver.logger = logger
-
-    print('Response: {}'.format(driver.send(command)))
-    driver.backend.close()
-
-if __name__ == '__main__':
-    """Usage: python tridonic.py sync|async address value."""
-    from dali.gear.general import DAPC, QueryActualLevel
-    import sys
-
-    # setup console logging
-    logger = logging.getLogger('HassebDALIDriver')
-    logger.setLevel(logging.DEBUG)
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(logging.DEBUG)
-    handler.setFormatter(logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    ))
-    logger.addHandler(handler)
-
-    # command to send
-    cmd = DAPC(int(sys.argv[2]), int(sys.argv[3]))
-
-    # sync interface
-    if sys.argv[1] == 'sync':
-        _test_sync(logger, cmd)
-    # async interface
-    elif sys.argv[1] == 'async':
-        _test_async(logger, cmd)
+                self.receive()

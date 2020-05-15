@@ -4,7 +4,6 @@
 [unipi axon]: https://kb.unipi.technology/en:hw:01-axon
 [unipi implementation]: https://git.unipi.technology/UniPi/unipi-python-lighting/commit/0975401ba6358d475ef46532ff5271bee46d601a
 """
-from __future__ import print_function, unicode_literals
 
 import logging
 from time import sleep
@@ -111,7 +110,7 @@ class RemoteArm:
         return 3.3 * self.vr2 / self.vr1
 
 
-class DALINoResponse(object):
+class DALINoResponse:
     def __repr__(self):
         return "NO_RESPONSE"
 
@@ -141,14 +140,14 @@ class UnipiDALIDriver(DALIDriver):
         frame = command.frame
         if len(frame) == 16:
             opt = 0x2
-            if command.is_config:
+            if command.sendtwice:
                 opt |= DA_OPT_TWICE
             ad, cm1 = frame.as_byte_sequence
             reg1 = opt << 8
             reg2 = (ad << 8) | cm1
         elif len(frame) == 24:
             opt = 0x3
-            if command.is_config:
+            if command.sendtwice:
                 opt |= DA_OPT_TWICE
             ad, cm1, cm2 = frame.as_byte_sequence
             reg1 = (opt << 8) | ad
@@ -188,7 +187,7 @@ class SyncUnipiDALIDriver(UnipiDALIDriver, SyncDALIDriver):
         sleep(0.05)
         registers = self.construct(command)
         self.backend.write_regs(self._sendreg, registers)
-        if command.is_config:
+        if command.sendtwice:
             sleep(0.05)
             self.backend.write_regs(self._sendreg, registers)
 
@@ -209,7 +208,7 @@ class SyncUnipiDALIDriver(UnipiDALIDriver, SyncDALIDriver):
         self._send_command(command)
 
         # If the command does not expect a response, we're done
-        if command._response is None:
+        if command.response is None:
             return DALI_NO_RESPONSE
 
         # Check for command responses

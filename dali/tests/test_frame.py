@@ -1,23 +1,9 @@
-from __future__ import division
-from __future__ import unicode_literals
 import os
 import sys
 import unittest
 
 
-try:
-    import dali
-except ImportError:
-    # Realign paths, and try import again
-    # Since pyCharm's unittest runner fails on relative imports
-    path = os.path
-    PACKAGE_PARENT = '../..'
-    SCRIPT_DIR = path.dirname(
-        path.realpath(path.join(os.getcwd(), path.expanduser(__file__)))
-    )
-    sys.path.append(path.normpath(path.join(SCRIPT_DIR, PACKAGE_PARENT)))
-
-
+import dali
 from dali import frame
 
 
@@ -165,14 +151,6 @@ class TestFrame(unittest.TestCase):
         self.assertFalse(True in frame.Frame(16, 0))
         self.assertFalse(False in frame.Frame(16, 0xffff))
         self.assertFalse('wibble' in frame.Frame(16))
-
-    def test_unicode(self):
-        """frame objects return unicode from their __unicode__ method"""
-        # This test applies to python 2 only
-        if sys.version_info[0] == 2:
-            self.assertIsInstance(
-                frame.Frame(123, 0x12345).__unicode__(),
-                unicode)
 
     def test_str(self):
         """frame objects can be converted to strings"""

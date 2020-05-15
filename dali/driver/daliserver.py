@@ -1,4 +1,3 @@
-from __future__ import print_function
 from dali.command import Command
 from dali.exceptions import CommunicationError
 import dali.frame
@@ -12,7 +11,7 @@ import struct
 ###############################################################################
 
 
-class DaliServer(object):
+class DaliServer:
     """Communicate with daliserver
     (https://github.com/onitake/daliserver)
 
@@ -45,8 +44,8 @@ class DaliServer(object):
         assert isinstance(command, Command)
         message = struct.pack("BB", 2, 0) + command.frame.pack
 
-        logging.info(u"command: {}{}".format(
-            command, " (twice)" if command.is_config else ""))
+        logging.info("command: {}{}".format(
+            command, " (twice)" if command.sendtwice else ""))
 
         # Set a default result which may be used if the first send fails
         result = "\x02\xff\x00\x00"
@@ -54,7 +53,7 @@ class DaliServer(object):
         try:
             s.send(message)
             result = s.recv(4)
-            if command.is_config:
+            if command.sendtwice:
                 s.send(message)
                 result = s.recv(4)
         except:
@@ -66,7 +65,7 @@ class DaliServer(object):
         response = self.unpack_response(command, result)
 
         if response:
-            logging.info(u"  -> {0}".format(response))
+            logging.info("  -> {0}".format(response))
 
         return response
 
@@ -84,16 +83,16 @@ class DaliServer(object):
         ver, status, rval, pad = struct.unpack("BBBB", result)
         response = None
 
-        if command._response:
+        if command.response:
             if status == 0:
-                response = command._response(None)
+                response = command.response(None)
             elif status == 1:
-                response = command._response(dali.frame.BackwardFrame(rval))
+                response = command.response(dali.frame.BackwardFrame(rval))
             elif status == 255:
                 # This is "failure" - daliserver seems to be reporting
                 # this for a garbled response when several ballasts
                 # reply.  It should be interpreted as "Yes".
-                response = command._response(dali.frame.BackwardFrameError(255))
+                response = command.response(dali.frame.BackwardFrameError(255))
             else:
                 raise CommunicationError("status was %d" % status)
 

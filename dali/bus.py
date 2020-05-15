@@ -1,3 +1,6 @@
+# XXX this module is getting a complete rewrite, soon.  Don't use it
+# at the moment!
+
 from __future__ import division
 from __future__ import unicode_literals
 from dali import address
