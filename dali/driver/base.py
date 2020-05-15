@@ -1,6 +1,8 @@
 from __future__ import unicode_literals
 import threading
 import usb
+import serial
+from time import sleep, perf_counter
 
 
 ###############################################################################
@@ -102,7 +104,7 @@ class Backend(object):
         raise NotImplementedError(
             'Abstract ``Backend`` does not implement ``read``')
 
-    def write(data):
+    def write(self, data):
         raise NotImplementedError(
             'Abstract ``Backend`` does not implement ``write``')
 
@@ -235,3 +237,69 @@ class USBListener(USBBackend, Listener):
         self._disconnecting = True
         self._stop_listening.set()
         super(USBListener, self).close()
+
+class SerialBackend(Backend):
+    """``Backend`` implementation for Quad-DALI-USB-Interface. Uses serial connection."""
+
+    def __init__(self, port, baudrate=115200, bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE,
+                 stopbits=serial.STOPBITS_ONE):
+        """Open connection to the DALI interface.
+
+        @param port: valid serial port (e.g. /dev/ttyUSB0 or COM1)
+        @param baudrate: serial baudrate; default is 115.200
+        @param bytesize: number of bits per byte; default is 8
+        @param parity: configures parity bit; default is none
+        @param stopbits: number of stopbits per byte; default is one"""
+
+        self._serial = serial.Serial(port=port, baudrate=baudrate, bytesize=bytesize, parity=parity, stopbits=stopbits)
+
+        # for compatibility with older pyserial versions
+        # background: the methods for flushing the in-/out-buffer were renamed in v3.0
+        if serial.VERSION.split('.')[0] == '2':
+            self._reset_input_buffer = self._serial.flushInput
+            self._reset_output_buffer = self._serial.flushOutput
+        elif serial.VERSION.split('.')[0] == '3':
+            self._reset_input_buffer = self._serial.reset_input_buffer
+            self._reset_output_buffer = self._serial.reset_output_buffer
+        else:
+            raise RuntimeError(f'pyserial={serial.VERSION} is not supported')
+
+        # flush all buffers to remove old data before checking the port
+        self._reset_output_buffer()
+        sleep(0.050) # just a precaution if the previous command sent some data
+        self._reset_input_buffer()
+
+    def read(self, timeout=None):
+        """Read data from the DALI interface.
+
+        @param timeout: read timeout in seconds; set to 0 or None to disable
+        @return data read from the interface"""
+
+        # internal read timeout is set to 10 ms to increase responsiveness
+        self._serial.timeout = 0.010
+        # to compensate for the short read timeout and to use the timeout argument, the read is repeated until
+        # more time than specified has elapsed
+        start = perf_counter()
+        while timeout and abs(start-perf_counter()) < timeout:
+            data = self._serial.read(1)
+            if len(data) > 0:
+                break
+        # DALI backframes are max. 1 Byte long, so that is all that is needed
+        if len(data) <= 1:
+            return data
+        else:
+            raise ValueError(f'read method returned too many bytes ({len(data)})')
+
+    def write(self, data):
+        """Write data to the DALI interface.
+
+        @param data: data to write
+        @return number of bytes written"""
+
+        bytes_written = self._serial.write(data)
+        self._serial.flush()
+        return bytes_written
+
+    def close(self):
+        """Close connection to the DALI interface."""
+        self._serial.close()
