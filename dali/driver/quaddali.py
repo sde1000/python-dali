@@ -11,6 +11,7 @@ from time import sleep
 import serial
 import asyncio
 import serial_asyncio
+from abc import ABC, abstractmethod
 
 from dali.driver.base import SyncDALIDriver
 from dali.driver.base import SerialBackend
@@ -39,12 +40,32 @@ def extract(data):
 """Specifies the firmware version expected by this driver."""
 REQUIRED_FIRMWARE_VERSION = 0o104
 
-class SyncQuadDALIUSBDriver(SyncDALIDriver):
-    """Synchronous ``DALIDriver`` implementation for Quad-DALI-USB-Interface.
+class QuadDALIUSBDriver(ABC):
+    """Abstract base class for drivers supporting the Quad-DALI-USB-Interface.
     """
 
     def __init__(self, port):
+        """Create a driver instance to communicate with the Quad-DALI-USB-Interface connected to the given port."""
         self._port = port
+
+    @abstractmethod
+    def connect(self):
+        """Open the connection the interface."""
+        pass
+
+    @abstractmethod
+    def send(self, command, timeout=1000):
+        """Send a given command over the bus. Waits for a response until timeout occurs.
+
+        @param command: command to send
+        @param timeout: time to wait for the response in ms
+        @return Response coming from the bus (empty if none)
+        """
+        pass
+
+class SyncQuadDALIUSBDriver(QuadDALIUSBDriver):
+    """Synchronous dali driver for the Quad-DALI-USB-Interface.
+    """
 
     def connect(self):
         self.backend = SerialBackend(port=self._port, baudrate=115200, bytesize=serial.EIGHTBITS,
@@ -75,14 +96,23 @@ class SyncQuadDALIUSBDriver(SyncDALIDriver):
         if command.response is not None:
             # timeout 10 ms is approx. 22 Te as per 62386-102 8.9
             response = self.backend.read(timeout=timeout/1000.)
-            if response is None:
+            # expects a DALI backframe, so fails if more data is received
+            if len(response) > 1:
+                raise ValueError('bus returned more than one byte as response')
+            elif len(response) == 1:
                 return command.response(extract(bytes([0])))
             else:
                 return command.response(extract(response))
 
-class AsyncQuadDALIUSBDriver(SyncDALIDriver):
+class AsyncQuadDALIUSBDriver(QuadDALIUSBDriver):
+    """Asynchronous dali driver for the Quad-DALI-USB-Interface.
+    """
 
     class _SerialProtocol(asyncio.Protocol):
+        """This Protocol handles the asynchronous serial communication.
+        pyserial-asyncio calls the methods herein like callbacks. asyncio primitives are used so that the parent
+        can interface with the Protocol asynchronously.
+        """
 
         def __init__(self):
             self.connected = asyncio.Event()
@@ -110,6 +140,7 @@ class AsyncQuadDALIUSBDriver(SyncDALIDriver):
     def __init__(self, port):
         self._received_data = asyncio.Queue()
         self._bus_lock = asyncio.Lock()
+        # this creates a coroutine generator that will establish a connection once run
         self._connect = serial_asyncio.create_serial_connection(
             asyncio.get_event_loop(),
             self._SerialProtocol,
@@ -120,12 +151,15 @@ class AsyncQuadDALIUSBDriver(SyncDALIDriver):
             stopbits=serial.STOPBITS_ONE)
 
     async def connect(self):
+        # runs the coroutine to create the connection
         self._transport, self._protocol = await self._connect
         self._protocol.data_received = self._data_received_cb
         await self._protocol.connected.wait()
 
     async def send(self, command):
         async with self._bus_lock:
+            # wait if writing has been paused
+            await self._protocol.can_write.wait()
             # construct & send forward frame
             self._transport.write(construct(command))
             # wait until the forward frame has finished sending

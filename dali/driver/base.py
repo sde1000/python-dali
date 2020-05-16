@@ -272,22 +272,19 @@ class SerialBackend(Backend):
         """Read data from the DALI interface.
 
         @param timeout: read timeout in seconds; set to 0 or None to disable
-        @return data read from the interface"""
+        @return data read from the interface (bytes)"""
 
         # internal read timeout is set to 10 ms to increase responsiveness
         self._serial.timeout = 0.010
         # to compensate for the short read timeout and to use the timeout argument, the read is repeated until
         # more time than specified has elapsed
         start = perf_counter()
+        data = bytes()
         while timeout and abs(start-perf_counter()) < timeout:
-            data = self._serial.read(1)
+            data = self._serial.read()
             if len(data) > 0:
                 break
-        # DALI backframes are max. 1 Byte long, so that is all that is needed
-        if len(data) <= 1:
-            return data
-        else:
-            raise ValueError(f'read method returned too many bytes ({len(data)})')
+        return data
 
     def write(self, data):
         """Write data to the DALI interface.
