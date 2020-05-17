@@ -139,7 +139,7 @@ class Bus:
 
     Commands are sent (fake) simultaneously to all devices on the bus.
     If no devices respond, the response is None.  If one device
-    responds, its response is used.  If multiple devices response, a
+    responds, its response is used.  If multiple devices respond, a
     BackwardFrameError is used to represent the bus collision.
     """
     def __init__(self, gear):
@@ -157,19 +157,13 @@ class Bus:
         if cmd.response:
             return cmd.response(rf)
 
-    def run_sequence(self, cmd_seq, verbose=False):
-        if hasattr(cmd_seq, 'run'):
-            seq = cmd_seq.run()
-        else:
-            seq = cmd_seq
+    def run_sequence(self, seq, verbose=False):
         response = None
         while True:
             try:
                 cmd = seq.send(response)
-            except StopIteration:
-                if hasattr(cmd_seq, 'result'):
-                    return cmd_seq.result
-                return
+            except StopIteration as r:
+                return r.value
             response = None
             if isinstance(cmd, Command):
                 response = self.send(cmd)
