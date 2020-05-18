@@ -28,6 +28,10 @@ fairly expensive to obtain.  The library is designed to be extensible;
 adding support for the other parts ought to be easy and
 self-contained.
 
+Python versions supported
+-------------------------
+
+This library currently requires Python version 3.6 or later.
 
 Library structure
 -----------------
