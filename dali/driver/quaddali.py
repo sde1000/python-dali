@@ -54,11 +54,10 @@ class QuadDALIUSBDriver(ABC):
         pass
 
     @abstractmethod
-    def send(self, command, timeout=1000):
+    def send(self, command):
         """Send a given command over the bus. Waits for a response until timeout occurs.
 
         @param command: command to send
-        @param timeout: time to wait for the response in ms
         @return Response coming from the bus (empty if none)
         """
         pass
@@ -86,7 +85,7 @@ class SyncQuadDALIUSBDriver(QuadDALIUSBDriver):
             self.backend.close()
             raise RuntimeError(f'unsupported device - firmware version too old ({self.firmware_version}<{REQUIRED_FIRMWARE_VERSION:o})')
 
-    def send(self, command, timeout=1000):
+    def send(self, command):
         # construct & send forward frame
         self.backend.write(construct(command))
         # wait until the forward frame has finished sending
@@ -95,14 +94,16 @@ class SyncQuadDALIUSBDriver(QuadDALIUSBDriver):
 
         if command.response is not None:
             # timeout 10 ms is approx. 22 Te as per 62386-102 8.9
-            response = self.backend.read(timeout=timeout/1000.)
+            # the default USB polling interval is 10 ms
+            # timeout = t_dali + t_usb = 20 ms
+            response = self.backend.read(timeout=0.020)
             # expects a DALI backframe, so fails if more data is received
             if len(response) > 1:
                 raise ValueError('bus returned more than one byte as response')
             elif len(response) == 1:
-                return command.response(extract(bytes([0])))
-            else:
                 return command.response(extract(response))
+            else:
+                return command.response(extract(bytes([0])))
 
 class AsyncQuadDALIUSBDriver(QuadDALIUSBDriver):
     """Asynchronous dali driver for the Quad-DALI-USB-Interface.
