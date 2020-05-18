@@ -35,34 +35,10 @@ class TestExceptions(unittest.TestCase):
             exceptions.ResponseError(),
             exceptions.CommandError
         )
-        # bus
-        self.assertIsInstance(
-            exceptions.BusError(),
-            exceptions.DALIError
-        )
-        self.assertIsInstance(
-            exceptions.BadDevice(),
-            exceptions.BusError
-        )
-        self.assertIsInstance(
-            exceptions.DeviceAlreadyBound(),
-            exceptions.BusError
-        )
-        self.assertIsInstance(
-            exceptions.DuplicateDevice(),
-            exceptions.BusError
-        )
-        self.assertIsInstance(
-            exceptions.NoFreeAddress(),
-            exceptions.BusError
-        )
-        self.assertIsInstance(
-            exceptions.NotConnected(),
-            exceptions.BusError
-        )
+        # sequences
         self.assertIsInstance(
             exceptions.ProgramShortAddressFailure(0),
-            exceptions.BusError
+            exceptions.DALIError
         )
         # driver
         self.assertIsInstance(
