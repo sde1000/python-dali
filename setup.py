@@ -19,8 +19,12 @@ setup(
         'dali',
         'dali.device',
         'dali.driver',
-        'dali.gear'
+        'dali.gear',
+        'dali.tests',
     ],
+    extras_require={
+        "driver-unipi": ["pyusb", "pymodbus"],
+    },
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
@@ -30,7 +34,4 @@ setup(
     ],
     license='LGPL3+',
     keywords='lighting DALI development',
-    test_suite='dali.tests',
-    install_requires=['pyusb', 'pymodbus'],
-    tests_require=['mock'],
 )

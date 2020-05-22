@@ -1,5 +1,6 @@
 *.pyc
 *~
+/.eggs
 /.idea
 /.project
 /.pydevproject
