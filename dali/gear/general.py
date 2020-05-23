@@ -991,7 +991,6 @@ class _SpecialCommand(_GearCommand):
                 raise ValueError("param must be an int")
             if param < 0 or param > 255:
                 raise ValueError("param must be in range 0..255")
-            self.param = param
         else:
             if len(args) != 0:
                 raise TypeError(
@@ -999,6 +998,7 @@ class _SpecialCommand(_GearCommand):
                         self.__class__.__name__, len(args) + 1))
             param = 0
         self.param = param
+        super().__init__(frame.ForwardFrame(16, (self._cmdval, self.param)))
 
     # dict of frame[15:8] to cls
     _opcodes = {}
@@ -1025,10 +1025,6 @@ class _SpecialCommand(_GearCommand):
             return UnknownGearCommand(frame)
         return cc.from_frame(frame, devicetype=devicetype)
 
-    @property
-    def frame(self):
-        return frame.ForwardFrame(16, (self._cmdval, self.param))
-
     def __str__(self):
         if self._hasparam:
             return "{}({})".format(self.__class__.__name__, self.param)
@@ -1037,6 +1033,7 @@ class _SpecialCommand(_GearCommand):
 
 class _ShortAddrSpecialCommand(_SpecialCommand):
     """A special command that has a short address as its parameter."""
+    _hasparam = True
 
     def __init__(self, address):
         if address == "MASK":
@@ -1047,11 +1044,8 @@ class _ShortAddrSpecialCommand(_SpecialCommand):
             if address < 0 or address > 63:
                 raise ValueError("address must be in the range 0..63")
         self.address = address
-
-    @property
-    def frame(self):
         data = 0xff if self.address == "MASK" else ((self.address << 1) | 1)
-        return frame.ForwardFrame(16, (self._cmdval, data))
+        super().__init__(data)
 
     @classmethod
     def from_frame(cls, frame, devicetype=0):
@@ -1097,6 +1091,7 @@ class Initialise(_SpecialCommand):
       ballasts with the address supplied shall react
     """
     _cmdval = 0xa5
+    _hasparam = True
     sendtwice = True
 
     def __init__(self, broadcast=False, address=None):
@@ -1109,16 +1104,13 @@ class Initialise(_SpecialCommand):
                 raise ValueError("address must be in the range 0..63")
         self.broadcast = broadcast
         self.address = address
-
-    @property
-    def frame(self):
         if self.broadcast:
             b = 0
         elif self.address is None:
             b = 0xff
         else:
             b = (self.address << 1) | 1
-        return frame.ForwardFrame(16, (self._cmdval, b))
+        super().__init__(b)
 
     @classmethod
     def from_frame(cls, f, devicetype=0):
