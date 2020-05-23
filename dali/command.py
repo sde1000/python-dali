@@ -26,6 +26,9 @@ class CommandTracker(type):
         else:
             if cls.devicetype != 0:
                 cls._supported_devicetypes.add(cls.devicetype)
+        for c in bases:
+            if issubclass(c, Command):
+                c._register_subclass(cls)
 
 
 class Response:
@@ -198,6 +201,13 @@ class Command(metaclass=CommandTracker):
         assert isinstance(f, frame.ForwardFrame)
         self._data = f
 
+    _framesizes = {}
+
+    @classmethod
+    def _register_subclass(cls, subclass):
+        subs = cls._framesizes.setdefault(subclass._framesize, list())
+        subs.append(subclass)
+
     @classmethod
     def from_frame(cls, f, devicetype=0):
         """Return a Command instance corresponding to the supplied frame.
@@ -213,18 +223,17 @@ class Command(metaclass=CommandTracker):
         frame.  Returns None if there is no match.
         """
         if cls != Command:
-            return
+            raise Exception(f"from_frame not overridden in class {cls}")
 
-        for dc in cls._commands:
-            if dc.devicetype != devicetype:
-                continue
-            r = dc.from_frame(f)
+        # At the top level, we simply distinguish by frame size
+        subs = cls._framesizes.get(len(f), [])
+
+        for c in subs:
+            r = c.from_frame(f, devicetype=devicetype)
             if r:
                 return r
 
-        # At this point we can simply wrap the frame.  We don't know
-        # what kind of command this is (config, query, etc.) so we're
-        # unlikely ever to want to transmit it!
+        # The frame doesn't match any of the commands we know.
         return cls(f)
 
     @property
