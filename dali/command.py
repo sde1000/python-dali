@@ -27,13 +27,6 @@ class CommandTracker(type):
             if cls.devicetype != 0:
                 cls._supported_devicetypes.add(cls.devicetype)
 
-    @classmethod
-    def commands(cls):
-        """
-        :return: List of known commands if there's any
-        """
-        return cls._commands
-
 
 class Response:
     """Some DALI commands cause a response from the addressed devices.
