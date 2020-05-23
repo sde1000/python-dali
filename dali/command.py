@@ -7,7 +7,7 @@ from dali.exceptions import ResponseError
 import warnings
 
 
-class CommandTracker(type):
+class _CommandTracker(type):
     """Metaclass keeping track of all the types of Command we understand.
 
     Commands that have names starting with '_' are treated as abstract
@@ -156,7 +156,7 @@ class BitmapResponse(Response, metaclass=BitmapResponseBitDict):
             return "{}".format(e)
 
 
-class Command(metaclass=CommandTracker):
+class Command(metaclass=_CommandTracker):
     """A command frame.
 
     Subclasses must provide a class method "from_frame" which, when
