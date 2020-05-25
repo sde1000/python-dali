@@ -72,6 +72,8 @@ Library structure
 
     - ``led`` - Commands from part 207
 
+  - ``sequences`` - packaged sequences of commands
+
 
 Contributors
 ------------
