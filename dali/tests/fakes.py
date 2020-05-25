@@ -18,14 +18,15 @@ class Gear:
     def __init__(self, shortaddr=None, groups = set(),
                  devicetypes = [], random_preload=[]):
         self.shortaddr = shortaddr
-        self.groups = groups
+        self.scenes = [255] * 16
+        self.groups = set(groups)
         self.devicetypes = devicetypes
         self.random_preload = random_preload
         self.initialising = False
         self.withdrawn = False
         self.dt_gap = 1 # Number of commands since last QueryNextDeviceType
         self.dt_queue = [] # Devices still to be returned by QueryNextDeviceType
-        self.randomaddr = 0
+        self.randomaddr = frame.Frame(24)
         self.searchaddr = frame.Frame(24)
         self.dtr0 = 0
         self.dtr1 = 0
@@ -57,7 +58,15 @@ class Gear:
         if not self.valid_address(cmd):
             return
         # Command is either addressed to us, or is a broadcast
-        if isinstance(cmd, general.SetShortAddress):
+        if isinstance(cmd, general.SetScene):
+            self.scenes[cmd.param] = self.dtr0
+        elif isinstance(cmd, general.RemoveFromScene):
+            self.scenes[cmd.param] = 255
+        elif isinstance(cmd, general.AddToGroup):
+            self.groups.add(cmd.param)
+        elif isinstance(cmd, general.RemoveFromGroup):
+            self.groups.discard(cmd.param)
+        elif isinstance(cmd, general.SetShortAddress):
             if self.dtr0 == 0xff:
                 self.shortaddr = None
             elif (self.dtr0 & 1) == 1:
@@ -90,6 +99,26 @@ class Gear:
                     self.dt_gap = 0
                     return self.dt_queue.pop(0)
                 return 254
+        elif isinstance(cmd, general.QuerySceneLevel):
+            return self.scenes[cmd.param]
+        elif isinstance(cmd, general.QueryGroupsZeroToSeven):
+            r = frame.Frame(8)
+            for i in range(0, 8):
+                if i in self.groups:
+                    r[i] = True
+            return r.as_integer
+        elif isinstance(cmd, general.QueryGroupsEightToFifteen):
+            r = frame.Frame(8)
+            for i in range(8, 16):
+                if i in self.groups:
+                    r[i - 8] = True
+            return r.as_integer
+        elif isinstance(cmd, general.QueryRandomAddressH):
+            return self.randomaddr[23:16]
+        elif isinstance(cmd, general.QueryRandomAddressM):
+            return self.randomaddr[15:8]
+        elif isinstance(cmd, general.QueryRandomAddressL):
+            return self.randomaddr[7:0]
         elif isinstance(cmd, general.Terminate):
             self.initialising = False
             self.withdrawn = False
@@ -102,15 +131,15 @@ class Gear:
                 self.withdrawn = False
                 # We don't implement the 15 minute timer
         elif isinstance(cmd, general.Randomise):
-            self.randomaddr = self._next_random_address()
+            self.randomaddr = frame.Frame(24, self._next_random_address())
         elif isinstance(cmd, general.Compare):
             if self.initialising \
                and not self.withdrawn \
-               and self.randomaddr <= self.searchaddr.as_integer:
+               and self.randomaddr.as_integer <= self.searchaddr.as_integer:
                 return _yes
         elif isinstance(cmd, general.Withdraw):
             if self.initialising \
-               and self.randomaddr == self.searchaddr.as_integer:
+               and self.randomaddr == self.searchaddr:
                 self.withdrawn = True
         elif isinstance(cmd, general.SearchaddrH):
             self.searchaddr[23:16] = cmd.param
@@ -120,7 +149,7 @@ class Gear:
             self.searchaddr[7:0] = cmd.param
         elif isinstance(cmd, general.ProgramShortAddress):
             if self.initialising \
-               and self.randomaddr == self.searchaddr.as_integer:
+               and self.randomaddr == self.searchaddr:
                 if cmd.address == 'MASK':
                     self.shortaddr = None
                 else:

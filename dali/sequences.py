@@ -80,6 +80,47 @@ def QueryDeviceTypes(addr):
             raise DALISequenceError("Device type received out of order")
         result.append(r.raw_value.as_integer)
 
+def QueryGroups(addr):
+    """Obtain the group membership of control gear.
+
+    Returns a set of integers.
+    """
+    groups = set()
+    g0 = yield QueryGroupsZeroToSeven(addr)
+    if g0.raw_value is None:
+        raise DALISequenceError("No response reading groups zero to seven")
+    if g0.raw_value.error:
+        raise DALISequenceError("Framing error reading groups zero to seven")
+    g1 = yield QueryGroupsEightToFifteen(addr)
+    if g1.raw_value is None:
+        raise DALISequenceError("No response reading groups eight to fifteen")
+    if g1.raw_value.error:
+        raise DALISequenceError("Framing error reading groups eight to fifteen")
+    g = g1.raw_value + g0.raw_value
+    for i in range(0, 16):
+        if g[i]:
+            groups.add(i)
+    return groups
+
+def SetGroups(addr, groups):
+    """Set the group membership of control gear.
+
+    groups is a set of integers in the range 0..15
+    """
+    if isinstance(addr, Short) or isinstance(addr, int):
+        existing = yield from QueryGroups(addr)
+        for i in groups - existing:
+            yield AddToGroup(addr, i)
+        for i in existing - groups:
+            yield RemoveFromGroup(addr, i)
+    else:
+        # Can't read from multiple devices: must write every group
+        for i in range(0, 16):
+            if i in groups:
+                yield AddToGroup(addr, i)
+            else:
+                yield RemoveFromGroup(addr, i)
+
 def _find_next(low, high):
     yield SetSearchAddrH((high >> 16) & 0xff)
     yield SetSearchAddrM((high >> 8) & 0xff)

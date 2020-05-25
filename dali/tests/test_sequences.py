@@ -1,6 +1,7 @@
 import unittest
 from dali.tests import fakes
 from dali import sequences
+from dali import address
 
 class TestSequences(unittest.TestCase):
     def test_querydevicetypes(self):
@@ -82,6 +83,25 @@ class TestSequences(unittest.TestCase):
             else:
                 self.assertIn(g.shortaddr, available)
         self.assertEqual(missed, 5)
+
+    def test_query_groups(self):
+        gear = [fakes.Gear(shortaddr=x, groups={x}) for x in range(0, 16)]
+        bus = fakes.Bus(gear)
+        for i in range(0, 16):
+            self.assertEqual(bus.run_sequence(sequences.QueryGroups(i)), {i})
+
+    def test_set_groups(self):
+        gear = [fakes.Gear(shortaddr=x, groups={x}) for x in range(0, 16)]
+        bus = fakes.Bus(gear)
+        tp = {1, 3, 5, 7, 8, 9, 10, 13}
+        for i in range(0, 16):
+            bus.run_sequence(sequences.SetGroups(i, tp))
+            self.assertEqual(bus.run_sequence(sequences.QueryGroups(i)), tp)
+        tp = {0, 4, 7}
+        bus.run_sequence(sequences.SetGroups(address.Broadcast(), tp))
+        for i in range(0, 16):
+            bus.run_sequence(sequences.SetGroups(i, tp))
+            self.assertEqual(bus.run_sequence(sequences.QueryGroups(i)), tp)
 
 if __name__ == '__main__':
     unittest.main()
