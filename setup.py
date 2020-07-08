@@ -24,6 +24,7 @@ setup(
     ],
     extras_require={
         "driver-unipi": ["pyusb", "pymodbus"],
+        "driver-quaddali": ["pyserial"],
     },
     classifiers=[
         'Development Status :: 3 - Alpha',
