@@ -50,6 +50,26 @@ class _DeviceCommand(command.Command):
     """A command addressed to a control device."""
     _framesize = 24
 
+    _devicecommands = []
+
+    @classmethod
+    def _register_subclass(cls, subclass):
+        cls._devicecommands.append(subclass)
+
+    @classmethod
+    def from_frame(cls, f, devicetype=0):
+        for dc in cls._devicecommands:
+            r = dc.from_frame(f)
+            if r:
+                return r
+        return UnknownDeviceCommand(f)
+
+class UnknownDeviceCommand(_DeviceCommand):
+    """An unknown command addressed to a control device.
+    """
+    @classmethod
+    def from_frame(cls, f):
+        return
 
 ###############################################################################
 # Commands from Table 21 start here
@@ -76,15 +96,15 @@ class _StandardDeviceCommand(_DeviceCommand):
 
         super().__init__(f)
 
+    _opcodes = {}
+
+    @classmethod
+    def _register_subclass(cls, subclass):
+        cls._opcodes[subclass._opcode] = subclass
+
     @classmethod
     def from_frame(cls, frame):
-        if cls == _StandardDeviceCommand:
-            return
-        if len(frame) != 24:
-            return
         if frame[16:8] != 0x1fe:
-            return
-        if frame[7:0] != cls._opcode:
             return
 
         addr = address.from_frame(frame)
@@ -92,7 +112,11 @@ class _StandardDeviceCommand(_DeviceCommand):
         if addr is None:
             return
 
-        return cls(addr)
+        cc = cls._opcodes.get(frame[7:0])
+        if not cc:
+            return UnknownDeviceCommand(frame)
+
+        return cc(addr)
 
     def __str__(self):
         return "%s(%s)" % (self.__class__.__name__, self.destination)
@@ -433,24 +457,27 @@ class _StandardInstanceCommand(_DeviceCommand):
 
         super().__init__(f)
 
+    _opcodes = {}
+
+    @classmethod
+    def _register_subclass(cls, subclass):
+        cls._opcodes[subclass._opcode] = subclass
+
     @classmethod
     def from_frame(cls, frame):
-        if cls == _StandardDeviceCommand:
-            return
-        if len(frame) != 24:
-            return
         if not frame[16]:
             return
-        if frame[7:0] != cls._opcode:
-            return
-
         addr = address.from_frame(frame)
         instance = address.instance_from_frame(frame)
 
         if addr is None or instance is None:
             return
 
-        return cls(addr, instance)
+        cc = cls._opcodes.get(frame[7:0])
+        if not cc:
+            return UnknownDeviceCommand(frame)
+
+        return cc(addr, instance)
 
     def __str__(self):
         return "{}({}, {})".format(
@@ -638,8 +665,6 @@ class _SpecialDeviceCommand(_DeviceCommand):
     def from_frame(cls, frame):
         if cls == _SpecialDeviceCommand:
             return
-        if len(frame) != 24:
-            return
         if frame[23:16] == cls._addr and frame[15:8] == cls._instance \
            and frame[7:0] == 0x00:
             return cls()
@@ -661,8 +686,6 @@ class _SpecialDeviceCommandOneParam(_SpecialDeviceCommand):
     def from_frame(cls, frame):
         if cls == _SpecialDeviceCommandOneParam:
             return
-        if len(frame) != 24:
-            return
         if frame[23:16] == cls._addr and frame[15:8] == cls._instance:
             return cls(frame[7:0])
 
@@ -683,8 +706,6 @@ class _SpecialDeviceCommandTwoParam(_SpecialDeviceCommand):
     @classmethod
     def from_frame(cls, frame):
         if cls == _SpecialDeviceCommandTwoParam:
-            return
-        if len(frame) != 24:
             return
         if frame[23:16] == cls._addr:
             return cls(frame[15:8], frame[7:0])

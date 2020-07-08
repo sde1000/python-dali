@@ -1,6 +1,6 @@
 Source: python-dali
 Section: python
-X-Python3-Version: >= 3.5
+X-Python3-Version: >= 3.6
 Priority: optional
 Maintainer: Stephen Early <steve@assorted.org.uk>
 Build-Depends: debhelper (>= 9), dh-python, python3-all, python3-setuptools

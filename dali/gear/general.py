@@ -15,6 +15,26 @@ from dali import frame
 class _GearCommand(command.Command):
     _framesize = 16
 
+    _gearcommands = []
+
+    @classmethod
+    def _register_subclass(cls, subclass):
+        cls._gearcommands.append(subclass)
+
+    @classmethod
+    def from_frame(cls, f, devicetype=0):
+        for gc in cls._gearcommands:
+            r = gc.from_frame(f, devicetype=devicetype)
+            if r:
+                return r
+        return UnknownGearCommand(f)
+
+class UnknownGearCommand(_GearCommand):
+    """An unknown command addressed to control gear.
+    """
+    @classmethod
+    def from_frame(cls, f, devicetype=0):
+        return
 
 ###############################################################################
 # Commands from Table 15 start here
@@ -70,33 +90,41 @@ class _StandardCommand(_GearCommand):
 
         super().__init__(f)
 
+    # (devicetype, opcode) -> commandclass
+    _opcodes = {}
+
     @classmethod
-    def from_frame(cls, frame):
-        if cls == _StandardCommand:
+    def _register_subclass(cls, subclass):
+        if subclass.__name__[0] == '_':
             return
-        if len(frame) != 16:
-            return
+        if subclass._hasparam:
+            for x in range(0, 0x10):
+                cls._opcodes[(subclass.devicetype, subclass._cmdval + x)] = subclass
+        else:
+            cls._opcodes[(subclass.devicetype, subclass._cmdval)] = subclass
+
+    @classmethod
+    def from_frame(cls, frame, devicetype=0):
         if not frame[8]:
             # It's a direct arc power control command
             return
-        b = frame[7:0]
-
-        if cls._hasparam:
-            if b & 0xf0 != cls._cmdval:
-                return
-        else:
-            if b != cls._cmdval:
-                return
 
         addr = address.from_frame(frame)
 
         if addr is None:
+            # It's probably a _SpecialCommand
             return
 
-        if cls._hasparam:
-            return cls(addr, b & 0x0f)
+        opcode = frame[7:0]
 
-        return cls(addr)
+        cc = cls._opcodes.get((devicetype, opcode))
+        if not cc:
+            return UnknownGearCommand(frame)
+
+        if cc._hasparam:
+            return cc(addr, opcode & 0x0f)
+
+        return cc(addr)
 
     def __str__(self):
         if self._hasparam:
@@ -143,9 +171,7 @@ class DAPC(_GearCommand):
         super().__init__(f)
 
     @classmethod
-    def from_frame(cls, f):
-        if len(f) != 16:
-            return
+    def from_frame(cls, f, devicetype=0):
         if f[8]:
             return
         addr = address.from_frame(f)
@@ -277,6 +303,26 @@ class GoToLastActiveLevel(_StandardCommand):
     set fade time.
     """
     _cmdval = 0x0a
+
+
+class ContinuousUp(_StandardCommand):
+    """Dim up using the set fade rate.
+
+    targetLevel shall be set to maxLevel and a fade shall be started
+    using the set fade rate. The fade shall stop when maxLevel is
+    reached.
+    """
+    _cmdval = 0x0b
+
+
+class ContinuousDown(_StandardCommand):
+    """Dim down using the set fade rate.
+
+    targetLevel shall be set to minLevel and a fade shall be started
+    using the set fade rate. The fade shall stop when minLevel is
+    reached.
+    """
+    _cmdval = 0x0c
 
 
 class GoToScene(_StandardCommand):
@@ -932,6 +978,7 @@ class _SpecialCommand(_GearCommand):
     Special commands are broadcast and are received by all devices.
     """
     _hasparam = False
+    _cmdval = None
 
     def __init__(self, *args):
         if self._hasparam:
@@ -944,7 +991,6 @@ class _SpecialCommand(_GearCommand):
                 raise ValueError("param must be an int")
             if param < 0 or param > 255:
                 raise ValueError("param must be in range 0..255")
-            self.param = param
         else:
             if len(args) != 0:
                 raise TypeError(
@@ -952,23 +998,32 @@ class _SpecialCommand(_GearCommand):
                         self.__class__.__name__, len(args) + 1))
             param = 0
         self.param = param
+        super().__init__(frame.ForwardFrame(16, (self._cmdval, self.param)))
+
+    # dict of frame[15:8] to cls
+    _opcodes = {}
 
     @classmethod
-    def from_frame(cls, frame):
-        if cls == _SpecialCommand:
+    def _register_subclass(cls, subclass):
+        if subclass.__name__[0] == '_':
             return
-        if len(frame) != 16:
-            return
-        if frame[15:8] == cls._cmdval:
+        cls._opcodes[subclass._cmdval] = subclass
+
+    @classmethod
+    def from_frame(cls, frame, devicetype=0):
+        opcode = frame[15:8]
+        if opcode == cls._cmdval:
             if cls._hasparam:
                 return cls(frame[7:0])
+            elif frame[7:0] == 0:
+                return cls()
             else:
-                if frame[7:0] == 0:
-                    return cls()
+                return UnknownGearCommand(frame)
 
-    @property
-    def frame(self):
-        return frame.ForwardFrame(16, (self._cmdval, self.param))
+        cc = cls._opcodes.get(opcode)
+        if not cc:
+            return UnknownGearCommand(frame)
+        return cc.from_frame(frame, devicetype=devicetype)
 
     def __str__(self):
         if self._hasparam:
@@ -978,6 +1033,7 @@ class _SpecialCommand(_GearCommand):
 
 class _ShortAddrSpecialCommand(_SpecialCommand):
     """A special command that has a short address as its parameter."""
+    _hasparam = True
 
     def __init__(self, address):
         if address == "MASK":
@@ -988,17 +1044,12 @@ class _ShortAddrSpecialCommand(_SpecialCommand):
             if address < 0 or address > 63:
                 raise ValueError("address must be in the range 0..63")
         self.address = address
-
-    @property
-    def frame(self):
         data = 0xff if self.address == "MASK" else ((self.address << 1) | 1)
-        return frame.ForwardFrame(16, (self._cmdval, data))
+        super().__init__(data)
 
     @classmethod
-    def from_frame(cls, frame):
+    def from_frame(cls, frame, devicetype=0):
         if cls == _ShortAddrSpecialCommand:
-            return
-        if len(frame) != 16:
             return
         if frame[15:8] == cls._cmdval:
             if frame[7:0] == 0xff:
@@ -1022,7 +1073,7 @@ class DTR0(_SpecialCommand):
     uses_dtr0 = True
 
 
-class Initialise(command.Command):
+class Initialise(_SpecialCommand):
     """This command shall start or re-trigger a timer for 15 minutes; the
     addressing commands shall only be processed within this period.
     All other commands shall still be processed during this period.
@@ -1040,6 +1091,7 @@ class Initialise(command.Command):
       ballasts with the address supplied shall react
     """
     _cmdval = 0xa5
+    _hasparam = True
     sendtwice = True
 
     def __init__(self, broadcast=False, address=None):
@@ -1052,21 +1104,16 @@ class Initialise(command.Command):
                 raise ValueError("address must be in the range 0..63")
         self.broadcast = broadcast
         self.address = address
-
-    @property
-    def frame(self):
         if self.broadcast:
             b = 0
         elif self.address is None:
             b = 0xff
         else:
             b = (self.address << 1) | 1
-        return frame.ForwardFrame(16, (self._cmdval, b))
+        super().__init__(b)
 
     @classmethod
-    def from_frame(cls, f):
-        if len(f) != 16:
-            return
+    def from_frame(cls, f, devicetype=0):
         if f[15:8] == cls._cmdval:
             if f[7:0] == 0:
                 return cls(broadcast=True)

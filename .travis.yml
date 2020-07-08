@@ -1,8 +1,14 @@
 language: python
 
 python:
- - 3.5
  - 3.6
  - 3.7
+ - 3.8
 
-script: "python setup.py test"
+install:
+ - pip install -e .[driver-unipi]
+
+script:
+  - python -m unittest discover -v
+
+dist: bionic

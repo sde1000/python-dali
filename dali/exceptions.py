@@ -35,40 +35,14 @@ class ResponseError(CommandError):
 
 
 ###############################################################################
-# bus
+# sequences
 ###############################################################################
 
-class BusError(DALIError):
-    """Base Exception for bus related errors."""
+class DALISequenceError(DALIError):
+    """An error occurred during execution of a command sequence."""
+    pass
 
-
-class BadDevice(BusError):
-    """Device with invalid attributes."""
-
-
-class DeviceAlreadyBound(BusError):
-    """Attempt to add a device to a bus that is already bound to a
-    different bus.
-    """
-
-
-class DuplicateDevice(BusError):
-    """Attempt to add more than one device with the same short address
-    to a bus.
-    """
-
-
-class NoFreeAddress(BusError):
-    """An unused short address was required but none was available."""
-
-
-class NotConnected(BusError):
-    """A connection to the DALI bus is required to complete this
-    operation, but the bus is not connected.
-    """
-
-
-class ProgramShortAddressFailure(BusError):
+class ProgramShortAddressFailure(DALIError):
     """A device did not accept programming of its short address."""
 
     def __init__(self, address):
@@ -82,9 +56,8 @@ class ProgramShortAddressFailure(BusError):
 class DriverError(DALIError):
     """Base Exception for driver related errors."""
 
-
 class CommunicationError(DriverError):
-    """Exception raised in case of communication error with backend.
+    """Unable to communicate with the device
     """
 
 class UnsupportedFrameTypeError(DriverError):

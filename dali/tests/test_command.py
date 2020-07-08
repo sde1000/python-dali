@@ -118,9 +118,9 @@ class TestCommands(unittest.TestCase):
         for devicetype in command.Command._supported_devicetypes:
             qevn = command.from_frame(qevn_frame, devicetype=devicetype)
             self.assertIsNotNone(qevn)
-            self.assertEqual(qevn.devicetype, devicetype)
             self.assertEqual(qevn.__class__.__name__,
                              'QueryExtendedVersionNumber')
+            self.assertEqual(qevn.devicetype, devicetype)
 
 
 if __name__ == '__main__':

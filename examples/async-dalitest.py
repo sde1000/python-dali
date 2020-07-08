@@ -6,6 +6,7 @@ from dali.address import *
 from dali.gear.general import *
 from dali.gear import emergency
 from dali.gear import led
+from dali.sequences import QueryDeviceTypes, DALISequenceError
 from dali.driver.hid import tridonic, hasseb
 
 def print_command_and_response(dev, command, response, config_command_error):
@@ -37,21 +38,11 @@ async def main(self):
     await d.connected.wait()
 
     for addr in range(0, 64):
-        # The QueryDeviceType + QueryNextDeviceType... sequence must
-        # be performed as a transaction.
-        async with d.transaction_lock:
-            r = await d.send(QueryDeviceType(Short(addr)), in_transaction=True)
-            if r.raw_value is None:
-                continue
-            device_types = []
-            if r.raw_value.as_integer == 255:
-                while r.raw_value.as_integer != 254:
-                    r = await d.send(QueryNextDeviceType(Short(addr)), in_transaction=True)
-                    if r.raw_value and r.raw_value.as_integer < 254:
-                        device_types.append(r.raw_value.as_integer)
-            else:
-                device_types = [ r.raw_value.as_integer ]
-
+        try:
+            device_types = await d.run_sequence(QueryDeviceTypes(Short(addr)))
+        except DALISequenceError:
+            # The device isn't present; skip it
+            continue
         print(f"{addr}: {device_types}")
 
         s = await d.send(QueryStatus(Short(addr)))
@@ -74,7 +65,7 @@ async def main(self):
             r = await d.send(led.QueryGearType(Short(addr)))
             print(f" -LED- {r}")
             r = await d.send(led.QueryDimmingCurve(Short(addr)))
-            print(f" -LED- {r}")
+            print(f" -LED- dimming curve: {r.raw_value.as_integer}")
             r = await d.send(led.QueryPossibleOperatingModes(Short(addr)))
             print(f" -LED- {r}")
             r = await d.send(led.QueryFeatures(Short(addr)))
