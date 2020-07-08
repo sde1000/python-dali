@@ -31,6 +31,6 @@ setup(
     license='LGPL3+',
     keywords='lighting DALI development',
     test_suite='dali.tests',
-    install_requires=['pyusb', 'pymodbus'],
+    install_requires=['pyusb', 'pymodbus', 'pyserial'],
     tests_require=['mock'],
 )
