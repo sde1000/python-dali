@@ -5,7 +5,6 @@ Contains four [EFM8-DALI-UART-Bridge] modules and one Silabs CP2108.
 [EFM8-DALI-UART-Bridge]: https://git.rwth-aachen.de/Ferdinand.Keil/efm8-dali-uart-bridge
 """
 
-import logging
 import struct
 from time import sleep
 import serial

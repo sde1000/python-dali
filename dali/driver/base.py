@@ -1,6 +1,4 @@
 import threading
-import usb
-import serial
 from time import sleep, perf_counter
 
 
@@ -138,6 +136,11 @@ class USBBackend(Backend):
 
     def __init__(self, vendor, product, bus=None,
                  port_numbers=None, interface=0):
+        try:
+            import usb
+        except ImportError:
+            raise RuntimeError('{} requires pyusb but it is not installed'.format(self.__class__.__name__))
+        
         self._device = None
         # lookup devices by vendor and product
         devices = [dev for dev in usb.core.find(
@@ -238,7 +241,7 @@ class USBListener(USBBackend, Listener):
         super(USBListener, self).close()
 
 class SerialBackend(Backend):
-    """``Backend`` implementation for Quad-DALI-USB-Interface. Uses serial connection."""
+    """``Backend`` implementation to communicate with DALI interfaces over a serial connection."""
 
     def __init__(self, port, baudrate=115200, bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE,
                  stopbits=serial.STOPBITS_ONE):
@@ -250,6 +253,10 @@ class SerialBackend(Backend):
         @param parity: configures parity bit; default is none
         @param stopbits: number of stopbits per byte; default is one"""
 
+        try:
+            import serial
+        except ImportError:
+            raise RuntimeError('{} requires pyserial but it is not installed'.format(self.__class__.__name__))
         self._serial = serial.Serial(port=port, baudrate=baudrate, bytesize=bytesize, parity=parity, stopbits=stopbits)
 
         # for compatibility with older pyserial versions
@@ -266,7 +273,10 @@ class SerialBackend(Backend):
         # flush all buffers to remove old data before checking the port
         self._reset_output_buffer()
         sleep(0.050) # just a precaution if the previous command sent some data
-        self._reset_input_buffer()
+        self._reset_input_buffer(
+            
+        # internal read timeout is set to 10 ms to increase responsiveness
+        self._serial.timeout = 0.010
 
     def read(self, timeout=None):
         """Read data from the DALI interface.
@@ -274,8 +284,6 @@ class SerialBackend(Backend):
         @param timeout: read timeout in seconds; set to 0 or None to disable
         @return data read from the interface (bytes)"""
 
-        # internal read timeout is set to 10 ms to increase responsiveness
-        self._serial.timeout = 0.010
         # to compensate for the short read timeout and to use the timeout argument, the read is repeated until
         # more time than specified has elapsed
         start = perf_counter()
