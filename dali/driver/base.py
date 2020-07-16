@@ -243,8 +243,7 @@ class USBListener(USBBackend, Listener):
 class SerialBackend(Backend):
     """``Backend`` implementation to communicate with DALI interfaces over a serial connection."""
 
-    def __init__(self, port, baudrate=115200, bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE,
-                 stopbits=serial.STOPBITS_ONE):
+    def __init__(self, port, baudrate=115200, bytesize=None, parity=None, stopbits=None):
         """Open connection to the DALI interface.
 
         @param port: valid serial port (e.g. /dev/ttyUSB0 or COM1)
@@ -257,6 +256,13 @@ class SerialBackend(Backend):
             import serial
         except ImportError:
             raise RuntimeError('{} requires pyserial but it is not installed'.format(self.__class__.__name__))
+
+        # constants from serial can't be use in the method's declaration as serial has not been imported yet
+        # therefore the default is None and replaced with the proper constants below
+        bytesize = bytesize if bytesize is not None else serial.EIGHTBITS
+        parity = parity if parity is not None else serial.PARITY_NONE
+        stopbits = stopbits if stopbits is not None else serial.STOPBITS_ONE
+
         self._serial = serial.Serial(port=port, baudrate=baudrate, bytesize=bytesize, parity=parity, stopbits=stopbits)
 
         # for compatibility with older pyserial versions
@@ -273,7 +279,7 @@ class SerialBackend(Backend):
         # flush all buffers to remove old data before checking the port
         self._reset_output_buffer()
         sleep(0.050) # just a precaution if the previous command sent some data
-        self._reset_input_buffer(
+        self._reset_input_buffer()
             
         # internal read timeout is set to 10 ms to increase responsiveness
         self._serial.timeout = 0.010
