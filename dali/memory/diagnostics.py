@@ -38,8 +38,8 @@ class ControlGearExternalSupplyVoltage(FixedScaleNumericValue):
     scaling_factor = 0.1
 
     locations = (
-        MemoryLocation(bank=205, address=0x0b, default=0x0c, reset=None, type_=MemoryType.RAM_RO),
-        MemoryLocation(bank=205, address=0x0c, default=0x0c, reset=None, type_=MemoryType.RAM_RO)
+        MemoryLocation(bank=205, address=0x0b, default=None, reset=None, type_=MemoryType.RAM_RO),
+        MemoryLocation(bank=205, address=0x0c, default=None, reset=None, type_=MemoryType.RAM_RO)
     )
 
 class ControlGearExternalSupplyVoltageFrequency(NumericValue):
@@ -53,21 +53,21 @@ class ControlGearExternalSupplyVoltageFrequency(NumericValue):
 
     unit = 'Hz'
 
-    locations = (MemoryLocation(bank=205, address=0x0d, default=0x0c, reset=None, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=205, address=0x0d, default=None, reset=None, type_=MemoryType.RAM_RO),)
 
 class ControlGearPowerFactor(FixedScaleNumericValue):
     """Control Gear Power Factor"""
 
     scaling_factor = 0.01
 
-    locations = (MemoryLocation(bank=205, address=0x0e, default=0x0c, reset=None, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=205, address=0x0e, default=None, reset=None, type_=MemoryType.RAM_RO),)
 
 class ControlGearOverallFailureCondition(BinaryValue):
     """Control Gear Overall Failure Condition
     Failure condition flag indication as follows:
     ControlGearOverallFailureCondition reflects the status of ``controlGearFailure``."""
 
-    locations = (MemoryLocation(bank=205, address=0x0f, default=0x0c, reset=None, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=205, address=0x0f, default=None, reset=None, type_=MemoryType.RAM_RO),)
 
 class ControlGearOverallFailureConditionCounter(NumericValue):
     """Control Gear Overall Failure Condition Counter"""
@@ -92,7 +92,7 @@ class ControlGearExternalSupplyUndervoltage(BinaryValue):
     Input voltage ac: 198 – 264 V
     Input voltage dc: 176 – 276 V"""
 
-    locations = (MemoryLocation(bank=205, address=0x11, default=0x0c, reset=None, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=205, address=0x11, default=None, reset=None, type_=MemoryType.RAM_RO),)
 
 class ControlGearExternalSupplyUndervoltageCounter(NumericValue):
     """Control Gear External Supply Undervoltage Counter"""
@@ -117,7 +117,7 @@ class ControlGearExternalSupplyOvervoltage(BinaryValue):
     Input voltage ac: 198 – 264 V
     Input voltage dc: 176 – 276 V"""
 
-    locations = (MemoryLocation(bank=205, address=0x13, default=0x0c, reset=None, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=205, address=0x13, default=None, reset=None, type_=MemoryType.RAM_RO),)
 
 class ControlGearExternalSupplyOvervoltageCounter(NumericValue):
     """Control Gear External Supply Overvoltage Counter"""
@@ -135,7 +135,7 @@ class ControlGearOutputPowerLimitation(BinaryValue):
     limitation. This is the case if the LED voltage multiplied with the control gear output current is higher than the
     output power limit of the control gear."""
 
-    locations = (MemoryLocation(bank=205, address=0x15, default=0x0c, reset=None, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=205, address=0x15, default=None, reset=None, type_=MemoryType.RAM_RO),)
 
 class ControlGearOutputPowerLimitationCounter(NumericValue):
     """Control Gear Output Power Limitation Counter"""
@@ -153,7 +153,7 @@ class ControlGearThermalDerating(BinaryValue):
     could be affected if the ControlGearTemperature is higher than the threshold.
     If ControlGearThermalDerating = 1 the output current of the control gear may be reduced."""
 
-    locations = (MemoryLocation(bank=205, address=0x17, default=0x0c, reset=None, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=205, address=0x17, default=None, reset=None, type_=MemoryType.RAM_RO),)
 
 class ControlGearThermalDeratingCounter(NumericValue):
     """Control Gear Thermal Derating Counter"""
@@ -172,7 +172,7 @@ class ControlGearThermalShutdown(BinaryValue):
     ControlGearThermalShutdown threshold shall be higher than ControlGearThermalDerating threshold.
     If ControlGearThermalShutdown = 1 the output current of the control gear shall be reduced to zero."""
 
-    locations = (MemoryLocation(bank=205, address=0x19, default=0x0c, reset=None, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=205, address=0x19, default=None, reset=None, type_=MemoryType.RAM_RO),)
 
 class ControlGearThermalShutdownCounter(NumericValue):
     """Control Gear Thermal Shutdown Counter"""
@@ -185,7 +185,7 @@ class ControlGearTemperature(TemperatureValue):
     NOTE The temperature indicated by ControlGearTemperature is an internal temperature and may be different from the
     Tc temperature."""
 
-    locations = (MemoryLocation(bank=205, address=0x1b, default=0x0c, reset=None, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=205, address=0x1b, default=None, reset=None, type_=MemoryType.RAM_RO),)
 
 class ControlGearOutputCurrentPercent(NumericValue):
     """Control Gear Output Current Percent
@@ -204,7 +204,7 @@ class ControlGearOutputCurrentPercent(NumericValue):
 
     unit = '%'
 
-    locations = (MemoryLocation(bank=205, address=0x1c, default=0x0c, reset=None, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=205, address=0x1c, default=None, reset=None, type_=MemoryType.RAM_RO),)
 
 class LightSourceStartCounterResettable(NumericValue, LockableValueMixin):
     """Light Source Start Counter Resettable
@@ -266,8 +266,8 @@ class LightSourceVoltage(FixedScaleNumericValue):
     scaling_factor = 0.1
 
     locations = (
-        MemoryLocation(bank=206, address=0x12, default=0x0c, reset=None, type_=MemoryType.RAM_RO),
-        MemoryLocation(bank=206, address=0x13, default=0x0c, reset=None, type_=MemoryType.RAM_RO)
+        MemoryLocation(bank=206, address=0x12, default=None, reset=None, type_=MemoryType.RAM_RO),
+        MemoryLocation(bank=206, address=0x13, default=None, reset=None, type_=MemoryType.RAM_RO)
     )
 
 class LightSourceCurrent(FixedScaleNumericValue):
@@ -279,8 +279,8 @@ class LightSourceCurrent(FixedScaleNumericValue):
     scaling_factor = 0.001
 
     locations = (
-        MemoryLocation(bank=206, address=0x14, default=0x0c, reset=None, type_=MemoryType.RAM_RO),
-        MemoryLocation(bank=206, address=0x15, default=0x0c, reset=None, type_=MemoryType.RAM_RO)
+        MemoryLocation(bank=206, address=0x14, default=None, reset=None, type_=MemoryType.RAM_RO),
+        MemoryLocation(bank=206, address=0x15, default=None, reset=None, type_=MemoryType.RAM_RO)
     )
 
 class LightSourceOverallFailureCondition(BinaryValue):
@@ -288,7 +288,7 @@ class LightSourceOverallFailureCondition(BinaryValue):
     Failure condition flag indication as follows:
     LightSourceOverallFailureCondition reflects the status of “lampFailure”."""
 
-    locations = (MemoryLocation(bank=206, address=0x16, default=0x0c, reset=None, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=206, address=0x16, default=None, reset=None, type_=MemoryType.RAM_RO),)
 
 class LightSourceOverallFailureConditionCounter(NumericValue):
     """Light Source Overall Failure Condition Counter"""
@@ -302,7 +302,7 @@ class LightSourceShortCircuit(BinaryValue):
     QUERY LAMP FAILURE defined in IEC62386-102:2014.
     Otherwise: LightSourceShortCircuit = 0"""
 
-    locations = (MemoryLocation(bank=206, address=0x18, default=0x0c, reset=None, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=206, address=0x18, default=None, reset=None, type_=MemoryType.RAM_RO),)
 
 class LightSourceShortCircuitCounter(NumericValue):
     """Light Source Short Circuit Counter"""
@@ -316,7 +316,7 @@ class LightSourceOpenCircuit(BinaryValue):
     QUERY LAMP FAILURE defined in IEC62386-102:2014.
     Otherwise: LightSourceOpenCircuit = 0"""
 
-    locations = (MemoryLocation(bank=206, address=0x1a, default=0x0c, reset=None, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=206, address=0x1a, default=None, reset=None, type_=MemoryType.RAM_RO),)
 
 class LightSourceOpenCircuitCounter(NumericValue):
     """Light Source Open CircuitCounter"""
@@ -335,7 +335,7 @@ class LightSourceThermalDerating(BinaryValue):
     could be affected if the LightSourceTemperature is higher than the threshold.
     If LightSourceThermalDerating = 1 the output current of the control gear may be reduced."""
 
-    locations = (MemoryLocation(bank=206, address=0x1c, default=0x0c, reset=None, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=206, address=0x1c, default=None, reset=None, type_=MemoryType.RAM_RO),)
 
 class LightSourceThermalDeratingCounter(NumericValue):
     """Light Source Thermal Derating Counter"""
@@ -355,7 +355,7 @@ class LightSourceThermalShutdown(BinaryValue):
     LightSourceThermalShutdown threshold shall be higher than LightSourceThermalDerating threshold.
     If LightSourceThermalShutdown = 1 the output current of the control gear shall be reduced to zero."""
 
-    locations = (MemoryLocation(bank=206, address=0x1e, default=0x0c, reset=None, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=206, address=0x1e, default=None, reset=None, type_=MemoryType.RAM_RO),)
 
 class LightSourceThermalShutdownCounter(NumericValue):
     """Light Source Thermal Shutdown Counter"""
@@ -369,5 +369,5 @@ class LightSourceTemperature(TemperatureValue):
     NOTE The interface between sensor and controlgear is manufacturer specific and is configured in a manufacturer
     specific way."""
 
-    locations = (MemoryLocation(bank=206, address=0x20, default=0x0c, reset=None, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=206, address=0x20, default=None, reset=None, type_=MemoryType.RAM_RO),)
 

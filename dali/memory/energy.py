@@ -25,10 +25,10 @@ class ActivePower(ScaledNumericValue, LockableValueMixin):
     unit = 'W'
 
     locations = (
-        MemoryLocation(bank=202, address=0x0c, default=0x0d, reset=None, type_=MemoryType.RAM_RO),
-        MemoryLocation(bank=202, address=0x0d, default=0x0d, reset=None, type_=MemoryType.RAM_RO),
-        MemoryLocation(bank=202, address=0x0e, default=0x0d, reset=None, type_=MemoryType.RAM_RO),
-        MemoryLocation(bank=202, address=0x0f, default=0x0d, reset=None, type_=MemoryType.RAM_RO)
+        MemoryLocation(bank=202, address=0x0c, default=None, reset=None, type_=MemoryType.RAM_RO),
+        MemoryLocation(bank=202, address=0x0d, default=None, reset=None, type_=MemoryType.RAM_RO),
+        MemoryLocation(bank=202, address=0x0e, default=None, reset=None, type_=MemoryType.RAM_RO),
+        MemoryLocation(bank=202, address=0x0f, default=None, reset=None, type_=MemoryType.RAM_RO)
     )
 
     scale_location = MemoryLocation(bank=202, address=0x0b, default=None, reset=None, type_=MemoryType.ROM)
@@ -55,10 +55,10 @@ class ApparentPower(ScaledNumericValue, LockableValueMixin):
     unit = 'VA'
 
     locations = (
-        MemoryLocation(bank=203, address=0x0c, default=0x0d, reset=None, type_=MemoryType.RAM_RO),
-        MemoryLocation(bank=203, address=0x0d, default=0x0d, reset=None, type_=MemoryType.RAM_RO),
-        MemoryLocation(bank=203, address=0x0e, default=0x0d, reset=None, type_=MemoryType.RAM_RO),
-        MemoryLocation(bank=203, address=0x0f, default=0x0d, reset=None, type_=MemoryType.RAM_RO)
+        MemoryLocation(bank=203, address=0x0c, default=None, reset=None, type_=MemoryType.RAM_RO),
+        MemoryLocation(bank=203, address=0x0d, default=None, reset=None, type_=MemoryType.RAM_RO),
+        MemoryLocation(bank=203, address=0x0e, default=None, reset=None, type_=MemoryType.RAM_RO),
+        MemoryLocation(bank=203, address=0x0f, default=None, reset=None, type_=MemoryType.RAM_RO)
     )
 
     scale_location = MemoryLocation(bank=203, address=0x0b, default=None, reset=None, type_=MemoryType.ROM)
@@ -85,10 +85,10 @@ class ActivePowerLoadside(ScaledNumericValue, LockableValueMixin):
     unit = 'W'
 
     locations = (
-        MemoryLocation(bank=204, address=0x0c, default=0x0d, reset=None, type_=MemoryType.RAM_RO),
-        MemoryLocation(bank=204, address=0x0d, default=0x0d, reset=None, type_=MemoryType.RAM_RO),
-        MemoryLocation(bank=204, address=0x0e, default=0x0d, reset=None, type_=MemoryType.RAM_RO),
-        MemoryLocation(bank=204, address=0x0f, default=0x0d, reset=None, type_=MemoryType.RAM_RO)
+        MemoryLocation(bank=204, address=0x0c, default=None, reset=None, type_=MemoryType.RAM_RO),
+        MemoryLocation(bank=204, address=0x0d, default=None, reset=None, type_=MemoryType.RAM_RO),
+        MemoryLocation(bank=204, address=0x0e, default=None, reset=None, type_=MemoryType.RAM_RO),
+        MemoryLocation(bank=204, address=0x0f, default=None, reset=None, type_=MemoryType.RAM_RO)
     )
 
     scale_location = MemoryLocation(bank=204, address=0x0b, default=None, reset=None, type_=MemoryType.ROM)

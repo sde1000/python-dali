@@ -80,8 +80,8 @@ class NumericValue(MemoryValue):
     @classmethod
     def retrieve(cls, addr):
         result = 0
-        raw_values = yield from super().retrieve(addr)
-        for shift, value in enumerate(raw_values[::-1]):
+        r = yield from super().retrieve(addr)
+        for shift, value in enumerate(r[::-1]):
             result += value << (shift*8)
         return result
 
@@ -92,8 +92,6 @@ class ScaledNumericValue(NumericValue):
 
     @classmethod
     def retrieve(cls, addr):
-        result = super().retrieve(addr)
-
         # setup to read back scale value
         yield DTR1(cls.scale_location.bank)
         yield DTR0(cls.scale_location.address)
@@ -102,7 +100,8 @@ class ScaledNumericValue(NumericValue):
         r = yield ReadMemoryLocation(addr)
         scale = int.from_bytes(bytes([r.raw_value.as_integer]), byteorder='big', signed=True)
 
-        return result * 10.**scale
+        r = yield from super().retrieve(addr)
+        return r * 10.**scale
 
 class FixedScaleNumericValue(NumericValue):
 
@@ -111,15 +110,16 @@ class FixedScaleNumericValue(NumericValue):
 
     @classmethod
     def retrieve(cls, addr):
-        return cls.scaling_factor * super().retrieve(addr)
+        r = yield from super().retrieve(addr)
+        return cls.scaling_factor * r
 
 class StringValue(MemoryValue):
 
     @classmethod
     def retrieve(cls, addr):
         result = ''
-        raw_values = super().retrieve( addr)
-        for value in raw_values:
+        r = yield from super().retrieve(addr)
+        for value in r:
             if value == 0:
                 break # string is Null terminated
             else:
@@ -130,7 +130,8 @@ class BinaryValue(MemoryValue):
 
     @classmethod
     def retrieve(cls, addr):
-        if super().retrieve(addr) == 1:
+        r = yield from super().retrieve(addr)
+        if r == 1:
             return True
         else:
             return False
@@ -141,7 +142,8 @@ class TemperatureValue(NumericValue):
 
     @classmethod
     def retrieve(cls, addr):
-        return super().retrieve(addr) - 60
+        r = yield from super().retrieve(addr)
+        return r - 60
 
 class ManufacturerSpecificValue(MemoryValue):
 

@@ -49,6 +49,10 @@ class Gear:
                         if location.bank not in self.memory:
                             self.memory[location.bank] = {}
                         self.memory[location.bank][location.address] = location.default or 0
+                    if hasattr(getattr(module, class_[0]), 'scale_location'):
+                        location = getattr(module, class_[0]).scale_location
+                        self.memory[location.bank][location.address] = location.default or 0
+                    
 
     def _next_random_address(self):
         if self.random_preload:
