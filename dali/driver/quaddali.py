@@ -15,6 +15,8 @@ from abc import ABC, abstractmethod
 from dali.driver.base import SyncDALIDriver
 from dali.driver.base import SerialBackend
 from dali.frame import BackwardFrame
+from dali.sequences import progress as seq_progress
+from dali.sequences import sleep as seq_sleep
 
 def construct(command):
     """Returns a sequence of bytes representing the given command to be sent to the interface.""" 
@@ -61,6 +63,16 @@ class QuadDALIUSBDriver(ABC):
         """
         pass
 
+    @abstractmethod
+    def run_sequence(self, seq, progress=None):
+        """Runs the given command sequence.
+
+        @param seq: command sequence
+        @param progress: consumer for the sequence's progress reports
+        @return Response for the command sequence (default is None)
+        """
+        pass
+
 class SyncQuadDALIUSBDriver(QuadDALIUSBDriver):
     """Synchronous dali driver for the Quad-DALI-USB-Interface.
     """
@@ -103,6 +115,28 @@ class SyncQuadDALIUSBDriver(QuadDALIUSBDriver):
                 return command.response(extract(response))
             else:
                 return command.response(extract(bytes([0])))
+
+    def run_sequence(self, seq, progress=None):
+        response = None
+        try:
+            while True:
+                try:
+                    cmd = seq.send(response)
+                except StopIteration as r:
+                    return r.value
+                response = None
+                if isinstance(cmd, seq_sleep):
+                    sleep(cmd.delay)
+                elif isinstance(cmd, seq_progress):
+                    if progress:
+                        progress(cmd)
+                else:
+                    if cmd.devicetype != 0:
+                        self.send(EnableDeviceType(cmd.devicetype))
+                    response = self.send(cmd)
+        finally:
+            seq.close()
+        return None
 
 class AsyncQuadDALIUSBDriver(QuadDALIUSBDriver):
     """Asynchronous dali driver for the Quad-DALI-USB-Interface.
@@ -176,6 +210,28 @@ class AsyncQuadDALIUSBDriver(QuadDALIUSBDriver):
                     return command.response(extract(bytes([0])))
                 else:
                     return command.response(extract(response))
+
+    async def run_sequence(self, seq, progress=None):
+        response = None
+        try:
+            while True:
+                try:
+                    cmd = seq.send(response)
+                except StopIteration as r:
+                    return r.value
+                response = None
+                if isinstance(cmd, seq_sleep):
+                    await asyncio.sleep(cmd.delay)
+                elif isinstance(cmd, seq_progress):
+                    if progress:
+                        progress(cmd)
+                else:
+                    if cmd.devicetype != 0:
+                        await self.send(EnableDeviceType(cmd.devicetype))
+                    response = await self.send(cmd)
+        finally:
+            seq.close()
+        return None
 
 if __name__ == '__main__':
     import argparse
