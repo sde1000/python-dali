@@ -16,7 +16,7 @@ class RatedMedianUsefulLifeOfLuminaire(FixedScaleNumericValue, LockableValueMixi
 
     scaling_factor = 1000
 
-    locations = (MemoryLocation(bank=207, address=0x04, default=0xff, reset=None, type_=MemoryType.NVM_RW))
+    locations = (MemoryLocation(bank=207, address=0x04, default=0xff, reset=None, type_=MemoryType.NVM_RW),)
 
 class InternalControlGearReferenceTemperature(TemperatureValue, LockableValueMixin):
     """Internal Control Gear Reference Temperature in °C
@@ -25,7 +25,7 @@ class InternalControlGearReferenceTemperature(TemperatureValue, LockableValueMix
     rated luminaire power (at 100% dimming level).
     tq: rated ambient temperature of the luminaire as defined in IEC62722-2-1:2014."""
 
-    locations = (MemoryLocation(bank=207, address=0x05, default=0xff, reset=None, type_=MemoryType.NVM_RW))
+    locations = (MemoryLocation(bank=207, address=0x05, default=0xff, reset=None, type_=MemoryType.NVM_RW),)
 
 class RatedMedianUsefulLightSourceStarts(FixedScaleNumericValue, LockableValueMixin):
     """Rated Median Useful Light Source Starts

@@ -41,12 +41,12 @@ class ContentFormatID(NumericValue, LockableValueMixin):
 class YearOfManufacture(NumericValue, LockableValueMixin):
     """Luminaire year of manufacture (YY)"""
 
-    locations = (MemoryLocation(bank=1, address=0x13, default=0xff, reset=None, type_=MemoryType.NVM_RW_P))
+    locations = (MemoryLocation(bank=1, address=0x13, default=0xff, reset=None, type_=MemoryType.NVM_RW_P),)
 
 class WeekOfManufacture(NumericValue, LockableValueMixin):
     """Luminaire week of manufacture (WW)"""
 
-    locations = (MemoryLocation(bank=1, address=0x14, default=0xff, reset=None, type_=MemoryType.NVM_RW_P))
+    locations = (MemoryLocation(bank=1, address=0x14, default=0xff, reset=None, type_=MemoryType.NVM_RW_P),)
 
 class InputPowerNominal(NumericValue, LockableValueMixin):
     """Nominal Input Power in W"""
@@ -102,7 +102,7 @@ class LightOutputNominal(NumericValue, LockableValueMixin):
 class CRI(NumericValue, LockableValueMixin):
     """CRI"""
 
-    locations = (MemoryLocation(bank=1, address=0x20, default=0xff, reset=None, type_=MemoryType.NVM_RW_P))
+    locations = (MemoryLocation(bank=1, address=0x20, default=0xff, reset=None, type_=MemoryType.NVM_RW_P),)
 
 class CCT(NumericValue, LockableValueMixin):
     """CCT in K"""
@@ -124,11 +124,12 @@ class LightDistributionType(MemoryValue, LockableValueMixin):
     5 = Type V;
     6-254 = reserved for additional types"""
 
-    locations = (MemoryLocation(bank=1, address=0x23, default=0xff, reset=None, type_=MemoryType.NVM_RW_P))
+    locations = (MemoryLocation(bank=1, address=0x23, default=0xff, reset=None, type_=MemoryType.NVM_RW_P),)
 
     @classmethod
-    def retrieve(cls, sync_driver, dali_address):
-        light_distribution_type = super().retrieve(sync_driver, dali_address)[0]
+    def retrieve(cls, addr):
+        r = yield from super().retrieve(addr)
+        light_distribution_type = r[0]
         if light_distribution_type == 0:
             return 'not specified'
         elif light_distribution_type == 1:
