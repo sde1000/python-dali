@@ -7,12 +7,6 @@ from dali.driver.base import DALIDriver
 from dali.driver.base import SyncDALIDriver
 from dali.frame import BackwardFrame
 from dali.frame import BackwardFrameError
-from dali.exceptions import BadDevice
-from dali.exceptions import DeviceAlreadyBound
-from dali.exceptions import DuplicateDevice
-from dali.exceptions import NoFreeAddress
-from dali.exceptions import NotConnected
-from dali.exceptions import ProgramShortAddressFailure
 
 import dali.gear.general as gear
 
