@@ -31,12 +31,20 @@ class MemoryValue:
         @param addr: address of the DALI device (Address)
         """
         result = []
+        dtr1 = None
+        dtr0 = None
         for location in cls.locations:
             # select correct memory location
-            yield DTR1(location.bank)
-            yield DTR0(location.address)
+            if location.bank != dtr1:
+                dtr1 = location.bank
+                yield DTR1(location.bank)
+            if location.address != dtr0:
+                dtr0 = location.address
+                yield DTR0(location.address)
             # read back value of the memory location
             r = yield ReadMemoryLocation(addr)
+            # increase DTR0 to reflect the internal state of the driver
+            dtr0 = min(dtr0+1, 255)
             result.append(r.raw_value.as_integer)
         return bytes(result)
 
