@@ -185,9 +185,17 @@ class Gear:
         elif isinstance(cmd, general.DTR2):
             self.dtr2 = cmd.param
         elif isinstance(cmd, general.ReadMemoryLocation):
-            # will raise KeyError if the requested memory location
-            # has not been defined in dali.memory
-            return self.memory[self.dtr1][self.dtr0]
+            try:
+                memory_value = self.memory[self.dtr1][self.dtr0]
+            except KeyError:
+                # return nothing when trying to read non-existent
+                # memory location
+                pass
+            else:
+                return memory_value
+            finally:
+                # increment DTR0 but limit to 0xFF
+                self.dtr0 = min(self.dtr0+1, 255)
 
 class Bus:
     """A DALI bus

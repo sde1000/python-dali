@@ -92,32 +92,3 @@ class ActivePowerLoadside(ScaledNumericValue, LockableValueMixin):
     )
 
     scale_location = MemoryLocation(bank=204, address=0x0b, default=None, reset=None, type_=MemoryType.ROM)
-
-if __name__ == '__main__':
-    import argparse
-    from dali.driver.quaddali import SyncQuadDALIUSBDriver
-    from dali.address import Short
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-n', help='repeat query n times', type=int, default=1)
-    parser.add_argument('-s', help='short address of the device that is queried', type=int, default=0)
-    parser.add_argument('port', help='serial port to connect to', type=str)
-    args = parser.parse_args()
-
-    iface = SyncQuadDALIUSBDriver(port=args.port)
-
-    for i in range(args.n):
-        print(f'Run #{i+1}')
-        print(f'ActiveEnergy: {ActiveEnergy.retrieve(iface, Short(args.s)):.3f} {ActiveEnergy.unit}')
-        print(f'ActivePower: {ActivePower.retrieve(iface, Short(args.s)):.3f} {ActivePower.unit}')
-        print(f'ApparentEnergy: {ApparentEnergy.retrieve(iface, Short(args.s)):.3f} {ApparentEnergy.unit}')
-        print(f'ApparentPower: {ApparentPower.retrieve(iface, Short(args.s)):.3f} {ApparentPower.unit}')
-        print(f'ActiveEnergyLoadside: {ActiveEnergyLoadside.retrieve(iface, Short(args.s)):.3f} ' + \
-            f'{ActiveEnergyLoadside.unit}')
-        print(f'ActivePowerLoadside: {ActivePowerLoadside.retrieve(iface, Short(args.s)):.3f} ' + \
-            f'{ActivePowerLoadside.unit}')
-        print()
-        print(f'PowerFactor: {ActivePower.retrieve(iface, Short(args.s))/ApparentPower.retrieve(iface, Short(args.s)):.3f}')
-        print()
-
-    iface.backend.close()
