@@ -79,9 +79,7 @@ class HassebDALIUSBDriver(DALIDriver):
 
     def __init__(self, path=None):
         try:
-            self.device = hidapi.hid_open(HASSEB_USB_VENDOR, HASSEB_USB_PRODUCT, None) if not bool(path)
-                            else hidapi.hid_open_path(path)
-                hidapi.hid_open_path(path)
+            self.device = hidapi.hid_open(HASSEB_USB_VENDOR, HASSEB_USB_PRODUCT, None) if not bool(path) else hidapi.hid_open_path(path)
             self.device_found = 1
         except:
             self.device_found = None
