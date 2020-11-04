@@ -77,9 +77,11 @@ class HassebDALIUSBDriver(DALIDriver):
     _pending = None
     _response_message = None
 
-    def __init__(self):
+    def __init__(self, path=None):
         try:
-            self.device = hidapi.hid_open(HASSEB_USB_VENDOR, HASSEB_USB_PRODUCT, None)
+            self.device = hidapi.hid_open(HASSEB_USB_VENDOR, HASSEB_USB_PRODUCT, None) if not bool(path)
+                            else hidapi.hid_open_path(path)
+                hidapi.hid_open_path(path)
             self.device_found = 1
         except:
             self.device_found = None
@@ -245,3 +247,17 @@ class SyncHassebDALIUSBDriver(HassebDALIUSBDriver, SyncDALIDriver):
                 return
             else:
                 self.receive()
+
+def SyncHassebDALIUSBDriverFactory():
+    """Enumerates Hasseb DALI masters and instantiates `SyncHassebDALIUSBDriver`s
+    for each one of them.
+    """
+
+    hasseb_dali_drivers = []
+
+    hasseb_hid_devices = hidapi.hid_enumerate(HASSEB_USB_VENDOR, HASSEB_USB_PRODUCT)
+    for hasseb_hid_device in hasseb_hid_devices:
+        self.logger.debug("device found, path is {}".format(hasseb_hid_device.path))
+        hasseb_dali_drivers.append(SyncHassebDALIUSBDriver(hasseb_hid_device.path))
+
+    return hasseb_dali_drivers
