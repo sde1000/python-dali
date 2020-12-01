@@ -17,6 +17,12 @@ class QueryColourValueVariables(Enum):
     AmberDimLevel = 13
     FreecolourDimLevel = 14
     RGBWAFControl = 15
+    ReportRedDimLevel = 233
+    ReportGreenDimLevel = 234
+    ReportBlueDimLevel = 235
+    ReportWhiteDimLevel = 236
+    ReportAmberDimLevel = 237
+    ReportFreecolourDimLevel = 238
 
     @property
     def dtrVal(self) -> int:
@@ -63,7 +69,7 @@ class QueryGearFeaturesStatusResponse(command.BitmapResponseBitDict):
 
 class QueryGearFeaturesStatus(_ColourCommand):
     _cmdval = 0xF7
-    _response = QueryGearFeaturesStatusResponse
+    response = QueryGearFeaturesStatusResponse
 
 
 class QueryColourStatusResponse(command.BitmapResponse):
@@ -78,12 +84,13 @@ class QueryColourStatusResponse(command.BitmapResponse):
     Bit 7: colour type RGBWAF active; 0 = NO
     """
     bits = ["xy-coord point out of range", "Tc temperature out of range", "Auto calibration running",
-            "type xy-coord active", "type Tc temperature active", "type primary N active", "type RGBWAF active"]
+            "Auto calibration successful", "type xy-coord active", "type Tc temperature active",
+            "type primary N active", "type RGBWAF active"]
 
 
 class QueryColourStatus(_ColourCommand):
     _cmdval = 0xF8
-    _response = QueryColourStatusResponse
+    response = QueryColourStatusResponse
 
 
 class QueryColourTypeFeaturesResponse(command.BitmapResponse):
@@ -99,9 +106,13 @@ class QueryColourTypeFeaturesResponse(command.BitmapResponse):
 
 class QueryColourTypeFeatures(_ColourCommand):
     _cmdval = 0xF9
-    _response = QueryColourTypeFeaturesResponse
+    response = QueryColourTypeFeaturesResponse
 
 
 class QueryColourValue(_ColourCommand):
+    """The answer depends on the DTR Value. (see QueryColourValueVariables enum)
+
+   Note: A control device should always use QueryActualLevel to update the reported colour setting before querying.
+    """
     _cmdval = 0xFA
-    _response = command.NumericResponse
+    response = command.NumericResponseMask
