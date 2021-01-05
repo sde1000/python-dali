@@ -1,5 +1,4 @@
 from enum import Enum, auto
-from collections import namedtuple
 
 from dali.gear.general import ReadMemoryLocation, DTR0, DTR1
 
@@ -11,13 +10,75 @@ class MemoryType(Enum):
     NVM_RW = auto()   # NVM-RW
     NVM_RW_P = auto() # NVM-RW (protectable)
 
-MemoryLocation = namedtuple('MemoryLocation', [
-    'bank',        # Memory bank to which the location belongs (mandatory).
-    'address',     # Memory address as integer (mandatory).
-    'default',     # Default value of the memory location. None if undefined or manufacturer specific. -1 if answers NO.
-    'reset',       # Reset value of the memory location. None for no change.
-    'type_'        # Memory type.
-], defaults=['', None, None])
+class MemoryLocation:
+
+    def __init__(self, bank, address, default = None, reset = None, type_ = None):
+        self.__bank = bank
+        self.__address = address
+        self.__type_ = type_
+        self.__default = default
+        self.__reset = reset
+    
+    @property
+    def bank(self):
+        return self.__bank
+
+    @property
+    def address(self):
+        return self.__address
+    
+    @property
+    def type_(self):
+        return self.__type_
+    
+    @property
+    def default(self):
+        return self.__default
+
+    @property
+    def reset(self):
+        return self.__reset
+
+class MemoryRange:
+
+    def __init__(self, bank, start, end, default = None, reset = None, type_ = None):
+        self.__bank = bank
+        self.__start = start
+        self.__end = end
+        self.__type_ = type_
+        self.__default = default
+        self.__reset = reset
+    
+    @property
+    def bank(self):
+        return self.__bank
+
+    @property
+    def start(self):
+        return self.__start
+
+    @property
+    def end(self):
+        return self.__end
+    
+    @property
+    def type_(self):
+        return self.__type_
+    
+    @property
+    def default(self):
+        return self.__default
+
+    @property
+    def reset(self):
+        return self.__reset
+
+    @property
+    def locations(self):
+        return tuple([
+            MemoryLocation(bank=self.bank, address=address, default=self.default, reset=self.reset, type_=self.type_) \
+            for address in range(self.start, self.end+1)
+        ])
 
 class MemoryValue:
 
@@ -93,23 +154,17 @@ class NumericValue(MemoryValue):
             result += value << (shift*8)
         return result
 
-class ScaledNumericValue(NumericValue):
-
-    """Memory location where the scale of the value is stored."""
-    scale_location = None
+class ScaledNumericValue(MemoryValue):
 
     @classmethod
     def retrieve(cls, addr):
-        # setup to read back scale value
-        yield DTR1(cls.scale_location.bank)
-        yield DTR0(cls.scale_location.address)
-
-        # read scale value and convert it from twos-complement to an integer
-        r = yield ReadMemoryLocation(addr)
-        scale = int.from_bytes(bytes([r.raw_value.as_integer]), byteorder='big', signed=True)
-
+        result = 0
         r = yield from super().retrieve(addr)
-        return r * 10.**scale
+        scale = r[0]
+        # loop over all bytes except for the first one
+        for shift, value in enumerate(r[:0:-1]):
+            result += value << (shift*8)
+        return result * 10.**scale
 
 class FixedScaleNumericValue(NumericValue):
 
