@@ -1,8 +1,10 @@
-from .location import MemoryLocation, MemoryRange, MemoryType, NumericValue, LockableValueMixin, FixedScaleNumericValue, \
+from .location import MemoryBank, MemoryLocation, MemoryRange, MemoryType, NumericValue, LockableValueMixin, FixedScaleNumericValue, \
     BinaryValue, TemperatureValue
 
 """The mememory bank definitions from
 DiiA Specification, DALI Part 253 - Diagnostics & Maintenance, Version 1.1, October 2019"""
+BANK_205 = MemoryBank(205)
+BANK_206 = MemoryBank(206)
 
 class ControlGearOperatingTime(NumericValue):
     """Control Gear Operating Time in s
@@ -11,14 +13,14 @@ class ControlGearOperatingTime(NumericValue):
 
     unit = 's'
 
-    locations = MemoryRange(bank=205, start=0x04, end=0x07, default=0x00, type_=MemoryType.NVM_RO).locations
+    locations = MemoryRange(bank=BANK_205, start=0x04, end=0x07, default=0x00, type_=MemoryType.NVM_RO).locations
 
 class ControlGearStartCounter(NumericValue):
     """Control Gear Start Counter
     Counts the number of control gear starts that are induced by a power cycle of the external supply. A
     power cycle shall be counted if the power on time is at least 600ms."""
 
-    locations = MemoryRange(bank=205, start=0x08, end=0x0a, default=0x00, type_=MemoryType.NVM_RO).locations
+    locations = MemoryRange(bank=BANK_205, start=0x08, end=0x0a, default=0x00, type_=MemoryType.NVM_RO).locations
 
 class ControlGearExternalSupplyVoltage(FixedScaleNumericValue):
     """Control Gear External Supply Voltage in Vrms
@@ -28,7 +30,7 @@ class ControlGearExternalSupplyVoltage(FixedScaleNumericValue):
 
     scaling_factor = 0.1
 
-    locations = MemoryRange(bank=205, start=0x0b, end=0x0c, type_=MemoryType.RAM_RO).locations
+    locations = MemoryRange(bank=BANK_205, start=0x0b, end=0x0c, type_=MemoryType.RAM_RO).locations
 
 class ControlGearExternalSupplyVoltageFrequency(NumericValue):
     """Control Gear External Supply Voltag Frequency in Hz
@@ -41,26 +43,26 @@ class ControlGearExternalSupplyVoltageFrequency(NumericValue):
 
     unit = 'Hz'
 
-    locations = (MemoryLocation(bank=205, address=0x0d, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=BANK_205, address=0x0d, type_=MemoryType.RAM_RO),)
 
 class ControlGearPowerFactor(FixedScaleNumericValue):
     """Control Gear Power Factor"""
 
     scaling_factor = 0.01
 
-    locations = (MemoryLocation(bank=205, address=0x0e, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=BANK_205, address=0x0e, type_=MemoryType.RAM_RO),)
 
 class ControlGearOverallFailureCondition(BinaryValue):
     """Control Gear Overall Failure Condition
     Failure condition flag indication as follows:
     ControlGearOverallFailureCondition reflects the status of ``controlGearFailure``."""
 
-    locations = (MemoryLocation(bank=205, address=0x0f, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=BANK_205, address=0x0f, type_=MemoryType.RAM_RO),)
 
 class ControlGearOverallFailureConditionCounter(NumericValue):
     """Control Gear Overall Failure Condition Counter"""
 
-    locations = (MemoryLocation(bank=205, address=0x10, default=0x00, reset=0x0e, type_=MemoryType.NVM_RO),)
+    locations = (MemoryLocation(bank=BANK_205, address=0x10, default=0x00, reset=0x0e, type_=MemoryType.NVM_RO),)
 
 class ControlGearExternalSupplyUndervoltage(BinaryValue):
     """Control Gear External Supply Undervoltage
@@ -80,12 +82,12 @@ class ControlGearExternalSupplyUndervoltage(BinaryValue):
     Input voltage ac: 198 – 264 V
     Input voltage dc: 176 – 276 V"""
 
-    locations = (MemoryLocation(bank=205, address=0x11, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=BANK_205, address=0x11, type_=MemoryType.RAM_RO),)
 
 class ControlGearExternalSupplyUndervoltageCounter(NumericValue):
     """Control Gear External Supply Undervoltage Counter"""
 
-    locations = (MemoryLocation(bank=205, address=0x12, default=0x00, reset=0x0e, type_=MemoryType.NVM_RO),)
+    locations = (MemoryLocation(bank=BANK_205, address=0x12, default=0x00, reset=0x0e, type_=MemoryType.NVM_RO),)
 
 class ControlGearExternalSupplyOvervoltage(BinaryValue):
     """Control Gear External Supply Overvoltage
@@ -105,12 +107,12 @@ class ControlGearExternalSupplyOvervoltage(BinaryValue):
     Input voltage ac: 198 – 264 V
     Input voltage dc: 176 – 276 V"""
 
-    locations = (MemoryLocation(bank=205, address=0x13, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=BANK_205, address=0x13, type_=MemoryType.RAM_RO),)
 
 class ControlGearExternalSupplyOvervoltageCounter(NumericValue):
     """Control Gear External Supply Overvoltage Counter"""
 
-    locations = (MemoryLocation(bank=205, address=0x14, default=0x00, reset=0x0e, type_=MemoryType.NVM_RO),)
+    locations = (MemoryLocation(bank=BANK_205, address=0x14, default=0x00, reset=0x0e, type_=MemoryType.NVM_RO),)
 
 class ControlGearOutputPowerLimitation(BinaryValue):
     """Control Gear Output Power Limitation
@@ -123,12 +125,12 @@ class ControlGearOutputPowerLimitation(BinaryValue):
     limitation. This is the case if the LED voltage multiplied with the control gear output current is higher than the
     output power limit of the control gear."""
 
-    locations = (MemoryLocation(bank=205, address=0x15, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=BANK_205, address=0x15, type_=MemoryType.RAM_RO),)
 
 class ControlGearOutputPowerLimitationCounter(NumericValue):
     """Control Gear Output Power Limitation Counter"""
 
-    locations = (MemoryLocation(bank=205, address=0x16, default=0x00, reset=0x0e, type_=MemoryType.NVM_RO),)
+    locations = (MemoryLocation(bank=BANK_205, address=0x16, default=0x00, reset=0x0e, type_=MemoryType.NVM_RO),)
 
 class ControlGearThermalDerating(BinaryValue):
     """Control Gear Thermal Derating
@@ -141,12 +143,12 @@ class ControlGearThermalDerating(BinaryValue):
     could be affected if the ControlGearTemperature is higher than the threshold.
     If ControlGearThermalDerating = 1 the output current of the control gear may be reduced."""
 
-    locations = (MemoryLocation(bank=205, address=0x17, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=BANK_205, address=0x17, type_=MemoryType.RAM_RO),)
 
 class ControlGearThermalDeratingCounter(NumericValue):
     """Control Gear Thermal Derating Counter"""
 
-    locations = (MemoryLocation(bank=205, address=0x18, default=0x00, reset=0x0e, type_=MemoryType.NVM_RO),)
+    locations = (MemoryLocation(bank=BANK_205, address=0x18, default=0x00, reset=0x0e, type_=MemoryType.NVM_RO),)
 
 class ControlGearThermalShutdown(BinaryValue):
     """Control Gear Thermal Shutdown
@@ -160,12 +162,12 @@ class ControlGearThermalShutdown(BinaryValue):
     ControlGearThermalShutdown threshold shall be higher than ControlGearThermalDerating threshold.
     If ControlGearThermalShutdown = 1 the output current of the control gear shall be reduced to zero."""
 
-    locations = (MemoryLocation(bank=205, address=0x19, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=BANK_205, address=0x19, type_=MemoryType.RAM_RO),)
 
 class ControlGearThermalShutdownCounter(NumericValue):
     """Control Gear Thermal Shutdown Counter"""
 
-    locations = (MemoryLocation(bank=205, address=0x1a, default=0x00, reset=0x0e, type_=MemoryType.NVM_RO),)
+    locations = (MemoryLocation(bank=BANK_205, address=0x1a, default=0x00, reset=0x0e, type_=MemoryType.NVM_RO),)
 
 class ControlGearTemperature(TemperatureValue):
     """Control Gear Temperature in °C
@@ -173,7 +175,7 @@ class ControlGearTemperature(TemperatureValue):
     NOTE The temperature indicated by ControlGearTemperature is an internal temperature and may be different from the
     Tc temperature."""
 
-    locations = (MemoryLocation(bank=205, address=0x1b, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=BANK_205, address=0x1b, type_=MemoryType.RAM_RO),)
 
 class ControlGearOutputCurrentPercent(NumericValue):
     """Control Gear Output Current Percent
@@ -192,21 +194,21 @@ class ControlGearOutputCurrentPercent(NumericValue):
 
     unit = '%'
 
-    locations = (MemoryLocation(bank=205, address=0x1c, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=BANK_205, address=0x1c, type_=MemoryType.RAM_RO),)
 
 class LightSourceStartCounterResettable(NumericValue, LockableValueMixin):
     """Light Source Start Counter Resettable
     Counts the starts of the light source.
     Counts one step up for every 0 to 1 transition of the lampOn bit."""
 
-    locations = MemoryRange(bank=206, start=0x04, end=0x06, default=0x00, type_=MemoryType.NVM_RW).locations
+    locations = MemoryRange(bank=BANK_206, start=0x04, end=0x06, default=0x00, type_=MemoryType.NVM_RW).locations
 
 class LightSourceStartCounter(NumericValue):
     """Light Source Start Counter
     Counts the starts of the light source.
 Counts one step up for every 0 to 1 transition of the lampOn bit."""
 
-    locations = MemoryRange(bank=206, start=0x07, end=0x09, default=0x00, type_=MemoryType.NVM_RO).locations
+    locations = MemoryRange(bank=BANK_206, start=0x07, end=0x09, default=0x00, type_=MemoryType.NVM_RO).locations
 
 class LightSourceOnTimeResettable(NumericValue, LockableValueMixin):
     """Light Source On Time Resettable in s
@@ -215,7 +217,7 @@ class LightSourceOnTimeResettable(NumericValue, LockableValueMixin):
 
     unit = 's'
 
-    locations = MemoryRange(bank=206, start=0x0a, end=0x0d, default=0x00, type_=MemoryType.NVM_RW).locations
+    locations = MemoryRange(bank=BANK_206, start=0x0a, end=0x0d, default=0x00, type_=MemoryType.NVM_RW).locations
 
 class LightSourceOnTime(NumericValue):
     """Light Source On Time in s
@@ -224,7 +226,7 @@ Counts up during the time where lampOn bit = 1."""
 
     unit = 's'
 
-    locations = MemoryRange(bank=206, start=0x0e, end=0x11, default=0x00, type_=MemoryType.NVM_RO).locations
+    locations = MemoryRange(bank=BANK_206, start=0x0e, end=0x11, default=0x00, type_=MemoryType.NVM_RO).locations
 
 class LightSourceVoltage(FixedScaleNumericValue):
     """Light Source Voltage in V
@@ -234,7 +236,7 @@ class LightSourceVoltage(FixedScaleNumericValue):
 
     scaling_factor = 0.1
 
-    locations = MemoryRange(bank=206, start=0x12, end=0x13, type_=MemoryType.RAM_RO).locations
+    locations = MemoryRange(bank=BANK_206, start=0x12, end=0x13, type_=MemoryType.RAM_RO).locations
 
 class LightSourceCurrent(FixedScaleNumericValue):
     """Light Source Current in A
@@ -244,19 +246,19 @@ class LightSourceCurrent(FixedScaleNumericValue):
 
     scaling_factor = 0.001
 
-    locations = MemoryRange(bank=206, start=0x14, end=0x15, type_=MemoryType.RAM_RO).locations
+    locations = MemoryRange(bank=BANK_206, start=0x14, end=0x15, type_=MemoryType.RAM_RO).locations
 
 class LightSourceOverallFailureCondition(BinaryValue):
     """Light Source Overall Failure Condition
     Failure condition flag indication as follows:
     LightSourceOverallFailureCondition reflects the status of “lampFailure”."""
 
-    locations = (MemoryLocation(bank=206, address=0x16, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=BANK_206, address=0x16, type_=MemoryType.RAM_RO),)
 
 class LightSourceOverallFailureConditionCounter(NumericValue):
     """Light Source Overall Failure Condition Counter"""
 
-    locations = (MemoryLocation(bank=206, address=0x17, default=0x00, reset=0x0e, type_=MemoryType.NVM_RO),)
+    locations = (MemoryLocation(bank=BANK_206, address=0x17, default=0x00, reset=0x0e, type_=MemoryType.NVM_RO),)
 
 class LightSourceShortCircuit(BinaryValue):
     """Light Source Short Circuit
@@ -265,12 +267,12 @@ class LightSourceShortCircuit(BinaryValue):
     QUERY LAMP FAILURE defined in IEC62386-102:2014.
     Otherwise: LightSourceShortCircuit = 0"""
 
-    locations = (MemoryLocation(bank=206, address=0x18, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=BANK_206, address=0x18, type_=MemoryType.RAM_RO),)
 
 class LightSourceShortCircuitCounter(NumericValue):
     """Light Source Short Circuit Counter"""
 
-    locations = (MemoryLocation(bank=206, address=0x19, default=0x00, reset=0x0e, type_=MemoryType.NVM_RO),)
+    locations = (MemoryLocation(bank=BANK_206, address=0x19, default=0x00, reset=0x0e, type_=MemoryType.NVM_RO),)
 
 class LightSourceOpenCircuit(BinaryValue):
     """Light Source Open Circuit
@@ -279,12 +281,12 @@ class LightSourceOpenCircuit(BinaryValue):
     QUERY LAMP FAILURE defined in IEC62386-102:2014.
     Otherwise: LightSourceOpenCircuit = 0"""
 
-    locations = (MemoryLocation(bank=206, address=0x1a, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=BANK_206, address=0x1a, type_=MemoryType.RAM_RO),)
 
 class LightSourceOpenCircuitCounter(NumericValue):
     """Light Source Open CircuitCounter"""
 
-    locations = (MemoryLocation(bank=206, address=0x1b, default=0x00, reset=0x0e, type_=MemoryType.NVM_RO),)
+    locations = (MemoryLocation(bank=BANK_206, address=0x1b, default=0x00, reset=0x0e, type_=MemoryType.NVM_RO),)
 
 class LightSourceThermalDerating(BinaryValue):
     """Light Source Thermal Derating
@@ -298,12 +300,12 @@ class LightSourceThermalDerating(BinaryValue):
     could be affected if the LightSourceTemperature is higher than the threshold.
     If LightSourceThermalDerating = 1 the output current of the control gear may be reduced."""
 
-    locations = (MemoryLocation(bank=206, address=0x1c, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=BANK_206, address=0x1c, type_=MemoryType.RAM_RO),)
 
 class LightSourceThermalDeratingCounter(NumericValue):
     """Light Source Thermal Derating Counter"""
 
-    locations = (MemoryLocation(bank=206, address=0x1d, default=0x00, reset=0x0e, type_=MemoryType.NVM_RO),)
+    locations = (MemoryLocation(bank=BANK_206, address=0x1d, default=0x00, reset=0x0e, type_=MemoryType.NVM_RO),)
 
 class LightSourceThermalShutdown(BinaryValue):
     """Light Source Thermal Shutdown
@@ -318,12 +320,12 @@ class LightSourceThermalShutdown(BinaryValue):
     LightSourceThermalShutdown threshold shall be higher than LightSourceThermalDerating threshold.
     If LightSourceThermalShutdown = 1 the output current of the control gear shall be reduced to zero."""
 
-    locations = (MemoryLocation(bank=206, address=0x1e, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=BANK_206, address=0x1e, type_=MemoryType.RAM_RO),)
 
 class LightSourceThermalShutdownCounter(NumericValue):
     """Light Source Thermal Shutdown Counter"""
 
-    locations = (MemoryLocation(bank=206, address=0x1f, default=0x00, reset=0x0e, type_=MemoryType.NVM_RO),)
+    locations = (MemoryLocation(bank=BANK_206, address=0x1f, default=0x00, reset=0x0e, type_=MemoryType.NVM_RO),)
 
 class LightSourceTemperature(TemperatureValue):
     """Light Source Temperature in °C
@@ -332,5 +334,5 @@ class LightSourceTemperature(TemperatureValue):
     NOTE The interface between sensor and controlgear is manufacturer specific and is configured in a manufacturer
     specific way."""
 
-    locations = (MemoryLocation(bank=206, address=0x20, type_=MemoryType.RAM_RO),)
+    locations = (MemoryLocation(bank=BANK_206, address=0x20, type_=MemoryType.RAM_RO),)
 

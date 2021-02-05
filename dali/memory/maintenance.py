@@ -1,7 +1,8 @@
-from .location import MemoryLocation, MemoryRange, MemoryType, LockableValueMixin, FixedScaleNumericValue, TemperatureValue
+from .location import MemoryBank, MemoryLocation, MemoryRange, MemoryType, LockableValueMixin, FixedScaleNumericValue, TemperatureValue
 
 """The mememory bank definitions from
 DiiA Specification, DALI Part 253 - Diagnostics & Maintenance, Version 1.1, October 2019"""
+BANK_207 = MemoryBank(207)
 
 class RatedMedianUsefulLifeOfLuminaire(FixedScaleNumericValue, LockableValueMixin):
     """Rated Median Useful Life Of Luminaire in h
@@ -16,7 +17,7 @@ class RatedMedianUsefulLifeOfLuminaire(FixedScaleNumericValue, LockableValueMixi
 
     scaling_factor = 1000
 
-    locations = (MemoryLocation(bank=207, address=0x04, default=0xff, type_=MemoryType.NVM_RW),)
+    locations = (MemoryLocation(bank=BANK_207, address=0x04, default=0xff, type_=MemoryType.NVM_RW),)
 
 class InternalControlGearReferenceTemperature(TemperatureValue, LockableValueMixin):
     """Internal Control Gear Reference Temperature in °C
@@ -25,7 +26,7 @@ class InternalControlGearReferenceTemperature(TemperatureValue, LockableValueMix
     rated luminaire power (at 100% dimming level).
     tq: rated ambient temperature of the luminaire as defined in IEC62722-2-1:2014."""
 
-    locations = (MemoryLocation(bank=207, address=0x05, default=0xff, type_=MemoryType.NVM_RW),)
+    locations = (MemoryLocation(bank=BANK_207, address=0x05, default=0xff, type_=MemoryType.NVM_RW),)
 
 class RatedMedianUsefulLightSourceStarts(FixedScaleNumericValue, LockableValueMixin):
     """Rated Median Useful Light Source Starts
@@ -34,4 +35,4 @@ class RatedMedianUsefulLightSourceStarts(FixedScaleNumericValue, LockableValueMi
 
     scaling_factor = 100
 
-    locations = MemoryRange(bank=207, start=0x06, end=0x07, default=0xff, type_=MemoryType.NVM_RW).locations
+    locations = MemoryRange(bank=BANK_207, start=0x06, end=0x07, default=0xff, type_=MemoryType.NVM_RW).locations

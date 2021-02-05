@@ -33,22 +33,15 @@ class Gear:
         self.dtr0 = 0
         self.dtr1 = 0
         self.dtr2 = 0
-        self.memory = {}
-        self._initialize_memory()
-
-    def _initialize_memory(self, memory=[diagnostics, energy, maintenance, oem]):
-        """Populates the internal memory bank representation using information from
-        the modules in dali.memory.
-        """
-        for module in memory:
-            # retrieve the classes from the given memory module
-            for class_ in inspect.getmembers(module):
-                if (module.__name__ in str(class_[1])) and (class_[0][:2] != '__'):
-                    # if the class defines a memory value add its locations to the internal storage
-                    for location in getattr(module, class_[0]).locations:
-                        if location.bank not in self.memory:
-                            self.memory[location.bank] = {}
-                        self.memory[location.bank][location.address] = location.default or 0
+        self.memory = {
+            1:   oem.BANK_1,
+            202: energy.BANK_202,
+            203: energy.BANK_203,
+            204: energy.BANK_204,
+            205: diagnostics.BANK_205,
+            206: diagnostics.BANK_206,
+            207: maintenance.BANK_207
+        }
 
     def _next_random_address(self):
         if self.random_preload:
@@ -182,7 +175,7 @@ class Gear:
             self.dtr2 = cmd.param
         elif isinstance(cmd, general.ReadMemoryLocation):
             try:
-                memory_value = self.memory[self.dtr1][self.dtr0]
+                memory_value = self.memory[self.dtr1].locations[self.dtr0].default or 0
             except KeyError:
                 # return nothing when trying to read non-existent
                 # memory location

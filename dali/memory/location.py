@@ -1,4 +1,5 @@
 from enum import Enum, auto
+from functools import total_ordering
 
 from dali.gear.general import ReadMemoryLocation, DTR0, DTR1
 
@@ -10,6 +11,30 @@ class MemoryType(Enum):
     NVM_RW = auto()   # NVM-RW
     NVM_RW_P = auto() # NVM-RW (protectable)
 
+class MemoryBank:
+
+    class WrongBank(Exception):
+        pass
+
+    class MemoryLocationOverlap(Exception):
+        pass
+
+    def __init__(self, address):
+        self.__address = address
+        self.locations = {x: None for x in range(0xff)}
+
+    @property
+    def address(self):
+        return self.__address
+
+    def add_memory_location(self, memory_location):
+        if memory_location.bank.address != self.address:
+            raise self.WrongBank(f'Can not add MemoryLocation of bank "{memory_location.bank.address}" to this bank ({self.address}).')
+        if self.locations[memory_location.address]:
+            raise self.MemoryLocationOverlap(f'Can not add overlapping MemoryLocation at address {memory_location.address}.')
+        self.locations[memory_location.address] = memory_location
+
+@total_ordering
 class MemoryLocation:
 
     def __init__(self, bank, address, default = None, reset = None, type_ = None):
@@ -18,6 +43,8 @@ class MemoryLocation:
         self.__type_ = type_
         self.__default = default
         self.__reset = reset
+        # tie this location to its respective memory bank
+        bank.add_memory_location(self)
     
     @property
     def bank(self):
@@ -38,6 +65,19 @@ class MemoryLocation:
     @property
     def reset(self):
         return self.__reset
+
+    def __eq__(self, other):
+        if type(other) is not MemoryLocation:
+            return NotImplemented
+        return ((self.bank, self.address) == (other.bank, other.address))
+
+    def __lt__(self, other):
+        if type(other) is not MemoryLocation:
+            return NotImplemented
+        return ((self.bank, self.address) < (other.bank, other.address))
+    
+    def __repr__(self):
+        return f'MemoryLocation(bank={self.bank}, address=0x{self.address:02x}, default={f"0x{self.default:02x}" if self.default is not None else None}, reset={f"0x{self.reset:02x}" if self.reset is not None else None}, type_={self.type_})'
 
 class MemoryRange:
 
@@ -94,11 +134,11 @@ class MemoryValue:
         result = []
         dtr1 = None
         dtr0 = None
-        for location in cls.locations:
+        for location in sorted(cls.locations):
             # select correct memory location
             if location.bank != dtr1:
-                dtr1 = location.bank
-                yield DTR1(location.bank)
+                dtr1 = location.bank.address
+                yield DTR1(location.bank.address)
             if location.address != dtr0:
                 dtr0 = location.address
                 yield DTR0(location.address)
@@ -111,7 +151,7 @@ class MemoryValue:
 
     @classmethod
     def is_addressable(cls, addr):
-        """Checks whether this value is adressable by querying the value of the last addressable memory location
+        """Checks whether this value is addressable by querying the value of the last addressable memory location
         for this memory bank through a sequence of DALI queries.
 
         @param addr: address of the DALI device (Address)
