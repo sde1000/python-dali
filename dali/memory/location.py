@@ -128,6 +128,7 @@ class MemoryValue:
     @classmethod
     def retrieve(cls, addr):
         """Retrieves this memory value through a sequence of DALI queries.
+        Returns None if device does not respond, e.g. if the value is not implemented.
 
         @param addr: address of the DALI device (Address)
         """
@@ -136,7 +137,7 @@ class MemoryValue:
         dtr0 = None
         for location in sorted(cls.locations):
             # select correct memory location
-            if location.bank != dtr1:
+            if location.bank.address != dtr1:
                 dtr1 = location.bank.address
                 yield DTR1(location.bank.address)
             if location.address != dtr0:
@@ -146,6 +147,8 @@ class MemoryValue:
             r = yield ReadMemoryLocation(addr)
             # increase DTR0 to reflect the internal state of the driver
             dtr0 = min(dtr0+1, 255)
+            if r.raw_value is None:
+                return None
             result.append(r.raw_value.as_integer)
         return bytes(result)
 
