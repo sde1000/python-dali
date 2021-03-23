@@ -2,15 +2,22 @@ import unittest
 
 from dali.tests import fakes
 from dali.memory import diagnostics, energy, maintenance, oem
+from dali.memory.location import MemoryBank, MemoryRange, MemoryValue
+from dali.command import Command, Response
+from dali.frame import BackwardFrame
+from dali.gear.general import DTR0, DTR1, ReadMemoryLocation
 
 class TestMemory(unittest.TestCase):
 
     def setUp(self):
-        self.addr = 1
-        self.bus = fakes.Bus([fakes.Gear(self.addr)])
+        self.addr = (1, 2)
+        self.bus = fakes.Bus([
+            fakes.Gear(self.addr[0]),
+            fakes.Gear(self.addr[1], memory_banks=[])
+        ])
 
     def _test_MemoryValue(self, memory_value, default):
-        r = self.bus.run_sequence(memory_value.retrieve(self.addr))
+        r = self.bus.run_sequence(memory_value.retrieve(self.addr[0]))
         self.assertEqual(r, default)
 
     def _test_NumericValue(self, memory_value, default=0):
@@ -27,6 +34,38 @@ class TestMemory(unittest.TestCase):
 
     def _test_ManufacturerSpecificValue(self, memory_value, default=0):
         self._test_MemoryValue(memory_value, default)
+
+    def test_missingMemoryLocation(self):
+        r = self.bus.run_sequence(oem.LuminaireID.retrieve(self.addr[1]))
+        self.assertIsNone(r)
+
+    def test_dtrHandling(self):
+        class DummyValue(MemoryValue):
+            locations = MemoryRange(MemoryBank(0), 0, 5).locations
+
+        # Instead of messing with run_sequence in fakes this dummy
+        # is implemented. It returns commands in the sequence as
+        # a list in place of its result.
+        def dummy_run_sequence(seq):
+            commands = []
+            response = None
+            while True:
+                try:
+                    cmd = seq.send(response)
+                except StopIteration:
+                    return commands
+                response = Response(BackwardFrame(0))
+                if isinstance(cmd, Command):
+                    commands.append(cmd)
+
+        commands = dummy_run_sequence(DummyValue.retrieve(0))
+        for i, cmd in enumerate(commands):
+            if i == 0:
+                self.assertTrue(isinstance(cmd, DTR1))
+            elif i == 1:
+                self.assertTrue(isinstance(cmd, DTR0))
+            else:
+                self.assertTrue(isinstance(cmd, ReadMemoryLocation))
 
     def test_diagnostics(self):
         self._test_NumericValue(diagnostics.ControlGearOperatingTime)

@@ -8,6 +8,9 @@ from dali.memory import diagnostics, energy, maintenance, oem
 import random
 import inspect
 
+####
+log = open('dali_comm.log', 'w')
+
 _yes = 0xff
 
 class Gear:
@@ -18,7 +21,11 @@ class Gear:
     backward frame.
     """
     def __init__(self, shortaddr=None, groups = set(),
-                 devicetypes = [], random_preload=[]):
+                 devicetypes = [], random_preload=[],
+                 memory_banks=[oem.BANK_1, energy.BANK_202,
+                 energy.BANK_203, energy.BANK_204,
+                 diagnostics.BANK_205, diagnostics.BANK_206,
+                 maintenance.BANK_207]):
         self.shortaddr = shortaddr
         self.scenes = [255] * 16
         self.groups = set(groups)
@@ -33,15 +40,7 @@ class Gear:
         self.dtr0 = 0
         self.dtr1 = 0
         self.dtr2 = 0
-        self.memory = {
-            1:   oem.BANK_1,
-            202: energy.BANK_202,
-            203: energy.BANK_203,
-            204: energy.BANK_204,
-            205: diagnostics.BANK_205,
-            206: diagnostics.BANK_206,
-            207: maintenance.BANK_207
-        }
+        self.memory = {bank.address: bank for bank in memory_banks}
 
     def _next_random_address(self):
         if self.random_preload:
@@ -66,6 +65,7 @@ class Gear:
 
     def send(self, cmd):
         self.dt_gap += 1
+        log.write(str(cmd)+'\n')
         if not self.valid_address(cmd):
             return
         # Command is either addressed to us, or is a broadcast
