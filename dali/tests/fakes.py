@@ -6,10 +6,6 @@ from dali.gear import general
 from dali.sequences import progress
 from dali.memory import diagnostics, energy, maintenance, oem
 import random
-import inspect
-
-####
-log = open('dali_comm.log', 'w')
 
 _yes = 0xff
 
@@ -65,7 +61,6 @@ class Gear:
 
     def send(self, cmd):
         self.dt_gap += 1
-        log.write(str(cmd)+'\n')
         if not self.valid_address(cmd):
             return
         # Command is either addressed to us, or is a broadcast

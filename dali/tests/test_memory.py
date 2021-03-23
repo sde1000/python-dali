@@ -2,10 +2,89 @@ import unittest
 
 from dali.tests import fakes
 from dali.memory import diagnostics, energy, maintenance, oem
-from dali.memory.location import MemoryBank, MemoryRange, MemoryValue
+from dali.memory.location import MemoryBank, MemoryRange, MemoryValue, NumericValue, ScaledNumericValue, \
+                                 FixedScaleNumericValue, StringValue, BinaryValue, TemperatureValue, \
+                                 ManufacturerSpecificValue, LockableValueMixin, MemoryLocation, MemoryType
 from dali.command import Command, Response
 from dali.frame import BackwardFrame
 from dali.gear.general import DTR0, DTR1, ReadMemoryLocation
+
+# the following MemoryBank will be used for checks on missing memory locations
+DUMMY_BANK0 = MemoryBank(0)
+
+class DummyMemoryValue(MemoryValue):
+
+    locations = MemoryRange(DUMMY_BANK0, 3, 7).locations
+
+class DummyNumericValue(NumericValue):
+
+    locations = MemoryRange(DUMMY_BANK0, 8, 12).locations
+
+class DummyScaledNumericValue(ScaledNumericValue):
+
+    locations = MemoryRange(DUMMY_BANK0, 13, 17).locations
+
+class DummyFixedScaleNumericValue(FixedScaleNumericValue):
+
+    locations = MemoryRange(DUMMY_BANK0, 18, 22).locations
+
+class DummyStringValue(StringValue):
+
+    locations = MemoryRange(DUMMY_BANK0, 23, 27).locations
+
+class DummyBinaryValue(BinaryValue):
+
+    locations = MemoryRange(DUMMY_BANK0, 28, 32).locations
+
+class DummyTemperatureValue(TemperatureValue):
+
+    locations = MemoryRange(DUMMY_BANK0, 33, 37).locations
+
+class DummyManufacturerSpecificValue(ManufacturerSpecificValue):
+
+    locations = MemoryRange(DUMMY_BANK0, 38, 42).locations
+
+# the following MemoryBank will be used to check
+# - the response for an unlocked MemoryValue,
+# - the response for an addressable MemoryValue
+DUMMY_BANK1 = MemoryBank(1)
+
+class DummyLateLastMemoryLocation(MemoryValue):
+
+    locations = (MemoryLocation(DUMMY_BANK1, 0, default=20), )
+
+class DummyLockByteWritable(MemoryValue):
+
+    locations = (MemoryLocation(DUMMY_BANK1, 2, default=0x55), )
+
+class DummyUnlockedMemoryValue(MemoryValue, LockableValueMixin):
+
+    locations = MemoryRange(DUMMY_BANK1, 3, 7, type_=MemoryType.NVM_RW_P).locations
+
+class DummyAddressableValue(MemoryValue):
+
+    locations = MemoryRange(DUMMY_BANK1, 11, 15).locations
+
+# the following MemoryBank will be used to check
+# - the response for a locked MemoryValue,
+# - the response for an unaddressable MemoryValue
+DUMMY_BANK2 = MemoryBank(2)
+
+class DummyEarlyLastMemoryLocation(MemoryValue):
+
+    locations = (MemoryLocation(DUMMY_BANK2, 0, default=10), )
+
+class DummyLockByteReadOnly(MemoryValue):
+
+    locations = (MemoryLocation(DUMMY_BANK2, 2, default=0x00), )
+
+class DummyLockedMemoryValue(MemoryValue, LockableValueMixin):
+
+    locations = MemoryRange(DUMMY_BANK2, 3, 7, type_=MemoryType.NVM_RW_P).locations
+
+class DummyUnaddressableValue(MemoryValue):
+
+    locations = MemoryRange(DUMMY_BANK2, 11, 15).locations
 
 class TestMemory(unittest.TestCase):
 
@@ -13,7 +92,7 @@ class TestMemory(unittest.TestCase):
         self.addr = (1, 2)
         self.bus = fakes.Bus([
             fakes.Gear(self.addr[0]),
-            fakes.Gear(self.addr[1], memory_banks=[])
+            fakes.Gear(self.addr[1], memory_banks=[DUMMY_BANK1, DUMMY_BANK2])
         ])
 
     def _test_MemoryValue(self, memory_value, default):
@@ -36,12 +115,24 @@ class TestMemory(unittest.TestCase):
         self._test_MemoryValue(memory_value, default)
 
     def test_missingMemoryLocation(self):
-        r = self.bus.run_sequence(oem.LuminaireID.retrieve(self.addr[1]))
-        self.assertIsNone(r)
+        self.assertIsNone(self.bus.run_sequence(DummyMemoryValue.retrieve(self.addr[1])))
+        self.assertIsNone(self.bus.run_sequence(DummyNumericValue.retrieve(self.addr[1])))
+        self.assertIsNone(self.bus.run_sequence(DummyScaledNumericValue.retrieve(self.addr[1])))
+        self.assertIsNone(self.bus.run_sequence(DummyFixedScaleNumericValue.retrieve(self.addr[1])))
+        self.assertIsNone(self.bus.run_sequence(DummyStringValue.retrieve(self.addr[1])))
+        self.assertIsNone(self.bus.run_sequence(DummyBinaryValue.retrieve(self.addr[1])))
+        self.assertIsNone(self.bus.run_sequence(DummyTemperatureValue.retrieve(self.addr[1])))
+        self.assertIsNone(self.bus.run_sequence(DummyManufacturerSpecificValue.retrieve(self.addr[1])))
+
+    def test_lockByte(self):
+        self.assertFalse(self.bus.run_sequence(DummyUnlockedMemoryValue.is_locked(self.addr[1])))
+        self.assertTrue(self.bus.run_sequence(DummyLockedMemoryValue.is_locked(self.addr[1])))
+
+    def test_isAddressable(self):
+        self.assertTrue(self.bus.run_sequence(DummyAddressableValue.is_addressable(self.addr[1])))
+        self.assertFalse(self.bus.run_sequence(DummyUnaddressableValue.is_addressable(self.addr[1])))
 
     def test_dtrHandling(self):
-        class DummyValue(MemoryValue):
-            locations = MemoryRange(MemoryBank(0), 0, 5).locations
 
         # Instead of messing with run_sequence in fakes this dummy
         # is implemented. It returns commands in the sequence as
@@ -58,7 +149,7 @@ class TestMemory(unittest.TestCase):
                 if isinstance(cmd, Command):
                     commands.append(cmd)
 
-        commands = dummy_run_sequence(DummyValue.retrieve(0))
+        commands = dummy_run_sequence(DummyMemoryValue.retrieve(0))
         for i, cmd in enumerate(commands):
             if i == 0:
                 self.assertTrue(isinstance(cmd, DTR1))
