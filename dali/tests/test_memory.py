@@ -133,7 +133,6 @@ class TestMemory(unittest.TestCase):
         self.assertFalse(self.bus.run_sequence(DummyUnaddressableValue.is_addressable(self.addr[1])))
 
     def test_dtrHandling(self):
-
         # Instead of messing with run_sequence in fakes this dummy
         # is implemented. It returns commands in the sequence as
         # a list in place of its result.
@@ -150,13 +149,20 @@ class TestMemory(unittest.TestCase):
                     commands.append(cmd)
 
         commands = dummy_run_sequence(DummyMemoryValue.retrieve(0))
+        dtr0_counter = 0
+        dtr1_counter = 0
         for i, cmd in enumerate(commands):
-            if i == 0:
-                self.assertTrue(isinstance(cmd, DTR1))
-            elif i == 1:
-                self.assertTrue(isinstance(cmd, DTR0))
+            if i < 2:
+                if isinstance(cmd, DTR0):
+                    dtr0_counter += 1
+                elif isinstance(cmd, DTR1):
+                    dtr1_counter += 1
+                else:
+                    self.fail('DTR0 and DTR1 must be set before a memory location is read.')
             else:
                 self.assertTrue(isinstance(cmd, ReadMemoryLocation))
+        self.assertEqual(dtr0_counter, 1)
+        self.assertEqual(dtr1_counter, 1)
 
     def test_diagnostics(self):
         self._test_NumericValue(diagnostics.ControlGearOperatingTime)
