@@ -77,7 +77,7 @@ class MemoryLocation:
         return ((self.bank, self.address) < (other.bank, other.address))
     
     def __repr__(self):
-        return f'MemoryLocation(bank={self.bank}, address=0x{self.address:02x}, default={f"0x{self.default:02x}" if self.default is not None else None}, reset={f"0x{self.reset:02x}" if self.reset is not None else None}, type_={self.type_})'
+        return f'MemoryLocation(bank={self.bank.address}, address=0x{self.address:02x}, default={f"0x{self.default:02x}" if self.default is not None else None}, reset={f"0x{self.reset:02x}" if self.reset is not None else None}, type_={self.type_})'
 
 class MemoryRange:
 
@@ -122,6 +122,9 @@ class MemoryRange:
 
 class MemoryValue:
 
+    class MemoryLocationNotImplemented(Exception):
+        pass
+
     """Memory locations that belong to this value. Sorted from MSB to LSB."""
     locations = ()
 
@@ -148,7 +151,7 @@ class MemoryValue:
             # increase DTR0 to reflect the internal state of the driver
             dtr0 = min(dtr0+1, 255)
             if r.raw_value is None:
-                return None
+                raise cls.MemoryLocationNotImplemented(f'Device does not implement {str(location)}.')
             result.append(r.raw_value.as_integer)
         return bytes(result)
 
@@ -163,7 +166,7 @@ class MemoryValue:
         yield DTR1(last_location.bank.address)
         yield DTR0(0x00)
         r = yield ReadMemoryLocation(addr)
-        if r is None:
+        if r.raw_value is None:
             return False
         return r.raw_value.as_integer > last_location.address
 
@@ -181,7 +184,7 @@ class LockableValueMixin:
             yield DTR1(cls.locations[0].bank.address)
             yield DTR0(0x02)
             lock_byte = yield ReadMemoryLocation(addr)
-            if lock_byte is None:
+            if lock_byte.raw_value is None:
                 return False
             return lock_byte.raw_value.as_integer != 0x55
         else:
@@ -196,8 +199,6 @@ class NumericValue(MemoryValue):
     def retrieve(cls, addr):
         result = 0
         r = yield from super().retrieve(addr)
-        if r is None:
-            return None
         for shift, value in enumerate(r[::-1]):
             result += value << (shift*8)
         return result
@@ -208,13 +209,9 @@ class ScaledNumericValue(MemoryValue):
     def retrieve(cls, addr):
         result = 0
         r = yield from super().retrieve(addr)
-        if r is None:
-            return None
         scale = r[0]
         # loop over all bytes except for the first one
         for shift, value in enumerate(r[:0:-1]):
-            if value is None:
-                return None
             result += value << (shift*8)
         return result * 10.**scale
 
@@ -226,8 +223,6 @@ class FixedScaleNumericValue(NumericValue):
     @classmethod
     def retrieve(cls, addr):
         r = yield from super().retrieve(addr)
-        if r is None:
-            return None
         return cls.scaling_factor * r
 
 class StringValue(MemoryValue):
@@ -236,8 +231,6 @@ class StringValue(MemoryValue):
     def retrieve(cls, addr):
         result = ''
         r = yield from super().retrieve(addr)
-        if r is None:
-            return None
         for value in r:
             if value == 0:
                 break # string is Null terminated
@@ -250,8 +243,6 @@ class BinaryValue(MemoryValue):
     @classmethod
     def retrieve(cls, addr):
         r = yield from super().retrieve(addr)
-        if r is None:
-            return None
         if r == 1:
             return True
         else:
@@ -264,8 +255,6 @@ class TemperatureValue(NumericValue):
     @classmethod
     def retrieve(cls, addr):
         r = yield from super().retrieve(addr)
-        if r is None:
-            return None
         return r - 60
 
 class ManufacturerSpecificValue(MemoryValue):

@@ -115,14 +115,14 @@ class TestMemory(unittest.TestCase):
         self._test_MemoryValue(memory_value, default)
 
     def test_missingMemoryLocation(self):
-        self.assertIsNone(self.bus.run_sequence(DummyMemoryValue.retrieve(self.addr[1])))
-        self.assertIsNone(self.bus.run_sequence(DummyNumericValue.retrieve(self.addr[1])))
-        self.assertIsNone(self.bus.run_sequence(DummyScaledNumericValue.retrieve(self.addr[1])))
-        self.assertIsNone(self.bus.run_sequence(DummyFixedScaleNumericValue.retrieve(self.addr[1])))
-        self.assertIsNone(self.bus.run_sequence(DummyStringValue.retrieve(self.addr[1])))
-        self.assertIsNone(self.bus.run_sequence(DummyBinaryValue.retrieve(self.addr[1])))
-        self.assertIsNone(self.bus.run_sequence(DummyTemperatureValue.retrieve(self.addr[1])))
-        self.assertIsNone(self.bus.run_sequence(DummyManufacturerSpecificValue.retrieve(self.addr[1])))
+        self.assertRaises(MemoryValue.MemoryLocationNotImplemented, self.bus.run_sequence, DummyMemoryValue.retrieve(self.addr[1]))
+        self.assertRaises(MemoryValue.MemoryLocationNotImplemented, self.bus.run_sequence, DummyNumericValue.retrieve(self.addr[1]))
+        self.assertRaises(MemoryValue.MemoryLocationNotImplemented, self.bus.run_sequence, DummyScaledNumericValue.retrieve(self.addr[1]))
+        self.assertRaises(MemoryValue.MemoryLocationNotImplemented, self.bus.run_sequence, DummyFixedScaleNumericValue.retrieve(self.addr[1]))
+        self.assertRaises(MemoryValue.MemoryLocationNotImplemented, self.bus.run_sequence, DummyStringValue.retrieve(self.addr[1]))
+        self.assertRaises(MemoryValue.MemoryLocationNotImplemented, self.bus.run_sequence, DummyBinaryValue.retrieve(self.addr[1]))
+        self.assertRaises(MemoryValue.MemoryLocationNotImplemented, self.bus.run_sequence, DummyTemperatureValue.retrieve(self.addr[1]))
+        self.assertRaises(MemoryValue.MemoryLocationNotImplemented, self.bus.run_sequence, DummyManufacturerSpecificValue.retrieve(self.addr[1]))
 
     def test_lockByte(self):
         self.assertFalse(self.bus.run_sequence(DummyUnlockedMemoryValue.is_locked(self.addr[1])))
