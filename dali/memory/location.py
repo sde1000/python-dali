@@ -1,7 +1,7 @@
 from enum import Enum, auto
 from functools import total_ordering
 
-from dali.gear.general import ReadMemoryLocation, DTR0, DTR1
+from dali.gear.general import ReadMemoryLocation, DTR0, DTR1, WriteMemoryLocationNoReply
 
 class MemoryType(Enum):
     ROM = auto()      # ROM
@@ -19,9 +19,26 @@ class MemoryBank:
     class MemoryLocationOverlap(Exception):
         pass
 
-    def __init__(self, address):
+    class LatchingNotSupported(Exception):
+        pass
+
+    def __init__(self, address, has_lock=False, has_latch=False):
+        """Defines a memory bank at a given address.
+        The address of the lock/latch byte can be defined by passing an int to has_lock/has_latch."""
         self.__address = address
         self.locations = {x: None for x in range(0xff)}
+        self.__lock_byte_address = None
+        self.__latch_byte_address = None
+        if has_lock:
+            if type(has_lock) == int:
+                self.__lock_byte_address = has_lock
+            else:
+                self.__lock_byte_address = 0x02
+        if has_latch:
+            if type(has_lock) == int:
+                self.__latch_byte_address = has_latch
+            else:
+                self.__latch_byte_address = 0x02
 
     @property
     def address(self):
@@ -33,11 +50,36 @@ class MemoryBank:
         if self.locations[memory_location.address]:
             raise self.MemoryLocationOverlap(f'Can not add overlapping MemoryLocation at address {memory_location.address}.')
         self.locations[memory_location.address] = memory_location
+    
+    def latch(self):
+        """Generates the commands to (re-)latch all memory locations of this bank.
+        Raises LatchingNotSupported exception if bank does not support latching."""
+        if self.__latch_byte_address:
+            yield DTR1(self.address)
+            yield DTR0(self.__latch_byte_address)
+            yield WriteMemoryLocationNoReply(0xAA)
+        else:
+            raise self.LatchingNotSupported(f'Latching not supported for {str(self)}.')
+
+    def is_locked(self, addr):
+        """Generates the commands to check whether this bank is locked and returns the result."""
+        if self.__lock_byte_address:
+            yield DTR1(self.address) 
+            yield DTR0(self.__lock_byte_address)
+            lock_byte = yield ReadMemoryLocation(addr)
+            if lock_byte.raw_value is None:
+                return False
+            return lock_byte.raw_value.as_integer != 0x55
+        else:
+            return False
+
+    def __repr__(self):
+        return f'MemoryBank(address={self.address}, has_lock={bool(self.__lock_byte_address)}, has_latch={bool(self.__latch_byte_address)})'
 
 @total_ordering
 class MemoryLocation:
 
-    def __init__(self, bank, address, default = None, reset = None, type_ = None):
+    def __init__(self, bank, address, default=None, reset=None, type_=None):
         self.__bank = bank
         self.__address = address
         self.__type_ = type_
@@ -81,7 +123,7 @@ class MemoryLocation:
 
 class MemoryRange:
 
-    def __init__(self, bank, start, end, default = None, reset = None, type_ = None):
+    def __init__(self, bank, start, end, default=None, reset=None, type_=None):
         self.__bank = bank
         self.__start = start
         self.__end = end
@@ -130,10 +172,8 @@ class MemoryValue:
 
     @classmethod
     def retrieve(cls, addr):
-        """Retrieves this memory value through a sequence of DALI queries.
-        Returns None if device does not respond, e.g. if the value is not implemented.
-
-        @param addr: address of the DALI device (Address)
+        """Generates the DALI commands necessary to retrieve the value. Finally returns the value.
+        Raises MemoryLocationNotImplemented exception if device does not respond, e.g. the location is not implemented.
         """
         result = []
         dtr1 = None
@@ -158,10 +198,7 @@ class MemoryValue:
     @classmethod
     def is_addressable(cls, addr):
         """Checks whether this value is addressable by querying the value of the last addressable memory location
-        for this memory bank through a sequence of DALI queries.
-
-        @param addr: address of the DALI device (Address)
-        """
+        for this memory bank through a sequence of DALI queries."""
         last_location = cls.locations[-1]
         yield DTR1(last_location.bank.address)
         yield DTR0(0x00)
@@ -169,26 +206,15 @@ class MemoryValue:
         if r.raw_value is None:
             return False
         return r.raw_value.as_integer > last_location.address
-
-class LockableValueMixin:
-
+    
     @classmethod
     def is_locked(cls, addr):
-        """Check whether this value is locked. Returns True is value is locked or read-only. Returns false for values
-        that can not be locked. Needs to be executed as a DALI sequence.
-
-        @param addr: address of the DALI device (Address)
-        """
-        memory_type = cls.locations[0].type_
-        if memory_type == MemoryType.NVM_RW_P:
-            yield DTR1(cls.locations[0].bank.address)
-            yield DTR0(0x02)
-            lock_byte = yield ReadMemoryLocation(addr)
-            if lock_byte.raw_value is None:
-                return False
-            return lock_byte.raw_value.as_integer != 0x55
+        """Checks whether this value is locked by checking the lock byte of the memory bank."""
+        if cls.locations[0].type_ == MemoryType.NVM_RW_P:
+            locked = yield from cls.locations[0].bank.is_locked(addr)
+            return locked
         else:
-            raise ValueError('MemoryType does not support locking')
+            return False
 
 class NumericValue(MemoryValue):
 

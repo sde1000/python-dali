@@ -1,10 +1,10 @@
-from .location import MemoryBank, MemoryLocation, MemoryRange, MemoryType, NumericValue, LockableValueMixin, FixedScaleNumericValue, \
+from .location import MemoryBank, MemoryLocation, MemoryRange, MemoryType, NumericValue, FixedScaleNumericValue, \
     BinaryValue, TemperatureValue
 
 """The mememory bank definitions from
 DiiA Specification, DALI Part 253 - Diagnostics & Maintenance, Version 1.1, October 2019"""
-BANK_205 = MemoryBank(205)
-BANK_206 = MemoryBank(206)
+BANK_205 = MemoryBank(205, has_lock=True)
+BANK_206 = MemoryBank(206, has_lock=True)
 
 class ControlGearOperatingTime(NumericValue):
     """Control Gear Operating Time in s
@@ -196,7 +196,7 @@ class ControlGearOutputCurrentPercent(NumericValue):
 
     locations = (MemoryLocation(bank=BANK_205, address=0x1c, type_=MemoryType.RAM_RO),)
 
-class LightSourceStartCounterResettable(NumericValue, LockableValueMixin):
+class LightSourceStartCounterResettable(NumericValue):
     """Light Source Start Counter Resettable
     Counts the starts of the light source.
     Counts one step up for every 0 to 1 transition of the lampOn bit."""
@@ -210,7 +210,7 @@ Counts one step up for every 0 to 1 transition of the lampOn bit."""
 
     locations = MemoryRange(bank=BANK_206, start=0x07, end=0x09, default=0x00, type_=MemoryType.NVM_RO).locations
 
-class LightSourceOnTimeResettable(NumericValue, LockableValueMixin):
+class LightSourceOnTimeResettable(NumericValue):
     """Light Source On Time Resettable in s
     Counts the light source operating time in seconds.
     Counts up during the time where lampOn bit = 1."""

@@ -4,7 +4,7 @@ from dali.tests import fakes
 from dali.memory import diagnostics, energy, maintenance, oem
 from dali.memory.location import MemoryBank, MemoryRange, MemoryValue, NumericValue, ScaledNumericValue, \
                                  FixedScaleNumericValue, StringValue, BinaryValue, TemperatureValue, \
-                                 ManufacturerSpecificValue, LockableValueMixin, MemoryLocation, MemoryType
+                                 ManufacturerSpecificValue, MemoryLocation, MemoryType
 from dali.command import Command, Response
 from dali.frame import BackwardFrame
 from dali.gear.general import DTR0, DTR1, ReadMemoryLocation
@@ -47,7 +47,7 @@ class DummyManufacturerSpecificValue(ManufacturerSpecificValue):
 # the following MemoryBank will be used to check
 # - the response for an unlocked MemoryValue,
 # - the response for an addressable MemoryValue
-DUMMY_BANK1 = MemoryBank(1)
+DUMMY_BANK1 = MemoryBank(1, has_lock=True)
 
 class DummyLateLastMemoryLocation(MemoryValue):
 
@@ -57,7 +57,7 @@ class DummyLockByteWritable(MemoryValue):
 
     locations = (MemoryLocation(DUMMY_BANK1, 2, default=0x55), )
 
-class DummyUnlockedMemoryValue(MemoryValue, LockableValueMixin):
+class DummyUnlockedMemoryValue(MemoryValue):
 
     locations = MemoryRange(DUMMY_BANK1, 3, 7, type_=MemoryType.NVM_RW_P).locations
 
@@ -68,7 +68,7 @@ class DummyAddressableValue(MemoryValue):
 # the following MemoryBank will be used to check
 # - the response for a locked MemoryValue,
 # - the response for an unaddressable MemoryValue
-DUMMY_BANK2 = MemoryBank(2)
+DUMMY_BANK2 = MemoryBank(2, has_lock=True)
 
 class DummyEarlyLastMemoryLocation(MemoryValue):
 
@@ -78,7 +78,7 @@ class DummyLockByteReadOnly(MemoryValue):
 
     locations = (MemoryLocation(DUMMY_BANK2, 2, default=0x00), )
 
-class DummyLockedMemoryValue(MemoryValue, LockableValueMixin):
+class DummyLockedMemoryValue(MemoryValue):
 
     locations = MemoryRange(DUMMY_BANK2, 3, 7, type_=MemoryType.NVM_RW_P).locations
 
