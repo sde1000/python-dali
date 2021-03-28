@@ -12,79 +12,79 @@ from dali.gear.general import DTR0, DTR1, ReadMemoryLocation
 # the following MemoryBank will be used for checks on missing memory locations
 DUMMY_BANK0 = MemoryBank(0)
 
-class DummyMemoryValue(MemoryValue):
+DummyMemoryValue = MemoryValue(
+    locations=MemoryRange(DUMMY_BANK0, 3, 7).locations,
+)
 
-    locations = MemoryRange(DUMMY_BANK0, 3, 7).locations
+DummyNumericValue = NumericValue(
+    locations=MemoryRange(DUMMY_BANK0, 8, 12).locations,
+)
 
-class DummyNumericValue(NumericValue):
+DummyScaledNumericValue = ScaledNumericValue(
+    locations=MemoryRange(DUMMY_BANK0, 13, 17).locations,
+)
 
-    locations = MemoryRange(DUMMY_BANK0, 8, 12).locations
+DummyFixedScaleNumericValue = FixedScaleNumericValue(
+    locations=MemoryRange(DUMMY_BANK0, 18, 22).locations,
+)
 
-class DummyScaledNumericValue(ScaledNumericValue):
+DummyStringValue = StringValue(
+    locations=MemoryRange(DUMMY_BANK0, 23, 27).locations,
+)
 
-    locations = MemoryRange(DUMMY_BANK0, 13, 17).locations
+DummyBinaryValue = BinaryValue(
+    locations=MemoryRange(DUMMY_BANK0, 28, 32).locations,
+)
 
-class DummyFixedScaleNumericValue(FixedScaleNumericValue):
+DummyTemperatureValue = TemperatureValue(
+    locations=MemoryRange(DUMMY_BANK0, 33, 37).locations,
+)
 
-    locations = MemoryRange(DUMMY_BANK0, 18, 22).locations
-
-class DummyStringValue(StringValue):
-
-    locations = MemoryRange(DUMMY_BANK0, 23, 27).locations
-
-class DummyBinaryValue(BinaryValue):
-
-    locations = MemoryRange(DUMMY_BANK0, 28, 32).locations
-
-class DummyTemperatureValue(TemperatureValue):
-
-    locations = MemoryRange(DUMMY_BANK0, 33, 37).locations
-
-class DummyManufacturerSpecificValue(ManufacturerSpecificValue):
-
-    locations = MemoryRange(DUMMY_BANK0, 38, 42).locations
+DummyManufacturerSpecificValue = ManufacturerSpecificValue(
+    locations=MemoryRange(DUMMY_BANK0, 38, 42).locations,
+)
 
 # the following MemoryBank will be used to check
 # - the response for an unlocked MemoryValue,
 # - the response for an addressable MemoryValue
 DUMMY_BANK1 = MemoryBank(1, has_lock=True)
 
-class DummyLateLastMemoryLocation(MemoryValue):
+DummyLateLastMemoryLocation = MemoryValue(
+    locations=(MemoryLocation(DUMMY_BANK1, 0, default=20), ),
+)
 
-    locations = (MemoryLocation(DUMMY_BANK1, 0, default=20), )
+DummyLockByteWritable = MemoryValue(
+    locations=(MemoryLocation(DUMMY_BANK1, 2, default=0x55), ),
+)
 
-class DummyLockByteWritable(MemoryValue):
+DummyUnlockedMemoryValue = MemoryValue(
+    locations=MemoryRange(DUMMY_BANK1, 3, 7, type_=MemoryType.NVM_RW_P).locations,
+)
 
-    locations = (MemoryLocation(DUMMY_BANK1, 2, default=0x55), )
-
-class DummyUnlockedMemoryValue(MemoryValue):
-
-    locations = MemoryRange(DUMMY_BANK1, 3, 7, type_=MemoryType.NVM_RW_P).locations
-
-class DummyAddressableValue(MemoryValue):
-
-    locations = MemoryRange(DUMMY_BANK1, 11, 15).locations
+DummyAddressableValue = MemoryValue(
+    locations=MemoryRange(DUMMY_BANK1, 11, 15).locations,
+)
 
 # the following MemoryBank will be used to check
 # - the response for a locked MemoryValue,
 # - the response for an unaddressable MemoryValue
 DUMMY_BANK2 = MemoryBank(2, has_lock=True)
 
-class DummyEarlyLastMemoryLocation(MemoryValue):
+DummyEarlyLastMemoryLocation = MemoryValue(
+    locations=(MemoryLocation(DUMMY_BANK2, 0, default=10), ),
+)
 
-    locations = (MemoryLocation(DUMMY_BANK2, 0, default=10), )
+DummyLockByteReadOnly = MemoryValue(
+    locations=(MemoryLocation(DUMMY_BANK2, 2, default=0x00), ),
+)
 
-class DummyLockByteReadOnly(MemoryValue):
+DummyLockedMemoryValue = MemoryValue(
+    locations=MemoryRange(DUMMY_BANK2, 3, 7, type_=MemoryType.NVM_RW_P).locations,
+)
 
-    locations = (MemoryLocation(DUMMY_BANK2, 2, default=0x00), )
-
-class DummyLockedMemoryValue(MemoryValue):
-
-    locations = MemoryRange(DUMMY_BANK2, 3, 7, type_=MemoryType.NVM_RW_P).locations
-
-class DummyUnaddressableValue(MemoryValue):
-
-    locations = MemoryRange(DUMMY_BANK2, 11, 15).locations
+DummyUnaddressableValue = MemoryValue(
+    locations=MemoryRange(DUMMY_BANK2, 11, 15).locations,
+)
 
 class TestMemory(unittest.TestCase):
 

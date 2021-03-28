@@ -170,7 +170,7 @@ class Gear:
             self.dtr2 = cmd.param
         elif isinstance(cmd, general.ReadMemoryLocation):
             try:
-                memory_value = self.memory[self.dtr1].locations[self.dtr0].default or 0
+                memory_value = self.memory[self.dtr1].locations[self.dtr0].memory_location.default or 0
             except KeyError:
                 # return nothing when trying to read non-existent
                 # memory location

@@ -4,96 +4,79 @@ from .location import MemoryBank, MemoryLocation, MemoryRange, MemoryType, Memor
 DiiA Specification, DALI Part 251 - Memory Bank 1 Extension, Version 1.1, October 2019"""
 BANK_1 = MemoryBank(1, has_lock=True)
 
-class ManufacturerGTIN(MemoryValue):
-    """Luminaire manufacturer GTIN with manufacturer specific prefix to derive manufacturer name"""
+"""Luminaire manufacturer GTIN with manufacturer specific prefix to derive manufacturer name"""
+ManufacturerGTIN = MemoryValue(
+    locations=MemoryRange(bank=BANK_1, start=0x03, end=0x08, default=0xff, type_=MemoryType.NVM_RW_P).locations
+)
 
-    locations = MemoryRange(bank=BANK_1, start=0x03, end=0x08, default=0xff, type_=MemoryType.NVM_RW_P).locations
+"""Luminaire identification number"""
+LuminaireID = MemoryValue(
+    locations=MemoryRange(bank=BANK_1, start=0x09, end=0x10, default=0xff, type_=MemoryType.NVM_RW_P).locations
+)
 
-class LuminaireID(MemoryValue):
-    """Luminaire identification number"""
-
-    locations = MemoryRange(bank=BANK_1, start=0x09, end=0x10, default=0xff, type_=MemoryType.NVM_RW_P).locations
-
-class ContentFormatID(NumericValue):
-    """Content Format ID
-    Must be set to 0x0003 when this format is used."""
-
-    locations = (
+"""Content Format ID
+Must be set to 0x0003 when this format is used."""
+ContentFormatID = NumericValue(
+    locations=(
         MemoryLocation(bank=BANK_1, address=0x11, default=0x00, type_=MemoryType.NVM_RW_P),
         MemoryLocation(bank=BANK_1, address=0x12, default=0x03, type_=MemoryType.NVM_RW_P),
     )
+)
 
-class YearOfManufacture(NumericValue):
-    """Luminaire year of manufacture (YY)"""
+"""Luminaire year of manufacture (YY)"""
+YearOfManufacture = NumericValue(
+    locations=(MemoryLocation(bank=BANK_1, address=0x13, default=0xff, type_=MemoryType.NVM_RW_P),)
+)
 
-    locations = (MemoryLocation(bank=BANK_1, address=0x13, default=0xff, type_=MemoryType.NVM_RW_P),)
+"""Luminaire week of manufacture (WW)"""
+WeekOfManufacture = NumericValue(
+    locations=(MemoryLocation(bank=BANK_1, address=0x14, default=0xff, type_=MemoryType.NVM_RW_P),)
+)
 
-class WeekOfManufacture(NumericValue):
-    """Luminaire week of manufacture (WW)"""
+"""Nominal Input Power in W"""
+InputPowerNominal = NumericValue(
+    unit='W',
+    locations=MemoryRange(bank=BANK_1, start=0x15, end=0x16, default=0xff, type_=MemoryType.NVM_RW_P).locations
+)
 
-    locations = (MemoryLocation(bank=BANK_1, address=0x14, default=0xff, type_=MemoryType.NVM_RW_P),)
+"""Power at minimum dim level in W"""
+InputPowerMinimumDim = NumericValue(
+    unit='W',
+    locations=MemoryRange(bank=BANK_1, start=0x17, end=0x18, default=0xff, type_=MemoryType.NVM_RW_P).locations
+)
 
-class InputPowerNominal(NumericValue):
-    """Nominal Input Power in W"""
+"""Nominal Minimum AC mains voltage in V"""
+MainsVoltageMinimum = NumericValue(
+    unit='V',
+    locations=MemoryRange(bank=BANK_1, start=0x19, end=0x1a, default=0xff, type_=MemoryType.NVM_RW_P).locations
+)
 
-    unit = 'W'
+"""Nominal Maximum AC mains voltage in V"""
+MainsVoltageMaximum = NumericValue(
+    unit='V',
+    locations=MemoryRange(bank=BANK_1, start=0x1b, end=0x1c, default=0xff, type_=MemoryType.NVM_RW_P).locations
+)
 
-    locations = MemoryRange(bank=BANK_1, start=0x15, end=0x16, default=0xff, type_=MemoryType.NVM_RW_P).locations
+"""Nominal light output in Lm"""
+LightOutputNominal = NumericValue(
+    unit='Lm',
+    locations=MemoryRange(bank=BANK_1, start=0x1d, end=0x1f, default=0xff, type_=MemoryType.NVM_RW_P).locations
+)
 
-class InputPowerMinimumDim(NumericValue):
-    """Power at minimum dim level in W"""
+"""CRI"""
+CRI = NumericValue(
+    locations=(MemoryLocation(bank=BANK_1, address=0x20, default=0xff, type_=MemoryType.NVM_RW_P),)
+)
 
-    unit = 'W'
+"""CCT in K"""
+CCT = NumericValue(
+    unit='K',
+    locations=MemoryRange(bank=BANK_1, start=0x21, end=0x22, default=0xff, type_=MemoryType.NVM_RW_P).locations
+)
 
-    locations = MemoryRange(bank=BANK_1, start=0x17, end=0x18, default=0xff, type_=MemoryType.NVM_RW_P).locations
+class __LightDistributionTypeValue(MemoryValue):
 
-class MainsVoltageMinimum(NumericValue):
-    """Nominal Minimum AC mains voltage in V"""
-
-    unit = 'V'
-
-    locations = MemoryRange(bank=BANK_1, start=0x19, end=0x1a, default=0xff, type_=MemoryType.NVM_RW_P).locations
-
-class MainsVoltageMaximum(NumericValue):
-    """Nominal Maximum AC mains voltage in V"""
-
-    unit = 'V'
-
-    locations = MemoryRange(bank=BANK_1, start=0x1b, end=0x1c, default=0xff, type_=MemoryType.NVM_RW_P).locations
-
-class LightOutputNominal(NumericValue):
-    """Nominal light output in Lm"""
-
-    unit = 'Lm'
-
-    locations = MemoryRange(bank=BANK_1, start=0x1d, end=0x1f, default=0xff, type_=MemoryType.NVM_RW_P).locations
-
-class CRI(NumericValue):
-    """CRI"""
-
-    locations = (MemoryLocation(bank=BANK_1, address=0x20, default=0xff, type_=MemoryType.NVM_RW_P),)
-
-class CCT(NumericValue):
-    """CCT in K"""
-
-    unit = 'K'
-
-    locations = MemoryRange(bank=BANK_1, start=0x21, end=0x22, default=0xff, type_=MemoryType.NVM_RW_P).locations
-
-class LightDistributionType(MemoryValue):
-    """Light Distribution Type
-    0 = not specified
-    1 = Type I
-    2 = Type II
-    3 = Type III
-    4 = Type IV;
-    5 = Type V;
-    6-254 = reserved for additional types"""
-
-    locations = (MemoryLocation(bank=BANK_1, address=0x23, default=0xff, type_=MemoryType.NVM_RW_P),)
-
-    @classmethod
-    def retrieve(cls, addr):
+    def retrieve(self, addr):
         r = yield from super().retrieve(addr)
         light_distribution_type = r[0]
         if light_distribution_type == 0:
@@ -111,19 +94,31 @@ class LightDistributionType(MemoryValue):
         else:
             return 'reserved'
 
-class LuminaireColor(StringValue):
-    """Luminaire color [24 ascii character string, first char at 0x24]
-    Null terminated if shorter than defined length."""
+"""Light Distribution Type
+0 = not specified
+1 = Type I
+2 = Type II
+3 = Type III
+4 = Type IV;
+5 = Type V;
+6-254 = reserved for additional types"""
+LightDistributionType = __LightDistributionTypeValue(
+    locations=(MemoryLocation(bank=BANK_1, address=0x23, default=0xff, type_=MemoryType.NVM_RW_P),)
+)
 
-    locations = MemoryRange(bank=BANK_1, start=0x24, end=0x3b, default=0x00, type_=MemoryType.NVM_RW_P).locations
+"""Luminaire color [24 ascii character string, first char at 0x24]
+Null terminated if shorter than defined length."""
+LuminaireColor = StringValue(
+    locations=MemoryRange(bank=BANK_1, start=0x24, end=0x3b, default=0x00, type_=MemoryType.NVM_RW_P).locations
+)
 
-class LuminaireIdentification(StringValue):
-    """Luminaire identification [60 ascii character string, first char at 0x3C]
-    Null terminated if shorter than defined length."""
+"""Luminaire identification [60 ascii character string, first char at 0x3C]
+Null terminated if shorter than defined length."""
+LuminaireIdentification = StringValue(
+    locations=MemoryRange(bank=BANK_1, start=0x3c, end=0x77, default=0x00, type_=MemoryType.NVM_RW_P).locations
+)
 
-    locations = MemoryRange(bank=BANK_1, start=0x3c, end=0x77, default=0x00, type_=MemoryType.NVM_RW_P).locations
-
-class ManufacturerSpecific(ManufacturerSpecificValue):
-    """Manufacturer-specific"""
-
-    locations = MemoryRange(bank=BANK_1, start=0x78, end=0xfe).locations
+"""Manufacturer-specific"""
+ManufacturerSpecific = ManufacturerSpecificValue(
+    locations=MemoryRange(bank=BANK_1, start=0x78, end=0xfe).locations
+)

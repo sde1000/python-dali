@@ -1,5 +1,6 @@
 from enum import Enum, auto
 from functools import total_ordering
+from collections import namedtuple
 
 from dali.gear.general import ReadMemoryLocation, DTR0, DTR1, WriteMemoryLocationNoReply
 
@@ -21,6 +22,8 @@ class MemoryBank:
 
     class LatchingNotSupported(Exception):
         pass
+
+    MemoryBankEntry = namedtuple('MemoryBankEntry', ['address', 'memory_location', 'memory_value'])
 
     def __init__(self, address, has_lock=False, has_latch=False):
         """Defines a memory bank at a given address.
@@ -44,12 +47,12 @@ class MemoryBank:
     def address(self):
         return self.__address
 
-    def add_memory_location(self, memory_location):
+    def add_memory_location(self, memory_location, memory_value):
         if memory_location.bank.address != self.address:
             raise self.WrongBank(f'Can not add MemoryLocation of bank "{memory_location.bank.address}" to this bank ({self.address}).')
         if self.locations[memory_location.address]:
             raise self.MemoryLocationOverlap(f'Can not add overlapping MemoryLocation at address {memory_location.address}.')
-        self.locations[memory_location.address] = memory_location
+        self.locations[memory_location.address] = self.MemoryBankEntry(memory_location.address, memory_location, memory_value)
     
     def latch(self):
         """Generates the commands to (re-)latch all memory locations of this bank.
@@ -85,8 +88,6 @@ class MemoryLocation:
         self.__type_ = type_
         self.__default = default
         self.__reset = reset
-        # tie this location to its respective memory bank
-        bank.add_memory_location(self)
     
     @property
     def bank(self):
@@ -170,15 +171,19 @@ class MemoryValue:
     """Memory locations that belong to this value. Sorted from MSB to LSB."""
     locations = ()
 
-    @classmethod
-    def retrieve(cls, addr):
+    def __init__(self, locations):
+        self.locations = locations
+        for location in locations:
+            location.bank.add_memory_location(location, self)
+
+    def retrieve(self, addr):
         """Generates the DALI commands necessary to retrieve the value. Finally returns the value.
         Raises MemoryLocationNotImplemented exception if device does not respond, e.g. the location is not implemented.
         """
         result = []
         dtr1 = None
         dtr0 = None
-        for location in sorted(cls.locations):
+        for location in sorted(self.locations):
             # select correct memory location
             if location.bank.address != dtr1:
                 dtr1 = location.bank.address
@@ -191,15 +196,14 @@ class MemoryValue:
             # increase DTR0 to reflect the internal state of the driver
             dtr0 = min(dtr0+1, 255)
             if r.raw_value is None:
-                raise cls.MemoryLocationNotImplemented(f'Device does not implement {str(location)}.')
+                raise self.MemoryLocationNotImplemented(f'Device does not implement {str(location)}.')
             result.append(r.raw_value.as_integer)
         return bytes(result)
 
-    @classmethod
-    def is_addressable(cls, addr):
+    def is_addressable(self, addr):
         """Checks whether this value is addressable by querying the value of the last addressable memory location
         for this memory bank through a sequence of DALI queries."""
-        last_location = cls.locations[-1]
+        last_location = self.locations[-1]
         yield DTR1(last_location.bank.address)
         yield DTR0(0x00)
         r = yield ReadMemoryLocation(addr)
@@ -207,11 +211,10 @@ class MemoryValue:
             return False
         return r.raw_value.as_integer > last_location.address
     
-    @classmethod
-    def is_locked(cls, addr):
+    def is_locked(self, addr):
         """Checks whether this value is locked by checking the lock byte of the memory bank."""
-        if cls.locations[0].type_ == MemoryType.NVM_RW_P:
-            locked = yield from cls.locations[0].bank.is_locked(addr)
+        if self.locations[0].type_ == MemoryType.NVM_RW_P:
+            locked = yield from self.locations[0].bank.is_locked(addr)
             return locked
         else:
             return False
@@ -221,20 +224,22 @@ class NumericValue(MemoryValue):
     """Unit of the numeric value. Set to one if no unit is given."""
     unit = 1
 
-    @classmethod
-    def retrieve(cls, addr):
+    def __init__(self, locations, unit=1):
+        super().__init__(locations=locations)
+        self.unit = unit
+
+    def retrieve(self, addr):
         result = 0
         r = yield from super().retrieve(addr)
         for shift, value in enumerate(r[::-1]):
             result += value << (shift*8)
         return result
 
-class ScaledNumericValue(MemoryValue):
+class ScaledNumericValue(NumericValue):
 
-    @classmethod
-    def retrieve(cls, addr):
+    def retrieve(self, addr):
         result = 0
-        r = yield from super().retrieve(addr)
+        r = yield from super(NumericValue, self).retrieve(addr) # pylint: disable=bad-super-call
         scale = r[0]
         # loop over all bytes except for the first one
         for shift, value in enumerate(r[:0:-1]):
@@ -246,15 +251,17 @@ class FixedScaleNumericValue(NumericValue):
     """Fixed scaling factor."""
     scaling_factor = 1
 
-    @classmethod
-    def retrieve(cls, addr):
+    def __init__(self, locations, unit=1, scaling_factor=1):
+        super().__init__(locations=locations, unit=unit)
+        self.scaling_factor = scaling_factor
+
+    def retrieve(self, addr):
         r = yield from super().retrieve(addr)
-        return cls.scaling_factor * r
+        return self.scaling_factor * r
 
 class StringValue(MemoryValue):
 
-    @classmethod
-    def retrieve(cls, addr):
+    def retrieve(self, addr):
         result = ''
         r = yield from super().retrieve(addr)
         for value in r:
@@ -266,8 +273,7 @@ class StringValue(MemoryValue):
 
 class BinaryValue(MemoryValue):
 
-    @classmethod
-    def retrieve(cls, addr):
+    def retrieve(self, addr):
         r = yield from super().retrieve(addr)
         if r == 1:
             return True
@@ -276,10 +282,10 @@ class BinaryValue(MemoryValue):
 
 class TemperatureValue(NumericValue):
 
-    unit = '°C'
+    def __init__(self, locations, unit='°C'):
+        super().__init__(locations=locations, unit=unit)
 
-    @classmethod
-    def retrieve(cls, addr):
+    def retrieve(self, addr):
         r = yield from super().retrieve(addr)
         return r - 60
 
