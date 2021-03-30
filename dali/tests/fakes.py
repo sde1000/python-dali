@@ -171,7 +171,7 @@ class Gear:
         elif isinstance(cmd, general.ReadMemoryLocation):
             try:
                 memory_value = self.memory[self.dtr1].locations[self.dtr0].memory_location.default or 0
-            except KeyError:
+            except (KeyError, AttributeError):
                 # return nothing when trying to read non-existent
                 # memory location
                 pass
