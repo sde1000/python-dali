@@ -286,7 +286,8 @@ class NumericValue(MemoryValue):
 class ScaledNumericValue(NumericValue):
 
     def _to_value(self, raw):
-        return int.from_bytes(raw[1:], 'big') * 10.**raw[0]
+        scaling_factor = 10.**int.from_bytes(bytes([raw[0],]), 'big', signed=True)
+        return int.from_bytes(raw[1:], 'big') * scaling_factor
 
 class FixedScaleNumericValue(NumericValue):
 
