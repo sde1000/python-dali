@@ -89,7 +89,7 @@ class MemoryBank:
             except MemoryLocationNotImplemented:
                 pass
             else:
-                result[memory_value.name] = r
+                result[memory_value] = r
         return result
     
     def latch(self, addr):
@@ -270,6 +270,13 @@ class MemoryValue:
             return locked
         else:
             return False
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        class_name = '.'.join([self.__class__.__module__ or '', self.__class__.__name__])
+        return f'<{class_name} object named {self.name}>'
 
 class NumericValue(MemoryValue):
 
