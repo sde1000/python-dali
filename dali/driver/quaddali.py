@@ -5,11 +5,9 @@ Contains four [EFM8-DALI-UART-Bridge] modules and one Silabs CP2108.
 [EFM8-DALI-UART-Bridge]: https://git.rwth-aachen.de/Ferdinand.Keil/efm8-dali-uart-bridge
 """
 
-import struct
+import asyncio
 from time import sleep
 import serial
-import asyncio
-import serial_asyncio
 from abc import ABC, abstractmethod
 
 from dali.driver.base import SyncDALIDriver
@@ -23,8 +21,7 @@ def construct(command):
     data = None
 
     if len(command.frame) == 16:
-        address, command = command.frame.as_byte_sequence
-        data = struct.pack('BB', address, command)
+        data = command.frame.pack
     elif len(command.frame) == 24:
         raise ValueError('24 Bit frames are not supported (yet)')
     else:
@@ -172,6 +169,12 @@ class AsyncQuadDALIUSBDriver(QuadDALIUSBDriver):
             asyncio.ensure_future(self._received_data.put(byte))
 
     def __init__(self, port):
+        # import serial_asyncio class late, so that the driver is usable without them
+        try:
+            import serial_asyncio
+        except ImportError:
+            raise RuntimeError('{} requires serial_asyncio but it is not installed'.format(self.__class__.__name__))
+
         self._received_data = asyncio.Queue()
         self._bus_lock = asyncio.Lock()
         # this creates a coroutine generator that will establish a connection once run

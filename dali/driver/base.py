@@ -263,7 +263,8 @@ class SerialBackend(Backend):
         parity = parity if parity is not None else serial.PARITY_NONE
         stopbits = stopbits if stopbits is not None else serial.STOPBITS_ONE
 
-        self._serial = serial.Serial(port=port, baudrate=baudrate, bytesize=bytesize, parity=parity, stopbits=stopbits)
+        # using serial_for_url makes it possible to talk to devices over the network (e.g. RFC2217)
+        self._serial = serial.serial_for_url(url=port, baudrate=baudrate, bytesize=bytesize, parity=parity, stopbits=stopbits)
 
         # for compatibility with older pyserial versions
         # background: the methods for flushing the in-/out-buffer were renamed in v3.0
