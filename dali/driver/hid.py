@@ -570,7 +570,7 @@ class tridonic(hid):
         for event, messages in self._outstanding.values():
             messages.append("fail")
             event.set()
-        self._outstanding_values = {}
+        self._outstanding = {}
         # Cancel the bus watch task
         if self._bus_watch_task is not None:
             self._bus_watch_task.cancel()
