@@ -48,7 +48,12 @@ class QuadDALIUSBDriver(ABC):
 
     @abstractmethod
     def connect(self):
-        """Open the connection the interface."""
+        """Open the connection to the interface."""
+        pass
+
+    @abstractmethod
+    def disconnect(self):
+        """Close the connection to the interface."""
         pass
 
     @abstractmethod
@@ -92,6 +97,9 @@ class SyncQuadDALIUSBDriver(QuadDALIUSBDriver):
         if firmware_version[0] < REQUIRED_FIRMWARE_VERSION:
             self.backend.close()
             raise RuntimeError(f'unsupported device - firmware version too old ({self.firmware_version}<{REQUIRED_FIRMWARE_VERSION:o})')
+    
+    def disconnect(self):
+        self.backend.close()
 
     def send(self, command):
         # construct & send forward frame
@@ -192,6 +200,10 @@ class AsyncQuadDALIUSBDriver(QuadDALIUSBDriver):
         self._transport, self._protocol = await self._connect
         self._protocol.data_received = self._data_received_cb
         await self._protocol.connected.wait()
+    
+    async def disconnect(self):
+        # TODO this needs to be checked!
+        self._transport.close()
 
     async def send(self, command):
         async with self._bus_lock:
