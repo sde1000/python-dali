@@ -94,9 +94,6 @@ class HassebDALIUSBDriver(DALIDriver):
         try:
             while True:
                 try:
-                    if cmd.devicetype != 0:
-                        self.send(EnableDeviceType(cmd.devicetype))
-
                     cmd = seq.send(response)
 
                 except StopIteration as r:
@@ -106,8 +103,9 @@ class HassebDALIUSBDriver(DALIDriver):
                 elif isinstance(cmd, sequence_progress):
                     print(cmd) # or call something else to deal with it
                 else:
-                    # XXX may need to send EnableDeviceType here for some commands
-                    # depending on whether or not the driver does it automatically
+                    if cmd.devicetype != 0:
+                        self.send(EnableDeviceType(cmd.devicetype))
+
                     response = self.send(cmd)
         finally:
             seq.close()
