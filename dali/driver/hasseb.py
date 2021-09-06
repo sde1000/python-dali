@@ -88,11 +88,17 @@ class HassebDALIUSBDriver(DALIDriver):
             self.device_found = None
 
     def run_sequence(self, seq):
+        from dali.gear.general import EnableDeviceType
+
         response = None
         try:
             while True:
                 try:
+                    if cmd.devicetype != 0:
+                        self.send(EnableDeviceType(cmd.devicetype))
+
                     cmd = seq.send(response)
+
                 except StopIteration as r:
                     return r.value
                 if isinstance(cmd, sequence_sleep):
