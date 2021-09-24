@@ -87,7 +87,7 @@ class HassebDALIUSBDriver(DALIDriver):
         except:
             self.device_found = None
 
-    def run_sequence(self, seq):
+    def run_sequence(self, seq, progress_cb=None):
         from dali.gear.general import EnableDeviceType
 
         response = None
@@ -101,7 +101,10 @@ class HassebDALIUSBDriver(DALIDriver):
                 if isinstance(cmd, sequence_sleep):
                     time.sleep(cmd.delay)
                 elif isinstance(cmd, sequence_progress):
-                    print(cmd) # or call something else to deal with it
+                    if (callable(progress_cb)):
+                        progress_cb(sequence_progress)
+                    else:
+                        print(cmd)
                 else:
                     if cmd.devicetype != 0:
                         self.send(EnableDeviceType(cmd.devicetype))
