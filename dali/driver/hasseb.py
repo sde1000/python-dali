@@ -8,6 +8,9 @@ from dali.driver.base import SyncDALIDriver
 from dali.frame import BackwardFrame
 from dali.frame import BackwardFrameError
 
+from dali.sequences import sleep as sequence_sleep
+from dali.sequences import progress as sequence_progress
+
 import dali.gear.general as gear
 
 import time
@@ -83,6 +86,30 @@ class HassebDALIUSBDriver(DALIDriver):
             self.device_found = 1
         except:
             self.device_found = None
+
+    def run_sequence(self, seq, progress_cb=None):
+        from dali.gear.general import EnableDeviceType
+
+        response = None
+        try:
+            while True:
+                try:
+                    cmd = seq.send(response)
+
+                except StopIteration as r:
+                    return r.value
+                if isinstance(cmd, sequence_sleep):
+                    time.sleep(cmd.delay)
+                elif isinstance(cmd, sequence_progress):
+                    if (callable(progress_cb)):
+                        progress_cb(cmd)
+                else:
+                    if cmd.devicetype != 0:
+                        self.send(EnableDeviceType(cmd.devicetype))
+
+                    response = self.send(cmd)
+        finally:
+            seq.close()
 
     def wait_for_response(self):
         raise NotImplementedError()
