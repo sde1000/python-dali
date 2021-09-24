@@ -102,9 +102,7 @@ class HassebDALIUSBDriver(DALIDriver):
                     time.sleep(cmd.delay)
                 elif isinstance(cmd, sequence_progress):
                     if (callable(progress_cb)):
-                        progress_cb(sequence_progress)
-                    else:
-                        print(cmd)
+                        progress_cb(cmd)
                 else:
                     if cmd.devicetype != 0:
                         self.send(EnableDeviceType(cmd.devicetype))
