@@ -1,10 +1,8 @@
 import unittest
-
-import dali
 from dali import address
 from dali import command
 from dali import frame
-from dali.device import general as generaldevice
+# from dali.device import general as generaldevice
 from dali.gear import general as generalgear
 
 
@@ -14,12 +12,12 @@ def _test_pattern():
         yield 16, d, 0
     # Control gear, device type non-zero, application extended commands only
     for dt in command.Command._supported_devicetypes:
-        for a in range (1, 0x100, 2):
-            for b in range (0xe0, 0x100):
+        for a in range(1, 0x100, 2):
+            for b in range(0xe0, 0x100):
                 yield 16, (a, b), dt
     # Control devices, device commands only
-    for a in range (0, 0x100):
-        for b in range (0, 0x100):
+    for a in range(0, 0x100):
+        for b in range(0, 0x100):
             yield 24, (a, 0xfe, b), 0
     # Control devices, instance commands addressed to broadcast device addr
     for d in range(0, 0x10000):
@@ -64,7 +62,7 @@ class TestCommands(unittest.TestCase):
             self.assertHasAttr(cls, "uses_dtr2")
             self.assertIsInstance(cls.uses_dtr2, bool)
             self.assertHasAttr(cls, "response")
-            if cls.response != None:
+            if cls.response is not None:
                 self.assertIsInstance(cls.response(None), command.Response)
             self.assertHasAttr(cls, "sendtwice")
             self.assertIsInstance(cls.sendtwice, bool)

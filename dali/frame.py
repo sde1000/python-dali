@@ -1,7 +1,8 @@
 import struct
 
 _bad_init_data = TypeError(
-    "data must be a sequence of integers all in the range 0..255 or an integer")
+    "data must be a sequence of integers all in the range 0..255 "
+    "or an integer")
 
 
 class Frame:
@@ -57,13 +58,13 @@ class Frame:
     def __eq__(self, other):
         try:
             return self._bits == other._bits and self._data == other._data
-        except:
+        except Exception:
             return False
 
     def __ne__(self, other):
         try:
             return self._bits != other._bits or self._data != other._data
-        except:
+        except Exception:
             return True
 
     def _readslice(self, key):
@@ -151,7 +152,7 @@ class Frame:
         try:
             return Frame(self._bits + other._bits,
                          self._data << other._bits | other._data)
-        except:
+        except Exception:
             raise TypeError("Frame can only be added to another Frame")
 
     @property
@@ -246,6 +247,7 @@ class BackwardFrame(Frame):
 
     def __str__(self):
         return "{}({})".format(self.__class__.__name__, self._data)
+
 
 class BackwardFrameError(BackwardFrame):
     """A response to a forward frame received with a framing error.

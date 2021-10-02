@@ -19,6 +19,7 @@ class _LEDConfigCommand(_LEDCommand):
 # Commands from IEC 62386-207 section 11.3.4.1
 ###############################################################################
 
+
 class ReferenceSystemPower(_LEDConfigCommand):
     """Reference System Power
 
@@ -83,6 +84,7 @@ class LEDGearTypeResponse(command.BitmapResponse):
             "a.c. supply possible",
             "d.c. supply possible"]
 
+
 class QueryGearType(_LEDCommand):
     response = LEDGearTypeResponse
     _cmdval = 0xed
@@ -104,6 +106,7 @@ class LEDOperatingModesResponse(command.BitmapResponse):
             "output is current controlled",
             "high current pulse mode"]
 
+
 class QueryPossibleOperatingModes(_LEDCommand):
     response = LEDOperatingModesResponse
     _cmdval = 0xef
@@ -119,6 +122,7 @@ class LEDFeaturesResponse(command.BitmapResponse):
             "light level reduction due to over temperature can be queried",
             "physical selection supported"]
 
+
 class QueryFeatures(_LEDCommand):
     response = LEDFeaturesResponse
     _cmdval = 0xf0
@@ -133,6 +137,7 @@ class LEDFailureStatusResponse(command.BitmapResponse):
             "thermal shut down",
             "thermal overload with light level reduction",
             "reference measurement failed"]
+
 
 class QueryFailureStatus(_LEDCommand):
     response = LEDFailureStatusResponse
@@ -196,6 +201,7 @@ class LEDOperatingModeResponse(command.BitmapResponse):
             "high current pulse mode is active",
             "non-logarithmic dimming curve active"]
 
+
 class QueryOperatingMode(_LEDCommand):
     response = LEDOperatingModeResponse
     _cmdval = 0xfc
@@ -209,6 +215,7 @@ class QueryFastFadeTime(_LEDCommand):
 class QueryMinFastFadeTime(_LEDCommand):
     response = command.Response
     _cmdval = 0xfe
+
 
 class QueryExtendedVersionNumber(QueryExtendedVersionNumberMixin,
                                  _LEDCommand):

@@ -8,6 +8,7 @@ import random
 
 _yes = 0xff
 
+
 class Gear:
     """Control gear on a DALI bus
 
@@ -15,8 +16,8 @@ class Gear:
     integer in the range 0..255 to indicate responding with an 8-bit
     backward frame.
     """
-    def __init__(self, shortaddr=None, groups = set(),
-                 devicetypes = [], random_preload=[]):
+    def __init__(self, shortaddr=None, groups=set(),
+                 devicetypes=[], random_preload=[]):
         self.shortaddr = shortaddr
         self.scenes = [255] * 16
         self.groups = set(groups)
@@ -24,8 +25,8 @@ class Gear:
         self.random_preload = random_preload
         self.initialising = False
         self.withdrawn = False
-        self.dt_gap = 1 # Number of commands since last QueryNextDeviceType
-        self.dt_queue = [] # Devices still to be returned by QueryNextDeviceType
+        self.dt_gap = 1  # Number of commands since last QueryNextDeviceType
+        self.dt_queue = []  # Devices still to be returned by QueryNextDeviceType
         self.randomaddr = frame.Frame(24)
         self.searchaddr = frame.Frame(24)
         self.dtr0 = 0
@@ -47,7 +48,7 @@ class Gear:
         if isinstance(cmd.destination, Broadcast):
             return True
         if isinstance(cmd.destination, BroadcastUnaddressed):
-            return self.shortaddr == None
+            return self.shortaddr is None
         if isinstance(cmd.destination, Short):
             return cmd.destination.address == self.shortaddr
         if isinstance(cmd.destination, Group):
@@ -74,7 +75,7 @@ class Gear:
         elif isinstance(cmd, general.QueryControlGearPresent):
             return _yes
         elif isinstance(cmd, general.QueryMissingShortAddress):
-            if self.shortaddr == None:
+            if self.shortaddr is None:
                 return _yes
         elif isinstance(cmd, general.QueryContentDTR0):
             return self.dtr0
@@ -162,6 +163,7 @@ class Gear:
             self.dtr1 = cmd.param
         elif isinstance(cmd, general.DTR2):
             self.dtr2 = cmd.param
+
 
 class Bus:
     """A DALI bus

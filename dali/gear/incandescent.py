@@ -280,6 +280,7 @@ class QueryReferenceMeasurementFailed(_IncandescentCommand):
     _cmdval = 0xfa
     response = command.YesNoResponse
 
+
 class QueryExtendedVersionNumber(QueryExtendedVersionNumberMixin,
                                  _IncandescentCommand):
     pass

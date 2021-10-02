@@ -64,6 +64,7 @@ class _DeviceCommand(command.Command):
                 return r
         return UnknownDeviceCommand(f)
 
+
 class UnknownDeviceCommand(_DeviceCommand):
     """An unknown command addressed to a control device.
     """
@@ -74,6 +75,7 @@ class UnknownDeviceCommand(_DeviceCommand):
 ###############################################################################
 # Commands from Table 21 start here
 ###############################################################################
+
 
 class _StandardDeviceCommand(_DeviceCommand):
     """A standard command addressed to a control device.
@@ -628,6 +630,8 @@ class QueryEventFilterZeroToSeven(_StandardInstanceCommand):
     inputdev = True
     response = command.Response
     _opcode = 0x90
+
+
 QueryEventFilterL = QueryEventFilterZeroToSeven
 
 
@@ -635,6 +639,8 @@ class QueryEventFilterEightToFifteen(_StandardInstanceCommand):
     inputdev = True
     response = command.Response
     _opcode = 0x91
+
+
 QueryEventFilterM = QueryEventFilterEightToFifteen
 
 
@@ -642,12 +648,15 @@ class QueryEventFilterSixteenToTwentyThree(_StandardInstanceCommand):
     inputdev = True
     response = command.Response
     _opcode = 0x92
+
+
 QueryEventFilterH = QueryEventFilterSixteenToTwentyThree
 
 
 ###############################################################################
 # Commands from Table 22 start here
 ###############################################################################
+
 
 class _SpecialDeviceCommand(_DeviceCommand):
     _addr = None
@@ -833,5 +842,3 @@ class DTR2DTR1(_SpecialDeviceCommandTwoParam):
     _addr = 0xc9
     uses_dtr1 = True
     uses_dtr2 = True
-
-

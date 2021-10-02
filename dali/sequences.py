@@ -23,6 +23,7 @@ from dali.exceptions import DALISequenceError, ProgramShortAddressFailure
 from dali.gear.general import *
 from dali.address import Broadcast, Short
 
+
 class sleep:
     """Delay for a while
 
@@ -31,6 +32,7 @@ class sleep:
     """
     def __init__(self, delay):
         self.delay = delay
+
 
 class progress:
     """Progress information
@@ -50,6 +52,7 @@ class progress:
             return self.message
         if self.completed is not None and self.size is not None:
             return f"Progress: {self.completed}/{self.size}"
+
 
 def QueryDeviceTypes(addr):
     """Obtain a list of part 2xx device types supported by control gear
@@ -80,6 +83,7 @@ def QueryDeviceTypes(addr):
             raise DALISequenceError("Device type received out of order")
         result.append(r.raw_value.as_integer)
 
+
 def QueryGroups(addr):
     """Obtain the group membership of control gear.
 
@@ -102,6 +106,7 @@ def QueryGroups(addr):
             groups.add(i)
     return groups
 
+
 def SetGroups(addr, groups):
     """Set the group membership of control gear.
 
@@ -121,6 +126,7 @@ def SetGroups(addr, groups):
             else:
                 yield RemoveFromGroup(addr, i)
 
+
 def _find_next(low, high):
     yield SetSearchAddrH((high >> 16) & 0xff)
     yield SetSearchAddrM((high >> 8) & 0xff)
@@ -129,16 +135,17 @@ def _find_next(low, high):
     r = yield Compare()
 
     if low == high:
-        if r.value == True:
+        if r.value is True:
             return "clash" if r.raw_value.error else low
         return
 
-    if r.value == True:
+    if r.value is True:
         midpoint = (low + high) // 2
         res = yield from _find_next(low, midpoint)
         if res is not None:
             return res
         return (yield from _find_next(midpoint + 1, high))
+
 
 def Commissioning(available_addresses=None, readdress=False,
                   dry_run=False):
@@ -198,7 +205,7 @@ def Commissioning(available_addresses=None, readdress=False,
             low = yield from _find_next(low, high)
             if low == "clash":
                 yield progress(message="Multiple ballasts picked the same "
-                                   "random address; restarting")
+                               "random address; restarting")
                 break
             if low is None:
                 finished = True
