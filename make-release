@@ -111,4 +111,9 @@ git tag -a -m "Version ${newversion}" v${newversion}
 The following files should be put in the "incoming" directory:
 cp ${tmpdir}/python3-dali_* ~packages/incoming/
 
+To build packages to upload to PyPI:
+cd ${pkgdir}
+python3 setup.py sdist bdist_wheel
+twine check dist/*
+twine upload dist/*
 EOF

@@ -359,6 +359,7 @@ class PerformDTRSelectedFunction(_EmergencyLightingControlCommand):
     """
     _cmdval = 0xfe
 
+
 class QueryExtendedVersionNumber(QueryExtendedVersionNumberMixin,
                                  _EmergencyLightingCommand):
     pass

@@ -7,12 +7,9 @@ from dali.driver.base import DALIDriver
 from dali.driver.base import SyncDALIDriver
 from dali.frame import BackwardFrame
 from dali.frame import BackwardFrameError
-from dali.exceptions import BadDevice
-from dali.exceptions import DeviceAlreadyBound
-from dali.exceptions import DuplicateDevice
-from dali.exceptions import NoFreeAddress
-from dali.exceptions import NotConnected
-from dali.exceptions import ProgramShortAddressFailure
+
+from dali.sequences import sleep as sequence_sleep
+from dali.sequences import progress as sequence_progress
 
 import dali.gear.general as gear
 
@@ -83,12 +80,36 @@ class HassebDALIUSBDriver(DALIDriver):
     _pending = None
     _response_message = None
 
-    def __init__(self):
+    def __init__(self, path=None):
         try:
-            self.device = hidapi.hid_open(HASSEB_USB_VENDOR, HASSEB_USB_PRODUCT, None)
+            self.device = hidapi.hid_open(HASSEB_USB_VENDOR, HASSEB_USB_PRODUCT, None) if not bool(path) else hidapi.hid_open_path(path)
             self.device_found = 1
         except:
             self.device_found = None
+
+    def run_sequence(self, seq, progress_cb=None):
+        from dali.gear.general import EnableDeviceType
+
+        response = None
+        try:
+            while True:
+                try:
+                    cmd = seq.send(response)
+
+                except StopIteration as r:
+                    return r.value
+                if isinstance(cmd, sequence_sleep):
+                    time.sleep(cmd.delay)
+                elif isinstance(cmd, sequence_progress):
+                    if (callable(progress_cb)):
+                        progress_cb(cmd)
+                else:
+                    if cmd.devicetype != 0:
+                        self.send(EnableDeviceType(cmd.devicetype))
+
+                    response = self.send(cmd)
+        finally:
+            seq.close()
 
     def wait_for_response(self):
         raise NotImplementedError()
@@ -251,3 +272,17 @@ class SyncHassebDALIUSBDriver(HassebDALIUSBDriver, SyncDALIDriver):
                 return
             else:
                 self.receive()
+
+def SyncHassebDALIUSBDriverFactory():
+    """Enumerates Hasseb DALI masters and instantiates `SyncHassebDALIUSBDriver`s
+    for each one of them.
+    """
+
+    hasseb_dali_drivers = []
+
+    hasseb_hid_devices = hidapi.hid_enumerate(HASSEB_USB_VENDOR, HASSEB_USB_PRODUCT)
+    for hasseb_hid_device in hasseb_hid_devices:
+        logging.getLogger("SyncHassebDALIUSBDriverFactory").debug("device found, path is {}".format(hasseb_hid_device.path))
+        hasseb_dali_drivers.append(SyncHassebDALIUSBDriver(hasseb_hid_device.path))
+
+    return hasseb_dali_drivers

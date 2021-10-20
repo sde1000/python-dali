@@ -3,6 +3,7 @@ from dali.tests import fakes
 from dali import sequences
 from dali import address
 
+
 class TestSequences(unittest.TestCase):
     def test_querydevicetypes(self):
         testcases = [
@@ -102,6 +103,7 @@ class TestSequences(unittest.TestCase):
         for i in range(0, 16):
             bus.run_sequence(sequences.SetGroups(i, tp))
             self.assertEqual(bus.run_sequence(sequences.QueryGroups(i)), tp)
+
 
 if __name__ == '__main__':
     unittest.main()

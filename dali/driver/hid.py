@@ -412,7 +412,10 @@ class tridonic(hid):
             if len(self._bus_watch_data) == 0:
                 if current_command:
                     self._log.debug("Bus watch waiting with timeout")
-                    await asyncio.wait_for(self._bus_watch_data_available.wait(), 0.2)
+                    try:
+                        await asyncio.wait_for(self._bus_watch_data_available.wait(), 0.2)
+                    except asyncio.TimeoutError:
+                        pass
                 else:
                     self._log.debug("Bus watch waiting for data, no timeout")
                     await self._bus_watch_data_available.wait()
@@ -570,7 +573,7 @@ class tridonic(hid):
         for event, messages in self._outstanding.values():
             messages.append("fail")
             event.set()
-        self._outstanding_values = {}
+        self._outstanding = {}
         # Cancel the bus watch task
         if self._bus_watch_task is not None:
             self._bus_watch_task.cancel()

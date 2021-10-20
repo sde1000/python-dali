@@ -2,6 +2,7 @@
 # general
 ###############################################################################
 
+
 class DALIError(Exception):
     """Base exception for DALI related errors."""
 
@@ -9,6 +10,7 @@ class DALIError(Exception):
 ###############################################################################
 # address
 ###############################################################################
+
 
 class AddressError(DALIError):
     """Base Exception for address related errors."""
@@ -21,6 +23,7 @@ class IncompatibleFrame(AddressError):
 ###############################################################################
 # command
 ###############################################################################
+
 
 class CommandError(DALIError):
     """Base Exception for command related errors."""
@@ -38,9 +41,11 @@ class ResponseError(CommandError):
 # sequences
 ###############################################################################
 
+
 class DALISequenceError(DALIError):
     """An error occurred during execution of a command sequence."""
     pass
+
 
 class ProgramShortAddressFailure(DALIError):
     """A device did not accept programming of its short address."""
@@ -53,12 +58,15 @@ class ProgramShortAddressFailure(DALIError):
 # driver
 ###############################################################################
 
+
 class DriverError(DALIError):
     """Base Exception for driver related errors."""
+
 
 class CommunicationError(DriverError):
     """Unable to communicate with the device
     """
+
 
 class UnsupportedFrameTypeError(DriverError):
     """Device driver does not support this type of frame

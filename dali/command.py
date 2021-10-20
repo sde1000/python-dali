@@ -69,6 +69,7 @@ class Response:
         except MissingResponse or ResponseError as e:
             return "{}".format(e)
 
+
 class NumericResponse(Response):
     _expected = True
 
@@ -80,6 +81,7 @@ class NumericResponse(Response):
             return "(framing error)"
         return self._value.as_integer
 
+
 class NumericResponseMask(NumericResponse):
     @property
     def value(self):
@@ -87,6 +89,7 @@ class NumericResponseMask(NumericResponse):
         if v == 255:
             return "MASK"
         return v
+
 
 class YesNoResponse(Response):
     _error_acceptable = True
@@ -291,5 +294,6 @@ class Command(metaclass=_CommandTracker):
         joined = ":".join(
             "{:02x}".format(c) for c in self._data.as_byte_sequence)
         return "({0}){1}".format(type(self), joined)
+
 
 from_frame = Command.from_frame

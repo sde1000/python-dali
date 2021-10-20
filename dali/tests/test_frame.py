@@ -1,9 +1,4 @@
-import os
-import sys
 import unittest
-
-
-import dali
 from dali import frame
 
 

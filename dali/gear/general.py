@@ -29,6 +29,7 @@ class _GearCommand(command.Command):
                 return r
         return UnknownGearCommand(f)
 
+
 class UnknownGearCommand(_GearCommand):
     """An unknown command addressed to control gear.
     """
@@ -36,9 +37,11 @@ class UnknownGearCommand(_GearCommand):
     def from_frame(cls, f, devicetype=0):
         return
 
+
 ###############################################################################
 # Commands from Table 15 start here
 ###############################################################################
+
 
 class _StandardCommand(_GearCommand):
     """A standard command as defined in Table 15 of IEC 62386-102
@@ -960,6 +963,7 @@ class QueryExtendedVersionNumberMixin:
     _cmdval = 0xff
     response = command.NumericResponse
 
+
 class QueryExtendedVersionNumber(QueryExtendedVersionNumberMixin,
                                  _StandardCommand):
     """Query Extended Version Number
@@ -968,9 +972,11 @@ class QueryExtendedVersionNumber(QueryExtendedVersionNumberMixin,
     """
     pass
 
+
 ###############################################################################
 # Commands from Table 16 start here
 ###############################################################################
+
 
 class _SpecialCommand(_GearCommand):
     """A special command as defined in Table 16 of IEC 62386-102.
@@ -1171,6 +1177,7 @@ class SearchaddrH(_SpecialCommand):
     _cmdval = 0xb1
     _hasparam = True
 
+
 SetSearchAddrH = SearchaddrH
 
 
@@ -1179,6 +1186,7 @@ class SearchaddrM(_SpecialCommand):
     _cmdval = 0xb3
     _hasparam = True
 
+
 SetSearchAddrM = SearchaddrM
 
 
@@ -1186,6 +1194,7 @@ class SearchaddrL(_SpecialCommand):
     """Set the low 8 bits of the search address."""
     _cmdval = 0xb5
     _hasparam = True
+
 
 SetSearchAddrL = SearchaddrL
 

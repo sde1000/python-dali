@@ -237,6 +237,7 @@ class ReservedInstance(Instance):
 
 class _AddressedInstance(Instance):
     _flags = None
+
     def __init__(self, value):
         if not isinstance(value, int):
             raise ValueError("value must be an integer")
