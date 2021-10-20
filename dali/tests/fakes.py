@@ -180,7 +180,7 @@ class Gear:
                 return memory_value
             finally:
                 # increment DTR0 but limit to 0xFF
-                self.dtr0 = min(self.dtr0+1, 255)
+                self.dtr0 = min(self.dtr0 + 1, 255)
 
 
 class Bus:

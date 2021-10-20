@@ -2,10 +2,10 @@ import unittest
 
 from dali.tests import fakes
 from dali.memory import diagnostics, energy, maintenance, oem
-from dali.memory.location import MemoryBank, MemoryRange, MemoryValue, NumericValue, ScaledNumericValue, \
-                                 FixedScaleNumericValue, StringValue, BinaryValue, TemperatureValue, \
-                                 ManufacturerSpecificValue, MemoryLocation, MemoryType, \
-                                 MemoryLocationNotImplemented
+from dali.memory.location import MemoryBank, MemoryRange, MemoryValue, \
+    NumericValue, ScaledNumericValue, FixedScaleNumericValue, StringValue, \
+    BinaryValue, TemperatureValue, ManufacturerSpecificValue, MemoryLocation, \
+    MemoryType, MemoryLocationNotImplemented
 from dali.command import Command, Response
 from dali.frame import BackwardFrame
 from dali.gear.general import DTR0, DTR1, ReadMemoryLocation
@@ -93,8 +93,8 @@ DummyUnaddressableValue = MemoryValue(
     locations=MemoryRange(DUMMY_BANK2, 11, 15).locations,
 )
 
-class TestMemory(unittest.TestCase):
 
+class TestMemory(unittest.TestCase):
     def setUp(self):
         self.addr = (1, 2)
         self.bus = fakes.Bus([
@@ -122,22 +122,34 @@ class TestMemory(unittest.TestCase):
         self._test_MemoryValue(memory_value, default)
 
     def test_missingMemoryLocation(self):
-        self.assertRaises(MemoryLocationNotImplemented, self.bus.run_sequence, DummyMemoryValue.read(self.addr[1]))
-        self.assertRaises(MemoryLocationNotImplemented, self.bus.run_sequence, DummyNumericValue.read(self.addr[1]))
-        self.assertRaises(MemoryLocationNotImplemented, self.bus.run_sequence, DummyScaledNumericValue.read(self.addr[1]))
-        self.assertRaises(MemoryLocationNotImplemented, self.bus.run_sequence, DummyFixedScaleNumericValue.read(self.addr[1]))
-        self.assertRaises(MemoryLocationNotImplemented, self.bus.run_sequence, DummyStringValue.read(self.addr[1]))
-        self.assertRaises(MemoryLocationNotImplemented, self.bus.run_sequence, DummyBinaryValue.read(self.addr[1]))
-        self.assertRaises(MemoryLocationNotImplemented, self.bus.run_sequence, DummyTemperatureValue.read(self.addr[1]))
-        self.assertRaises(MemoryLocationNotImplemented, self.bus.run_sequence, DummyManufacturerSpecificValue.read(self.addr[1]))
+        self.assertRaises(MemoryLocationNotImplemented, self.bus.run_sequence,
+                          DummyMemoryValue.read(self.addr[1]))
+        self.assertRaises(MemoryLocationNotImplemented, self.bus.run_sequence,
+                          DummyNumericValue.read(self.addr[1]))
+        self.assertRaises(MemoryLocationNotImplemented, self.bus.run_sequence,
+                          DummyScaledNumericValue.read(self.addr[1]))
+        self.assertRaises(MemoryLocationNotImplemented, self.bus.run_sequence,
+                          DummyFixedScaleNumericValue.read(self.addr[1]))
+        self.assertRaises(MemoryLocationNotImplemented, self.bus.run_sequence,
+                          DummyStringValue.read(self.addr[1]))
+        self.assertRaises(MemoryLocationNotImplemented, self.bus.run_sequence,
+                          DummyBinaryValue.read(self.addr[1]))
+        self.assertRaises(MemoryLocationNotImplemented, self.bus.run_sequence,
+                          DummyTemperatureValue.read(self.addr[1]))
+        self.assertRaises(MemoryLocationNotImplemented, self.bus.run_sequence,
+                          DummyManufacturerSpecificValue.read(self.addr[1]))
 
     def test_lockByte(self):
-        self.assertFalse(self.bus.run_sequence(DummyUnlockedMemoryValue.is_locked(self.addr[1])))
-        self.assertTrue(self.bus.run_sequence(DummyLockedMemoryValue.is_locked(self.addr[1])))
+        self.assertFalse(self.bus.run_sequence(
+            DummyUnlockedMemoryValue.is_locked(self.addr[1])))
+        self.assertTrue(self.bus.run_sequence(
+            DummyLockedMemoryValue.is_locked(self.addr[1])))
 
     def test_isAddressable(self):
-        self.assertTrue(self.bus.run_sequence(DummyAddressableValue.is_addressable(self.addr[1])))
-        self.assertFalse(self.bus.run_sequence(DummyUnaddressableValue.is_addressable(self.addr[1])))
+        self.assertTrue(self.bus.run_sequence(
+            DummyAddressableValue.is_addressable(self.addr[1])))
+        self.assertFalse(self.bus.run_sequence(
+            DummyUnaddressableValue.is_addressable(self.addr[1])))
 
     def test_dtrHandling(self):
         # Instead of messing with run_sequence in fakes this dummy
@@ -220,13 +232,17 @@ class TestMemory(unittest.TestCase):
         self._test_NumericValue(energy.ActivePowerLoadside)
 
     def test_maintenance(self):
-        self._test_NumericValue(maintenance.RatedMedianUsefulLifeOfLuminaire, default=0xff*1000)
-        self._test_TemperatureValue(maintenance.InternalControlGearReferenceTemperature, default=0xff-60)
-        self._test_NumericValue(maintenance.RatedMedianUsefulLightSourceStarts, default=0xffff*100)
-    
+        self._test_NumericValue(
+            maintenance.RatedMedianUsefulLifeOfLuminaire, default=0xff * 1000)
+        self._test_TemperatureValue(
+            maintenance.InternalControlGearReferenceTemperature,
+            default=0xff - 60)
+        self._test_NumericValue(
+            maintenance.RatedMedianUsefulLightSourceStarts, default=0xffff * 100)
+
     def test_oem(self):
-        self._test_MemoryValue(oem.ManufacturerGTIN, default=bytes([0xff,]*6))
-        self._test_MemoryValue(oem.LuminaireID, default=bytes([0xff,]*8))
+        self._test_MemoryValue(oem.ManufacturerGTIN, default=bytes([0xff, ] * 6))
+        self._test_MemoryValue(oem.LuminaireID, default=bytes([0xff, ] * 8))
         self._test_NumericValue(oem.ContentFormatID, default=0x03)
         self._test_NumericValue(oem.YearOfManufacture, default=0xff)
         self._test_NumericValue(oem.WeekOfManufacture, default=0xff)
@@ -240,7 +256,9 @@ class TestMemory(unittest.TestCase):
         self._test_MemoryValue(oem.LightDistributionType, default='reserved')
         self._test_StringValue(oem.LuminaireColor)
         self._test_StringValue(oem.LuminaireIdentification)
-        self._test_ManufacturerSpecificValue(oem.ManufacturerSpecific, default=bytes([0x00,]*135))
+        self._test_ManufacturerSpecificValue(
+            oem.ManufacturerSpecific, default=bytes([0x00, ] * 135))
+
 
 if __name__ == '__main__':
     unittest.main()
