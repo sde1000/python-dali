@@ -644,9 +644,10 @@ class QueryVersionNumber(_StandardCommand):
     """Ask for the version number of the IEC standard document met by the
     software and hardware of the ballast.  The high four bits of the
     answer represent the version number of the standard.  IEC-60929 is
-    version number 0.
+    version number 0; the 2009 version of IEC-62386 is version number 1.
 
-    The answer shall be the content of memory bank 0 location 0x16.
+    As of the 2014 version of IEC-62386, the answer shall be the
+    content of memory bank 0 location 0x16.
     """
     _cmdval = 0x97
     response = command.NumericResponse
