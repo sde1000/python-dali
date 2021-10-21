@@ -241,8 +241,8 @@ class TestMemory(unittest.TestCase):
             maintenance.RatedMedianUsefulLightSourceStarts, default=0xffff * 100)
 
     def test_oem(self):
-        self._test_MemoryValue(oem.ManufacturerGTIN, default=bytes([0xff, ] * 6))
-        self._test_MemoryValue(oem.LuminaireID, default=bytes([0xff, ] * 8))
+        self._test_NumericValue(oem.ManufacturerGTIN, default=0xffffffffffff)
+        self._test_NumericValue(oem.LuminaireID, default=0xffffffffffffffff)
         self._test_NumericValue(oem.ContentFormatID, default=0x03)
         self._test_NumericValue(oem.YearOfManufacture, default=0xff)
         self._test_NumericValue(oem.WeekOfManufacture, default=0xff)

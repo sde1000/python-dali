@@ -5,9 +5,9 @@ from .location import MemoryBank, MemoryLocation, MemoryRange, MemoryType, \
 # Memory Bank 1 Extension, Version 1.1, October 2019
 BANK_1 = MemoryBank(1, 0x77, has_lock=True)
 
-"""Luminaire manufacturer GTIN with manufacturer specific prefix to derive manufacturer name
+"""Luminaire manufacturer GTIN
 """
-ManufacturerGTIN = MemoryValue(
+ManufacturerGTIN = NumericValue(
     "ManufacturerGTIN",
     locations=MemoryRange(bank=BANK_1, start=0x03, end=0x08, default=0xff,
                           type_=MemoryType.NVM_RW_P).locations
@@ -15,7 +15,7 @@ ManufacturerGTIN = MemoryValue(
 
 """Luminaire identification number
 """
-LuminaireID = MemoryValue(
+LuminaireID = NumericValue(
     "LuminaireID",
     locations=MemoryRange(bank=BANK_1, start=0x09, end=0x10, default=0xff,
                           type_=MemoryType.NVM_RW_P).locations
