@@ -8,6 +8,7 @@ from dali.gear import emergency
 from dali.gear import led
 from dali.sequences import QueryDeviceTypes, DALISequenceError
 from dali.driver.hid import tridonic, hasseb
+from dali.memory import *
 
 def print_command_and_response(dev, command, response, config_command_error):
     # Note that these will be printed "late" because they are not
@@ -74,6 +75,18 @@ async def main(self):
             print(f" -LED- {r}")
             r = await d.send(led.QueryOperatingMode(Short(addr)))
             print(f" -LED- {r}")
+        # Read memory banks
+        v = await d.send(QueryVersionNumber(Short(addr)))
+        bank0 = info.BANK_0_legacy if v.value == 1 else info.BANK_0
+        for b in (bank0, oem.BANK_1, energy.BANK_202,
+                  energy.BANK_203, energy.BANK_204,
+                  diagnostics.BANK_205, diagnostics.BANK_206,
+                  maintenance.BANK_207):
+            try:
+                r = await d.run_sequence(b.read_all(Short(addr)))
+            except location.MemoryLocationNotImplemented:
+                continue
+            print(f" -MEM- Bank {b.address}: {r}")
 
 
     # If we don't sleep here for a moment, the bus_watch task gets
