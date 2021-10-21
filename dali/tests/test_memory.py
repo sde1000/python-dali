@@ -1,7 +1,7 @@
 import unittest
 
 from dali.tests import fakes
-from dali.memory import diagnostics, energy, maintenance, oem
+from dali.memory import info, diagnostics, energy, maintenance, oem
 from dali.memory.location import MemoryBank, MemoryRange, MemoryValue, \
     NumericValue, ScaledNumericValue, FixedScaleNumericValue, StringValue, \
     BinaryValue, TemperatureValue, ManufacturerSpecificValue, MemoryLocation, \
@@ -111,6 +111,9 @@ class TestMemory(unittest.TestCase):
 
     def _test_TemperatureValue(self, memory_value, default=-60):
         self._test_NumericValue(memory_value, default)
+
+    def _test_VersionNumberValue(self, memory_value, default="0.0"):
+        self._test_MemoryValue(memory_value, default)
 
     def _test_BinaryValue(self, memory_value, default=False):
         self._test_MemoryValue(memory_value, default)
@@ -258,6 +261,18 @@ class TestMemory(unittest.TestCase):
         self._test_StringValue(oem.LuminaireIdentification)
         self._test_ManufacturerSpecificValue(
             oem.ManufacturerSpecific, default=bytes([0x00, ] * 135))
+
+    def test_info(self):
+        self._test_NumericValue(info.GTIN)
+        self._test_VersionNumberValue(info.FirmwareVersion)
+        self._test_NumericValue(info.IdentificationNumber)
+        self._test_VersionNumberValue(info.HardwareVersion)
+        self._test_VersionNumberValue(info.Part101Version)
+        self._test_VersionNumberValue(info.Part102Version)
+        self._test_VersionNumberValue(info.Part103Version)
+        self._test_NumericValue(info.DeviceUnitCount)
+        self._test_NumericValue(info.GearUnitCount)
+        self._test_NumericValue(info.UnitIndex)
 
 
 if __name__ == '__main__':

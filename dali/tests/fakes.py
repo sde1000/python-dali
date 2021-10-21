@@ -4,7 +4,7 @@ from dali.address import Broadcast, BroadcastUnaddressed, Group, Short
 from dali.command import Command
 from dali.gear import general
 from dali.sequences import progress
-from dali.memory import diagnostics, energy, maintenance, oem
+from dali.memory import info, oem, energy, diagnostics, maintenance
 import random
 
 _yes = 0xff
@@ -19,7 +19,7 @@ class Gear:
     """
     def __init__(self, shortaddr=None, groups=set(),
                  devicetypes=[], random_preload=[],
-                 memory_banks=[oem.BANK_1, energy.BANK_202,
+                 memory_banks=[info.BANK_0, oem.BANK_1, energy.BANK_202,
                                energy.BANK_203, energy.BANK_204,
                                diagnostics.BANK_205, diagnostics.BANK_206,
                                maintenance.BANK_207]):

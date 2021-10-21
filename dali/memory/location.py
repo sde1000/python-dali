@@ -367,5 +367,29 @@ class TemperatureValue(NumericValue):
         return int.from_bytes(raw, 'big') - 60
 
 
+class VersionNumberValue(NumericValue):
+    """A version number
+
+    When encoded into a byte, IEC 62386 part 102 section 4.2 states
+    that a version shall be in the format "x.y", where the major
+    version number x is in the range 0..62 and the minor version
+    number y is in the range 0..2. The major version number is placed
+    in bits 7:2 and the minor version number is in bits 1:0. Part 102
+    section 9.10.6 states that the value 0xff is reserved for "not
+    implemented" when used for Part 102 and 103 versions in memory bank 0.
+
+    When encoded into two bytes, the major version number is in the
+    first byte and the minor version number is in the second byte.
+    """
+    def _to_value(self, raw):
+        if len(raw) == 1:
+            n = super()._to_value(raw)
+            if n == 0xff:
+                return "not implemented"
+            return f"{n >> 2}.{n & 0x3}"
+        else:
+            return '.'.join(str(x) for x in raw)
+
+
 class ManufacturerSpecificValue(MemoryValue):
     pass
