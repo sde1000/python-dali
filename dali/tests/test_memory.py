@@ -13,85 +13,84 @@ from dali.gear.general import DTR0, DTR1, ReadMemoryLocation
 # the following MemoryBank will be used for checks on missing memory locations
 DUMMY_BANK0 = MemoryBank(0, 42)
 
-DummyMemoryValue = MemoryValue(
-    "DummyMemoryValue",
-    locations=MemoryRange(DUMMY_BANK0, 3, 7).locations,
-)
 
-DummyNumericValue = NumericValue(
-    "DummyNumericValue",
-    locations=MemoryRange(DUMMY_BANK0, 8, 12).locations,
-)
+class DummyMemoryValue(MemoryValue):
+    locations = MemoryRange(DUMMY_BANK0, 3, 7).locations
 
-DummyScaledNumericValue = ScaledNumericValue(
-    "DummyScaledNumericValue",
-    locations=MemoryRange(DUMMY_BANK0, 13, 17).locations,
-)
 
-DummyFixedScaleNumericValue = FixedScaleNumericValue(
-    "DummyFixedScaleNumericValue",
-    locations=MemoryRange(DUMMY_BANK0, 18, 22).locations,
-)
+class DummyNumericValue(NumericValue):
+    locations = MemoryRange(DUMMY_BANK0, 8, 12).locations
 
-DummyStringValue = StringValue(
-    "DummyStringValue",
-    locations=MemoryRange(DUMMY_BANK0, 23, 27).locations,
-)
 
-DummyBinaryValue = BinaryValue(
-    "DummyBinaryValue",
-    locations=MemoryRange(DUMMY_BANK0, 28, 32).locations,
-)
+class DummyScaledNumericValue(ScaledNumericValue):
+    locations = MemoryRange(DUMMY_BANK0, 13, 17).locations
 
-DummyTemperatureValue = TemperatureValue(
-    "DummyTemperatureValue",
-    locations=MemoryRange(DUMMY_BANK0, 33, 37).locations,
-)
 
-DummyManufacturerSpecificValue = ManufacturerSpecificValue(
-    "DummyManufacturerSpecificValue",
-    locations=MemoryRange(DUMMY_BANK0, 38, 42).locations,
-)
+class DummyFixedScaleNumericValue(FixedScaleNumericValue):
+    locations = MemoryRange(DUMMY_BANK0, 18, 22).locations
+
+
+class DummyStringValue(StringValue):
+    locations = MemoryRange(DUMMY_BANK0, 23, 27).locations
+
+
+class DummyBinaryValue(BinaryValue):
+    locations = MemoryRange(DUMMY_BANK0, 28, 32).locations
+
+
+class DummyTemperatureValue(TemperatureValue):
+    locations = MemoryRange(DUMMY_BANK0, 33, 37).locations
+
+
+class DummyManufacturerSpecificValue(ManufacturerSpecificValue):
+    locations = MemoryRange(DUMMY_BANK0, 38, 42).locations
+
 
 # the following MemoryBank will be used to check
 # - the response for an unlocked MemoryValue,
 # - the response for an addressable MemoryValue
 DUMMY_BANK1 = MemoryBank(1, 20, has_lock=True)
 
-DummyLockByteWritable = MemoryValue(
-    "DummyLockByteWritable",
-    locations=(MemoryLocation(DUMMY_BANK1, 2, default=0x55), ),
-)
 
-DummyUnlockedMemoryValue = MemoryValue(
-    "DummyUnlockedMemoryValue",
-    locations=MemoryRange(DUMMY_BANK1, 3, 7, type_=MemoryType.NVM_RW_P).locations,
-)
+class DummyLockByteWritable(MemoryValue):
+    locations = (MemoryLocation(DUMMY_BANK1, 2, default=0x55),)
 
-DummyAddressableValue = MemoryValue(
-    "DummyAddressableValue",
-    locations=MemoryRange(DUMMY_BANK1, 11, 15).locations,
-)
+
+class DummyUnlockedMemoryValue(MemoryValue):
+    locations = MemoryRange(DUMMY_BANK1, 3, 7,
+                            type_=MemoryType.NVM_RW_P).locations
+
+
+class DummyAddressableValue(MemoryValue):
+    locations = MemoryRange(DUMMY_BANK1, 11, 15).locations
+
 
 # the following MemoryBank will be used to check
 # - the response for a locked MemoryValue,
 # - the response for an unaddressable MemoryValue
 DUMMY_BANK2 = MemoryBank(2, 10, has_lock=True)
 
-DummyLockByteReadOnly = MemoryValue(
-    "DummyLockByteReadOnly",
-    locations=(MemoryLocation(DUMMY_BANK2, 2, default=0x00), ),
-)
 
-DummyLockedMemoryValue = MemoryValue(
-    "DummyLockedMemoryValue",
-    locations=MemoryRange(DUMMY_BANK2, 3, 7, type_=MemoryType.NVM_RW_P).locations,
-)
+class DummyLockByteReadOnly(MemoryValue):
+    locations = (MemoryLocation(DUMMY_BANK2, 2, default=0x00),)
 
-DummyUnaddressableValue = MemoryValue(
-    "DummyUnaddressableValue",
-    locations=MemoryRange(DUMMY_BANK2, 11, 15).locations,
-)
+
+class DummyLockedMemoryValue(MemoryValue):
+    locations = MemoryRange(DUMMY_BANK2, 3, 7,
+                            type_=MemoryType.NVM_RW_P).locations
+
+
+class DummyUnaddressableValue(MemoryValue):
+    locations = MemoryRange(DUMMY_BANK2, 11, 15).locations
+
+
+class TestLocations(unittest.TestCase):
+    def test_str_memoryvalue(self):
+        # str() on a concrete memory value class should return the class name
+        # so that it is usable as a label.
+        self.assertEqual(str(info.GTIN), 'GTIN')
+        self.assertEqual(str(NumericValue),
+                         "<class 'dali.memory.location.NumericValue'>")
 
 
 class TestMemory(unittest.TestCase):

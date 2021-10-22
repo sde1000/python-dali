@@ -40,12 +40,13 @@ class MemoryBank:
         """
         self.__address = address
         self.locations = {x: None for x in range(0xff)}
+
         # add value for last addressable location
-        _ = MemoryValue(
-            'LastAddress',
-            (MemoryLocation(self, 0x00, default=last_address,
-                            reset=last_address, type_=MemoryType.RAM_RW),)
-        )
+        class LastAddress(MemoryValue):
+            locations = (MemoryLocation(
+                self, 0x00, default=last_address,
+                reset=last_address, type_=MemoryType.RAM_RW),)
+
         self.__lock_byte_address = None
         self.__latch_byte_address = None
         if has_lock:
@@ -227,22 +228,33 @@ class MemoryRange:
         ])
 
 
-class MemoryValue:
+class _RegisterMemoryValue(type):
+    """Metaclass to register new MemoryValue classes
+    """
+    def __init__(cls, name, bases, attrs):
+        # cls is the new MemoryValue subclass; it already exists, it's
+        # being initialised
+        if hasattr(cls, 'locations'):
+            cls.name = name
+            for location in cls.locations:
+                location.bank.add_memory_location(location, cls)
+
+    def __str__(cls):
+        if hasattr(cls, 'name'):
+            return cls.name
+        return super().__str__()
+
+
+class MemoryValue(metaclass=_RegisterMemoryValue):
     """Memory locations that belong to this value. Sorted from MSB to LSB.
     """
-    locations = ()
-
-    def __init__(self, name, locations):
-        self.name = name
-        self.locations = locations
-        for location in locations:
-            location.bank.add_memory_location(location, self)
-
-    def _to_value(self, raw):
+    @classmethod
+    def _to_value(cls, raw):
         """Converts raw bytes to the wanted result."""
         return raw
 
-    def read(self, addr):
+    @classmethod
+    def read(cls, addr):
         """Returns the value.
 
         Raises MemoryLocationNotImplemented exception if device does
@@ -251,7 +263,7 @@ class MemoryValue:
         result = []
         dtr1 = None
         dtr0 = None
-        for location in sorted(self.locations):
+        for location in sorted(cls.locations):
             # select correct memory location
             if location.bank.address != dtr1:
                 dtr1 = location.bank.address
@@ -267,13 +279,14 @@ class MemoryValue:
                 raise MemoryLocationNotImplemented(
                     f'Device at address "{str(addr)}" does not implement {str(location)}.')
             result.append(r.raw_value.as_integer)
-        return self._to_value(bytes(result))
+        return cls._to_value(bytes(result))
 
-    def from_list(self, list_):
+    @classmethod
+    def from_list(cls, list_):
         """Extracts the value from a list containing all values of the memory bank.
         """
         raw = []
-        for location in sorted(self.locations):
+        for location in sorted(cls.locations):
             try:
                 r = list_[location.address]
             except IndexError:
@@ -281,48 +294,41 @@ class MemoryValue:
             if r is None:
                 raise MemoryLocationNotImplemented(f'List is missing memory location {str(location)}.')
             raw.append(r)
-        return self._to_value(raw)
+        return cls._to_value(raw)
 
-    def is_addressable(self, addr):
+    @classmethod
+    def is_addressable(cls, addr):
         """Checks whether this value is addressable by querying the value of the last addressable memory location
         for this memory bank through a sequence of DALI queries."""
-        last_location = self.locations[-1]
+        last_location = cls.locations[-1]
         try:
             last_address = yield from last_location.bank.last_address(addr)
         except MemoryLocationNotImplemented:
             return False
         return last_address > last_location.address
 
-    def is_locked(self, addr):
+    @classmethod
+    def is_locked(cls, addr):
         """Checks whether this value is locked by checking the lock byte of the memory bank."""
-        if self.locations[0].type_ == MemoryType.NVM_RW_P:
-            locked = yield from self.locations[0].bank.is_locked(addr)
+        if cls.locations[0].type_ == MemoryType.NVM_RW_P:
+            locked = yield from cls.locations[0].bank.is_locked(addr)
             return locked
         else:
             return False
-
-    def __str__(self):
-        return self.name
-
-    def __repr__(self):
-        class_name = '.'.join([self.__class__.__module__ or '', self.__class__.__name__])
-        return f'<{class_name} object named {self.name}>'
 
 
 class NumericValue(MemoryValue):
     """Unit of the numeric value. Set to one if no unit is given."""
     unit = 1
 
-    def __init__(self, name, locations, unit=1):
-        super().__init__(name=name, locations=locations)
-        self.unit = unit
-
-    def _to_value(self, raw):
+    @classmethod
+    def _to_value(cls, raw):
         return int.from_bytes(raw, 'big')
 
 
 class ScaledNumericValue(NumericValue):
-    def _to_value(self, raw):
+    @classmethod
+    def _to_value(cls, raw):
         scaling_factor = 10.**int.from_bytes(
             bytes([raw[0], ]), 'big', signed=True)
         return int.from_bytes(raw[1:], 'big') * scaling_factor
@@ -332,16 +338,14 @@ class FixedScaleNumericValue(NumericValue):
     """Fixed scaling factor."""
     scaling_factor = 1
 
-    def __init__(self, name, locations, unit=1, scaling_factor=1):
-        super().__init__(name=name, locations=locations, unit=unit)
-        self.scaling_factor = scaling_factor
-
-    def _to_value(self, raw):
-        return self.scaling_factor * int.from_bytes(raw, 'big')
+    @classmethod
+    def _to_value(cls, raw):
+        return cls.scaling_factor * int.from_bytes(raw, 'big')
 
 
 class StringValue(MemoryValue):
-    def _to_value(self, raw):
+    @classmethod
+    def _to_value(cls, raw):
         result = ''
         for value in raw:
             if value == 0:
@@ -352,7 +356,8 @@ class StringValue(MemoryValue):
 
 
 class BinaryValue(MemoryValue):
-    def _to_value(self, raw):
+    @classmethod
+    def _to_value(cls, raw):
         if raw == 1:
             return True
         else:
@@ -360,11 +365,12 @@ class BinaryValue(MemoryValue):
 
 
 class TemperatureValue(NumericValue):
-    def __init__(self, name, locations, unit='°C'):
-        super().__init__(name=name, locations=locations, unit=unit)
+    unit = '°C'
+    offset = 60
 
-    def _to_value(self, raw):
-        return int.from_bytes(raw, 'big') - 60
+    @classmethod
+    def _to_value(cls, raw):
+        return int.from_bytes(raw, 'big') - cls.offset
 
 
 class VersionNumberValue(NumericValue):
@@ -381,7 +387,8 @@ class VersionNumberValue(NumericValue):
     When encoded into two bytes, the major version number is in the
     first byte and the minor version number is in the second byte.
     """
-    def _to_value(self, raw):
+    @classmethod
+    def _to_value(cls, raw):
         if len(raw) == 1:
             n = super()._to_value(raw)
             if n == 0xff:
