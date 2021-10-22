@@ -318,8 +318,9 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
 
 
 class NumericValue(MemoryValue):
-    """Unit of the numeric value. Set to one if no unit is given."""
-    unit = 1
+    """Numeric value stored with MSB at the lowest address
+    """
+    unit = ''
 
     @classmethod
     def _to_value(cls, raw):
@@ -335,7 +336,8 @@ class ScaledNumericValue(NumericValue):
 
 
 class FixedScaleNumericValue(NumericValue):
-    """Fixed scaling factor."""
+    """Numeric value with fixed scaling factor
+    """
     scaling_factor = 1
 
     @classmethod
