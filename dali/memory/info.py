@@ -24,29 +24,29 @@ BANK_0_legacy = MemoryBank(0, 0x0e, has_lock=False)
 class GTIN(NumericValue):
     """Bus unit GTIN
     """
-    locations = MemoryRange(bank=BANK_0, start=0x03, end=0x08,
-                            type_=MemoryType.ROM).locations
+    bank = BANK_0
+    locations = MemoryRange(start=0x03, end=0x08, type_=MemoryType.ROM).locations
 
 
 class GTIN_legacy(NumericValue):
     """Bus unit GTIN
     """
-    locations = MemoryRange(bank=BANK_0_legacy, start=0x03, end=0x08,
-                            type_=MemoryType.ROM).locations
+    bank = BANK_0_legacy
+    locations = MemoryRange(start=0x03, end=0x08, type_=MemoryType.ROM).locations
 
 
 class FirmwareVersion(VersionNumberValue):
     """Bus unit firmware version
     """
-    locations = MemoryRange(bank=BANK_0, start=0x09, end=0x0a,
-                            type_=MemoryType.ROM).locations
+    bank = BANK_0
+    locations = MemoryRange(start=0x09, end=0x0a, type_=MemoryType.ROM).locations
 
 
 class FirmwareVersion_legacy(VersionNumberValue):
     """Bus unit firmware version
     """
-    locations = MemoryRange(bank=BANK_0_legacy, start=0x09, end=0x0a,
-                            type_=MemoryType.ROM).locations
+    bank = BANK_0_legacy
+    locations = MemoryRange(start=0x09, end=0x0a, type_=MemoryType.ROM).locations
 
 
 # The identification number may be truncated at location 0x0e in units
@@ -57,8 +57,8 @@ class IdentificationNumber(NumericValue):
     The combination of GTIN and IdentificationNumber shall be globally
     unique
     """
-    locations = MemoryRange(bank=BANK_0, start=0x0b, end=0x12,
-                            type_=MemoryType.ROM).locations
+    bank = BANK_0
+    locations = MemoryRange(start=0x0b, end=0x12, type_=MemoryType.ROM).locations
 
 
 class IdentifictionNumber_legacy(NumericValue):
@@ -67,22 +67,22 @@ class IdentifictionNumber_legacy(NumericValue):
     The combination of GTIN and IdentificationNumber shall be globally
     unique
     """
-    locations = MemoryRange(bank=BANK_0_legacy, start=0x0b, end=0x0e,
-                            type_=MemoryType.ROM).locations
+    bank = BANK_0_legacy
+    locations = MemoryRange(start=0x0b, end=0x0e, type_=MemoryType.ROM).locations
 
 
 class HardwareVersion(VersionNumberValue):
     """The hardware version of the bus unit
     """
-    locations = MemoryRange(bank=BANK_0, start=0x13, end=0x14,
-                            type_=MemoryType.ROM).locations
+    bank = BANK_0
+    locations = MemoryRange(start=0x13, end=0x14, type_=MemoryType.ROM).locations
 
 
 class Part101Version(VersionNumberValue):
     """The implemented IEC 62386-101 version number of the bus unit
     """
-    locations = (MemoryLocation(bank=BANK_0, address=0x15,
-                                type_=MemoryType.ROM),)
+    bank = BANK_0
+    locations = (MemoryLocation(address=0x15, type_=MemoryType.ROM),)
 
 
 class Part102Version(VersionNumberValue):
@@ -91,8 +91,8 @@ class Part102Version(VersionNumberValue):
     If no control gear is implemented, the version number is encoded
     as 0xff which is returned as string value "not implemented"
     """
-    locations = (MemoryLocation(bank=BANK_0, address=0x16,
-                                type_=MemoryType.ROM),)
+    bank = BANK_0
+    locations = (MemoryLocation(address=0x16, type_=MemoryType.ROM),)
 
 
 class Part103Version(VersionNumberValue):
@@ -101,8 +101,8 @@ class Part103Version(VersionNumberValue):
     If no control device is implemented, the version number is encoded
     as 0xff which is returned as string value "not implemented"
     """
-    locations = (MemoryLocation(bank=BANK_0, address=0x17,
-                                type_=MemoryType.ROM),)
+    bank = BANK_0
+    locations = (MemoryLocation(address=0x17, type_=MemoryType.ROM),)
 
 
 class DeviceUnitCount(NumericValue):
@@ -112,8 +112,8 @@ class DeviceUnitCount(NumericValue):
     memory bank is being implemented by control gear, or 1..64 if this
     memory bank is being implemented by a control device.
     """
-    locations = (MemoryLocation(bank=BANK_0, address=0x18,
-                                type_=MemoryType.ROM),)
+    bank = BANK_0
+    locations = (MemoryLocation(address=0x18, type_=MemoryType.ROM),)
 
 
 class GearUnitCount(NumericValue):
@@ -123,8 +123,8 @@ class GearUnitCount(NumericValue):
     memory bank is being implemented by control gear, or 0..64 if this
     memory bank is being implemented by a control device.
     """
-    locations = (MemoryLocation(bank=BANK_0, address=0x19,
-                                type_=MemoryType.ROM),)
+    bank = BANK_0
+    locations = (MemoryLocation(address=0x19, type_=MemoryType.ROM),)
 
 
 class UnitIndex(NumericValue):
@@ -136,5 +136,5 @@ class UnitIndex(NumericValue):
     unit. It is in the range 0 to the device or gear unit count minus
     one.
     """
-    locations = (MemoryLocation(bank=BANK_0, address=0x1a,
-                                type_=MemoryType.ROM),)
+    bank = BANK_0
+    locations = (MemoryLocation(address=0x1a, type_=MemoryType.ROM),)

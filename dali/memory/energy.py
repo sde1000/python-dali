@@ -13,10 +13,11 @@ class ActiveEnergy(ScaledNumericValue):
 
     The integral of the instantaneous power over a time interval
     """
+    bank = BANK_202
     unit = 'Wh'
     locations = (
-        MemoryLocation(bank=BANK_202, address=0x04, type_=MemoryType.ROM),
-    ) + MemoryRange(bank=BANK_202, start=0x05, end=0x0a, default=0x00,
+        MemoryLocation(address=0x04, type_=MemoryType.ROM),
+    ) + MemoryRange(start=0x05, end=0x0a, default=0x00,
                     type_=MemoryType.NVM_RO).locations
 
 
@@ -26,11 +27,11 @@ class ActivePower(ScaledNumericValue):
     Under periodic conditions, meand value, taken over one period, of
     the instantaneous power
     """
+    bank = BANK_202
     unit = 'W'
     locations = (
-        MemoryLocation(bank=BANK_202, address=0x0b, type_=MemoryType.ROM),
-    ) + MemoryRange(bank=BANK_202, start=0x0c, end=0x0f,
-                    type_=MemoryType.RAM_RO).locations
+        MemoryLocation(address=0x0b, type_=MemoryType.ROM),
+    ) + MemoryRange(start=0x0c, end=0x0f, type_=MemoryType.RAM_RO).locations
 
 
 class ApparentEnergy(ScaledNumericValue):
@@ -38,10 +39,11 @@ class ApparentEnergy(ScaledNumericValue):
 
     The integral of Apparent Power over a time interval
     """
+    bank = BANK_203
     unit = 'VAh'
     locations = (
-        MemoryLocation(bank=BANK_203, address=0x04, type_=MemoryType.ROM),
-    ) + MemoryRange(bank=BANK_203, start=0x05, end=0x0a, default=0x00,
+        MemoryLocation(address=0x04, type_=MemoryType.ROM),
+    ) + MemoryRange(start=0x05, end=0x0a, default=0x00,
                     type_=MemoryType.NVM_RO).locations
 
 
@@ -52,11 +54,11 @@ class ApparentPower(ScaledNumericValue):
     two-terminal element or two-terminal circuit and the rms electric
     current in the element or circuit
     """
+    bank = BANK_203
     unit = 'VA'
     locations = (
-        MemoryLocation(bank=BANK_203, address=0x0b, type_=MemoryType.ROM),
-    ) + MemoryRange(bank=BANK_203, start=0x0c, end=0x0f,
-                    type_=MemoryType.RAM_RO).locations
+        MemoryLocation(address=0x0b, type_=MemoryType.ROM),
+    ) + MemoryRange(start=0x0c, end=0x0f, type_=MemoryType.RAM_RO).locations
 
 
 class ActiveEnergyLoadside(ScaledNumericValue):
@@ -64,10 +66,11 @@ class ActiveEnergyLoadside(ScaledNumericValue):
 
     The integral of Load side Power over a time interval
     """
+    bank = BANK_204
     unit = 'Wh'
     locations = (
-        MemoryLocation(bank=BANK_204, address=0x04, type_=MemoryType.ROM),
-    ) + MemoryRange(bank=BANK_204, start=0x05, end=0x0a, default=0x00,
+        MemoryLocation(address=0x04, type_=MemoryType.ROM),
+    ) + MemoryRange(start=0x05, end=0x0a, default=0x00,
                     type_=MemoryType.NVM_RO).locations
 
 
@@ -81,8 +84,8 @@ class ActivePowerLoadside(ScaledNumericValue):
     Note: the losses for both power supplies (if present) may be
     neglected in the measurement
     """
+    bank = BANK_204
     unit = 'W'
     locations = (
-        MemoryLocation(bank=BANK_204, address=0x0b, type_=MemoryType.ROM),
-    ) + MemoryRange(bank=BANK_204, start=0x0c, end=0x0f,
-                    type_=MemoryType.RAM_RO).locations
+        MemoryLocation(address=0x0b, type_=MemoryType.ROM),
+    ) + MemoryRange(start=0x0c, end=0x0f, type_=MemoryType.RAM_RO).locations

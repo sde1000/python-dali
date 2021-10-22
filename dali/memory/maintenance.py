@@ -26,9 +26,10 @@ class RatedMedianUsefulLifeOfLuminaire(FixedScaleNumericValue):
 
     TMASK and MASK are supported
     """
+    bank = BANK_207
     unit = 'h'
     scaling_factor = 1000
-    locations = (MemoryLocation(bank=BANK_207, address=0x04, default=0xff,
+    locations = (MemoryLocation(address=0x04, default=0xff,
                                 type_=MemoryType.NVM_RW),)
 
 
@@ -46,7 +47,8 @@ class InternalControlGearReferenceTemperature(TemperatureValue):
 
     TMASK and MASK are supported
     """
-    locations = (MemoryLocation(bank=BANK_207, address=0x05, default=0xff,
+    bank = BANK_207
+    locations = (MemoryLocation(address=0x05, default=0xff,
                                 type_=MemoryType.NVM_RW),)
 
 
@@ -61,6 +63,7 @@ class RatedMedianUsefulLightSourceStarts(FixedScaleNumericValue):
     TMASK and MASK are supported
     """
     "RatedMedianUsefulLightSourceStarts",
+    bank = BANK_207
     scaling_factor = 100
-    locations = MemoryRange(bank=BANK_207, start=0x06, end=0x07, default=0xff,
+    locations = MemoryRange(start=0x06, end=0x07, default=0xff,
                             type_=MemoryType.NVM_RW).locations

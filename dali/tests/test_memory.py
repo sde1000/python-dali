@@ -15,35 +15,43 @@ DUMMY_BANK0 = MemoryBank(0, 42)
 
 
 class DummyMemoryValue(MemoryValue):
-    locations = MemoryRange(DUMMY_BANK0, 3, 7).locations
+    bank = DUMMY_BANK0
+    locations = MemoryRange(3, 7).locations
 
 
 class DummyNumericValue(NumericValue):
-    locations = MemoryRange(DUMMY_BANK0, 8, 12).locations
+    bank = DUMMY_BANK0
+    locations = MemoryRange(8, 12).locations
 
 
 class DummyScaledNumericValue(ScaledNumericValue):
-    locations = MemoryRange(DUMMY_BANK0, 13, 17).locations
+    bank = DUMMY_BANK0
+    locations = MemoryRange(13, 17).locations
 
 
 class DummyFixedScaleNumericValue(FixedScaleNumericValue):
-    locations = MemoryRange(DUMMY_BANK0, 18, 22).locations
+    bank = DUMMY_BANK0
+    locations = MemoryRange(18, 22).locations
 
 
 class DummyStringValue(StringValue):
-    locations = MemoryRange(DUMMY_BANK0, 23, 27).locations
+    bank = DUMMY_BANK0
+    locations = MemoryRange(23, 27).locations
 
 
 class DummyBinaryValue(BinaryValue):
-    locations = MemoryRange(DUMMY_BANK0, 28, 32).locations
+    bank = DUMMY_BANK0
+    locations = MemoryRange(28, 32).locations
 
 
 class DummyTemperatureValue(TemperatureValue):
-    locations = MemoryRange(DUMMY_BANK0, 33, 37).locations
+    bank = DUMMY_BANK0
+    locations = MemoryRange(33, 37).locations
 
 
 class DummyManufacturerSpecificValue(ManufacturerSpecificValue):
-    locations = MemoryRange(DUMMY_BANK0, 38, 42).locations
+    bank = DUMMY_BANK0
+    locations = MemoryRange(38, 42).locations
 
 
 # the following MemoryBank will be used to check
@@ -53,16 +61,18 @@ DUMMY_BANK1 = MemoryBank(1, 20, has_lock=True)
 
 
 class DummyLockByteWritable(MemoryValue):
-    locations = (MemoryLocation(DUMMY_BANK1, 2, default=0x55),)
+    bank = DUMMY_BANK1
+    locations = (MemoryLocation(2, default=0x55),)
 
 
 class DummyUnlockedMemoryValue(MemoryValue):
-    locations = MemoryRange(DUMMY_BANK1, 3, 7,
-                            type_=MemoryType.NVM_RW_P).locations
+    bank = DUMMY_BANK1
+    locations = MemoryRange(3, 7, type_=MemoryType.NVM_RW_P).locations
 
 
 class DummyAddressableValue(MemoryValue):
-    locations = MemoryRange(DUMMY_BANK1, 11, 15).locations
+    bank = DUMMY_BANK1
+    locations = MemoryRange(11, 15).locations
 
 
 # the following MemoryBank will be used to check
@@ -72,16 +82,18 @@ DUMMY_BANK2 = MemoryBank(2, 10, has_lock=True)
 
 
 class DummyLockByteReadOnly(MemoryValue):
-    locations = (MemoryLocation(DUMMY_BANK2, 2, default=0x00),)
+    bank = DUMMY_BANK2
+    locations = (MemoryLocation(2, default=0x00),)
 
 
 class DummyLockedMemoryValue(MemoryValue):
-    locations = MemoryRange(DUMMY_BANK2, 3, 7,
-                            type_=MemoryType.NVM_RW_P).locations
+    bank = DUMMY_BANK2
+    locations = MemoryRange(3, 7, type_=MemoryType.NVM_RW_P).locations
 
 
 class DummyUnaddressableValue(MemoryValue):
-    locations = MemoryRange(DUMMY_BANK2, 11, 15).locations
+    bank = DUMMY_BANK2
+    locations = MemoryRange(11, 15).locations
 
 
 class TestLocations(unittest.TestCase):
