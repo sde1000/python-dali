@@ -21,6 +21,20 @@ BANK_0 = MemoryBank(0, 0x7f, has_lock=False)
 BANK_0_legacy = MemoryBank(0, 0x0e, has_lock=False)
 
 
+class LastMemoryBank(NumericValue):
+    """Number of last accessible memory bank
+    """
+    bank = BANK_0
+    locations = (MemoryLocation(address=0x02, type_=MemoryType.ROM),)
+
+
+class LastMemoryBank_legacy(NumericValue):
+    """Number of last accessible memory bank
+    """
+    bank = BANK_0_legacy
+    locations = (MemoryLocation(address=0x02, type_=MemoryType.ROM),)
+
+
 class GTIN(NumericValue):
     """Bus unit GTIN
     """

@@ -82,10 +82,13 @@ class MemoryBank:
 
     def read_all(self, addr):
         last_address = yield from self.last_address(addr)
+        # Bank 0 has a useful value at address 0x02; all other banks
+        # use this for the lock/latch byte
+        start_address = 0x02 if self.address == 0 else 0x03
         # don't need to set DTR1, as we just did that in last_address()
-        yield DTR0(0x03)
-        raw_data = [None, None, None]  # ignore first three bytes
-        for _ in range(0x03, last_address + 1):
+        yield DTR0(start_address)
+        raw_data = [None] * start_address
+        for _ in range(start_address, last_address + 1):
             r = yield ReadMemoryLocation(addr)
             if r.raw_value is not None:
                 raw_data.append(r.raw_value.as_integer)
