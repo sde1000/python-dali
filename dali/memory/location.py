@@ -355,7 +355,7 @@ class StringValue(MemoryValue):
 class BinaryValue(MemoryValue):
     @classmethod
     def _to_value(cls, raw):
-        if raw == 1:
+        if raw[0] == 1:
             return True
         else:
             return False
