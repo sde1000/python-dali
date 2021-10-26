@@ -1,5 +1,5 @@
 from .location import MemoryBank, MemoryLocation, MemoryRange, MemoryType, \
-    MemoryValue, NumericValue, StringValue, ManufacturerSpecificValue
+    MemoryValue, NumericValue, StringValue
 
 # Memory bank definitions from IEC 62386-102 section 9.10.7 and DiiA
 # Specification, DALI Part 251 - Memory Bank 1 Extension, Version 1.1,
@@ -194,10 +194,3 @@ class LuminaireIdentification(StringValue):
     bank = BANK_1
     locations = MemoryRange(start=0x3c, end=0x77, default=0x00,
                             type_=MemoryType.NVM_RW_P).locations
-
-
-class ManufacturerSpecific(ManufacturerSpecificValue):
-    """Manufacturer-specific
-    """
-    bank = BANK_1
-    locations = MemoryRange(start=0x78, end=0xfe).locations

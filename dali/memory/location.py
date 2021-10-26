@@ -27,7 +27,7 @@ class MemoryBank:
         pass
 
     MemoryBankEntry = namedtuple(
-        'MemoryBankEntry', ['address', 'memory_location', 'memory_value'])
+        'MemoryBankEntry', ['memory_location', 'memory_value'])
 
     def __init__(self, address, last_address, has_lock=False, has_latch=False):
         """Defines a memory bank at a given address.
@@ -43,20 +43,19 @@ class MemoryBank:
             bank = self
             locations = (MemoryLocation(
                 0x00, default=last_address,
-                reset=last_address, type_=MemoryType.RAM_RW),)
+                reset=last_address, type_=MemoryType.ROM),)
 
-        self.__lock_byte_address = None
-        self.__latch_byte_address = None
-        if has_lock:
-            if type(has_lock) == int:
-                self.__lock_byte_address = has_lock
-            else:
-                self.__lock_byte_address = 0x02
-        if has_latch:
-            if type(has_lock) == int:
-                self.__latch_byte_address = has_latch
-            else:
-                self.__latch_byte_address = 0x02
+        if has_lock or has_latch:
+            class LockByte(MemoryValue):
+                bank = self
+                lock = has_lock
+                latch = has_latch
+                locations = (MemoryLocation(
+                    0x02, reset=0xff, default=0xff, type_=MemoryType.RAM_RW),)
+
+            self.LockByte = LockByte
+        else:
+            self.LockByte = None
 
     @property
     def address(self):
@@ -67,7 +66,7 @@ class MemoryBank:
             raise self.MemoryLocationOverlap(
                 f'Can not add overlapping MemoryLocation at address {memory_location.address}.')
         self.locations[memory_location.address] = self.MemoryBankEntry(
-            memory_location.address, memory_location, memory_value)
+            memory_location, memory_value)
 
     def last_address(self, addr):
         """Sequence that returns the last available address in this bank
@@ -111,9 +110,9 @@ class MemoryBank:
         Raises LatchingNotSupported exception if bank does not support
         latching.
         """
-        if self.__latch_byte_address:
+        if self.LockByte and self.LockByte.latch:
             yield DTR1(self.address)
-            yield DTR0(self.__latch_byte_address)
+            yield DTR0(self.LockByte.locations[0].address)
             yield WriteMemoryLocationNoReply(0xAA, addr)
         else:
             raise self.LatchingNotSupported(f'Latching not supported for {str(self)}.')
@@ -121,15 +120,18 @@ class MemoryBank:
     def is_locked(self, addr):
         """Check whether this bank is locked
         """
-        if self.__lock_byte_address:
-            yield DTR1(self.address)
-            yield DTR0(self.__lock_byte_address)
-            lock_byte = yield ReadMemoryLocation(addr)
-            if lock_byte.raw_value is None:
-                return False
-            return lock_byte.raw_value.as_integer != 0x55
+        if self.LockByte and self.LockByte.lock:
+            r = yield from self.LockByte.read(addr)
+            return r[0] != 0x55
         else:
             return False
+
+    def factory_default_contents(self):
+        """Return factory default contents for known memory locations
+        """
+        for address in range(0xff):
+            loc = self.locations[address]
+            yield loc.memory_location.default if loc else None
 
     def __repr__(self):
         return f'MemoryBank(address={self.address}, ' \
@@ -322,14 +324,6 @@ class NumericValue(MemoryValue):
         return int.from_bytes(raw, 'big')
 
 
-class ScaledNumericValue(NumericValue):
-    @classmethod
-    def _to_value(cls, raw):
-        scaling_factor = 10.**int.from_bytes(
-            bytes([raw[0], ]), 'big', signed=True)
-        return int.from_bytes(raw[1:], 'big') * scaling_factor
-
-
 class FixedScaleNumericValue(NumericValue):
     """Numeric value with fixed scaling factor
     """
@@ -393,7 +387,3 @@ class VersionNumberValue(NumericValue):
             return f"{n >> 2}.{n & 0x3}"
         else:
             return '.'.join(str(x) for x in raw)
-
-
-class ManufacturerSpecificValue(MemoryValue):
-    pass

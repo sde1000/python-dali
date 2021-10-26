@@ -1,5 +1,6 @@
 from .location import MemoryBank, MemoryLocation, MemoryRange, MemoryType, \
     NumericValue, FixedScaleNumericValue, BinaryValue, TemperatureValue
+from decimal import Decimal
 
 # Memory bank definitions from DiiA Specification, DALI Part 253 -
 # Diagnostics & Maintenance, Version 1.1, October 2019
@@ -14,6 +15,14 @@ BANK_206 = MemoryBank(206, 0x20, has_lock=True, has_latch=True)
 
 # MASK indicates the memory bank value is read-protected. MASK may
 # take the value 0xff, 0xffff, etc.
+
+
+class ControlGearDiagnosticBankVersion(NumericValue):
+    """Version of the gear diagnostics memory bank
+    """
+    bank = BANK_205
+    locations = (MemoryLocation(address=0x03, default=0x01,
+                                type_=MemoryType.ROM),)
 
 
 class ControlGearOperatingTime(NumericValue):
@@ -51,7 +60,7 @@ class ControlGearExternalSupplyVoltage(FixedScaleNumericValue):
     """
     bank = BANK_205
     unit = 'Vrms'
-    scaling_factor = 0.1
+    scaling_factor = Decimal("0.1")
     locations = MemoryRange(start=0x0b, end=0x0c,
                             type_=MemoryType.RAM_RO).locations
 
@@ -78,7 +87,7 @@ class ControlGearPowerFactor(FixedScaleNumericValue):
     """Control Gear Power Factor
     """
     bank = BANK_205
-    scaling_factor = 0.01
+    scaling_factor = Decimal("0.01")
     locations = (MemoryLocation(address=0x0e, type_=MemoryType.RAM_RO),)
 
 
@@ -353,6 +362,14 @@ class ControlGearOutputCurrentPercent(NumericValue):
     locations = (MemoryLocation(address=0x1c, type_=MemoryType.RAM_RO),)
 
 
+class LightSourceDiagnosticBankVersion(NumericValue):
+    """Version of the light source diagnostics memory bank
+    """
+    bank = BANK_206
+    locations = (MemoryLocation(address=0x03, default=0x01,
+                                type_=MemoryType.ROM),)
+
+
 class LightSourceStartCounterResettable(NumericValue):
     """Light Source Start Counter Resettable
 
@@ -440,7 +457,7 @@ class LightSourceVoltage(FixedScaleNumericValue):
     """
     bank = BANK_206
     unit = 'V'
-    scaling_factor = 0.1
+    scaling_factor = Decimal("0.1")
     locations = MemoryRange(start=0x12, end=0x13,
                             type_=MemoryType.RAM_RO).locations
 
@@ -454,7 +471,7 @@ class LightSourceCurrent(FixedScaleNumericValue):
     """
     bank = BANK_206
     unit = 'A'
-    scaling_factor = 0.001
+    scaling_factor = Decimal("0.001")
     locations = MemoryRange(start=0x14, end=0x15,
                             type_=MemoryType.RAM_RO).locations
 

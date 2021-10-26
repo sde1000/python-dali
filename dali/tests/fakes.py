@@ -4,10 +4,28 @@ from dali.address import Broadcast, BroadcastUnaddressed, Group, Short
 from dali.command import Command
 from dali.gear import general
 from dali.sequences import progress
-from dali.memory import info, oem, energy, diagnostics, maintenance
+from dali.memory import info, oem
 import random
 
 _yes = 0xff
+
+# Valid bank 0 ROM contents compatible with IEC 62386-102
+memory_bank_0 = [
+    0x7f, None, 0x01,  # Memory bank 1 is last accessible
+    0x01, 0x1f, 0x71, 0xf7, 0x6b, 0xb1,  # GTIN 1234567654321
+    0x01, 0x00,  # Firmware version 1.0
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,  # Serial number 1
+    0x02, 0x01,  # Hardware version 2.1
+    0x08, 0x08, 0xff,  # Parts 101 and 102 version 2.0, part 103 not implemented
+    0x00,  # 0 logical control device units
+    0x01,  # 1 logical control gear unit
+    0x00,  # This is control gear unit index 0
+]
+
+memory_bank_1 = [
+    0x77, None, 0xff,  # Implemented up to and including address 0x77
+    # All the rest of the memory bank is initialised to default values
+]
 
 
 class Gear:
@@ -19,10 +37,8 @@ class Gear:
     """
     def __init__(self, shortaddr=None, groups=set(),
                  devicetypes=[], random_preload=[],
-                 memory_banks=[info.BANK_0, oem.BANK_1, energy.BANK_202,
-                               energy.BANK_203, energy.BANK_204,
-                               diagnostics.BANK_205, diagnostics.BANK_206,
-                               maintenance.BANK_207]):
+                 memory_banks={info.BANK_0: memory_bank_0,
+                               oem.BANK_1: memory_bank_1}):
         self.shortaddr = shortaddr
         self.scenes = [255] * 16
         self.groups = set(groups)
@@ -37,7 +53,21 @@ class Gear:
         self.dtr0 = 0
         self.dtr1 = 0
         self.dtr2 = 0
-        self.memory = {bank.address: bank for bank in memory_banks}
+        self.memory_banks = {bank.address: bank for bank in memory_banks.keys()}
+        self.memory_contents = {
+            bank.address: list(bank.factory_default_contents())
+            for bank in memory_banks.keys()
+        }
+        for bank, contents in memory_banks.items():
+            self.set_memory_data(bank.address, contents)
+
+    def set_memory_data(self, bank, new_contents):
+        # Update memory bank using new_contents. Locations with
+        # new_contents 'None' are not changed.
+        mc = self.memory_contents[bank]
+        for address, value in enumerate(new_contents):
+            if value is not None:
+                mc[address] = value
 
     def _next_random_address(self):
         if self.random_preload:
@@ -171,7 +201,7 @@ class Gear:
             self.dtr2 = cmd.param
         elif isinstance(cmd, general.ReadMemoryLocation):
             try:
-                memory_value = self.memory[self.dtr1].locations[self.dtr0].memory_location.default or 0
+                memory_value = self.memory_contents[self.dtr1][self.dtr0]
             except (KeyError, AttributeError):
                 # return nothing when trying to read non-existent
                 # memory location

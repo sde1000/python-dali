@@ -1,11 +1,36 @@
 from .location import MemoryBank, MemoryLocation, MemoryRange, \
-    MemoryType, ScaledNumericValue
+    MemoryType, NumericValue
+from decimal import Decimal
 
 # Memory bank definitions from DiiA Specification, DALI Part 252 -
 # Energy Reporting, Version 1.1, October 2019
 BANK_202 = MemoryBank(202, 0x0F, has_latch=True)
 BANK_203 = MemoryBank(203, 0x0F, has_latch=True)
 BANK_204 = MemoryBank(204, 0x0F, has_latch=True)
+
+
+class ScaledNumericValue(NumericValue):
+    """A numeric value with scaling factor provided by the bus unit
+
+    Scale is valid from 10^-6 to 10^6 and is read from the first
+    memory location of the value. The remaining locations hold the
+    value MSB first.
+
+    Values are returned as Decimals to preserve precision.
+    """
+    @classmethod
+    def _to_value(cls, raw):
+        scaling_factor = pow(Decimal(10), int.from_bytes(
+            raw[:1], 'big', signed=True))
+        return int.from_bytes(raw[1:], 'big') * scaling_factor
+
+
+class ActiveBankVersion(NumericValue):
+    """Version of the active energy and power memory bank
+    """
+    bank = BANK_202
+    locations = (MemoryLocation(address=0x03, default=0x01,
+                                type_=MemoryType.ROM),)
 
 
 class ActiveEnergy(ScaledNumericValue):
@@ -34,6 +59,14 @@ class ActivePower(ScaledNumericValue):
     ) + MemoryRange(start=0x0c, end=0x0f, type_=MemoryType.RAM_RO).locations
 
 
+class ApparentBankVersion(NumericValue):
+    """Version of the apparent energy and power memory bank
+    """
+    bank = BANK_203
+    locations = (MemoryLocation(address=0x03, default=0x01,
+                                type_=MemoryType.ROM),)
+
+
 class ApparentEnergy(ScaledNumericValue):
     """Apparent Energy in VAh
 
@@ -59,6 +92,14 @@ class ApparentPower(ScaledNumericValue):
     locations = (
         MemoryLocation(address=0x0b, type_=MemoryType.ROM),
     ) + MemoryRange(start=0x0c, end=0x0f, type_=MemoryType.RAM_RO).locations
+
+
+class LoadsideBankVersion(NumericValue):
+    """Version of the loadside energy and power memory bank
+    """
+    bank = BANK_204
+    locations = (MemoryLocation(address=0x03, default=0x01,
+                                type_=MemoryType.ROM),)
 
 
 class ActiveEnergyLoadside(ScaledNumericValue):

@@ -1,11 +1,19 @@
 from .location import MemoryBank, MemoryLocation, MemoryRange, MemoryType, \
-    FixedScaleNumericValue, TemperatureValue
+    NumericValue, FixedScaleNumericValue, TemperatureValue
 
 # Memory bank definitions from DiiA Specification, DALI Part 253 -
 # Diagnostics & Maintenance, Version 1.1, October 2019
 BANK_207 = MemoryBank(207, 0x07, has_lock=True)
 
 # In this module, MASK indicates 'unknown'
+
+
+class LuminaireMaintenanceBankVersion(NumericValue):
+    """Version of the luminaire maintenance memory bank
+    """
+    bank = BANK_207
+    locations = (MemoryLocation(address=0x03, default=0x01,
+                                type_=MemoryType.ROM),)
 
 
 class RatedMedianUsefulLifeOfLuminaire(FixedScaleNumericValue):
