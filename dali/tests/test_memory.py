@@ -5,7 +5,7 @@ from dali.memory import info, diagnostics, energy, maintenance, oem
 from dali.memory.location import MemoryBank, MemoryRange, MemoryValue, \
     NumericValue, FixedScaleNumericValue, StringValue, \
     BinaryValue, TemperatureValue,  \
-    MemoryType, MemoryLocationNotImplemented
+    MemoryType, MemoryLocationNotImplemented, FlagValue
 from dali.command import Command, Response
 from dali.frame import BackwardFrame
 from dali.gear.general import DTR0, DTR1, ReadMemoryLocation
@@ -132,8 +132,57 @@ memory_bank_207 = [
     0x13, 0x88,  # Rated median useful light source starts, 500000
 ]
 
+
+# Invalid / special memory bank contents
+
+memory_bank_1_invalid = [
+    0x77, None, 0xff,  # Initially locked
+    0x06, 0xf6, 0x29, 0x19, 0x22, 0x87,  # GTIN 7654321234567
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02,  # Serial number 2
+    0x00, 0x03,  # Content format ID 0x0003 -> DiiA spec part 251
+    105,  # Year of manufacture invalid
+    60,  # Week of manufacture invalid
+    0xff, 0xff,  # Nominal input power MASK
+    0xff, 0xff,  # Power at minimum dim level MASK
+    0xff, 0xff,  # Nominal minimum AC mains voltage MASK
+    0xff, 0xff,  # Nominal maximum AC mains voltage MASK
+    0xff, 0xff, 0xff,  # Nominal light output MASK
+    105,  # CRI invalid
+    0xff, 0xfe,  # CCT "Part 209 implemented"
+    0xff,  # Light distribution type MASK
+    0x4f, 0x63, 0x74, 0x61, 0x72, 0x69, 0x6e, 0x65,  # Colour "Octarine"
+    0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,  #
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,  #
+    0x57, 0x69, 0x7a, 0x61, 0x72, 0x64, 0x27, 0x73,  # ID "Wizard's Staff"
+    0x20, 0x53, 0x74, 0x61, 0x66, 0x66, 0x00, 0xff,  #
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,  #
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,  #
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,  #
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,  #
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,  #
+    0xff, 0xff, 0xff, 0xff,  # (end of ID string)
+]
+
+memory_bank_202_invalid = [
+    0x0f, None, 0xff,
+    0x01,  # Version 1
+    0xaa,  # Scale is invalid
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x0a,  # Value is irrelevant
+    0x00,  # Scale to 10^0 ('W')
+    0xff, 0xff, 0xff, 0xfe,  # TMASK
+]
+
+memory_bank_207_invalid = [
+    0x07, None, 0xff,
+    0x01,  # Version 1
+    0xfe,  # Rated median useful life of luminaire TMASK
+    0xff,  # Internal control gear reference temperature MASK
+    0xff, 0xfe,  # Rated median useful light source starts TMASK
+]
+
+
 # the following MemoryBank will be used for checks on missing memory locations
-DUMMY_BANK0 = MemoryBank(0, 42)
+DUMMY_BANK0 = MemoryBank(100, 42)
 
 
 class DummyMemoryValue(MemoryValue):
@@ -169,12 +218,12 @@ class DummyTemperatureValue(TemperatureValue):
 # the following MemoryBank will be used to check
 # - the response for an unlocked MemoryValue,
 # - the response for an addressable MemoryValue
-DUMMY_BANK1 = MemoryBank(1, 20, has_lock=False)
+DUMMY_BANK1 = MemoryBank(101, 20, has_lock=False)
 
 
 class DummyUnlockedMemoryValue(MemoryValue):
     bank = DUMMY_BANK1
-    locations = MemoryRange(3, 7, type_=MemoryType.NVM_RW_P).locations
+    locations = MemoryRange(3, 7, type_=MemoryType.NVM_RW_L).locations
 
 
 class DummyAddressableValue(MemoryValue):
@@ -190,7 +239,7 @@ DUMMY_BANK2 = MemoryBank(2, 10, has_lock=True)
 
 class DummyLockedMemoryValue(MemoryValue):
     bank = DUMMY_BANK2
-    locations = MemoryRange(3, 7, type_=MemoryType.NVM_RW_P).locations
+    locations = MemoryRange(3, 7, type_=MemoryType.NVM_RW_L).locations
 
 
 class DummyUnaddressableValue(MemoryValue):
@@ -222,13 +271,16 @@ class TestMemory(unittest.TestCase):
                 maintenance.BANK_207: memory_bank_207,
             }),
             fakes.Gear(self.addr[1], memory_banks={
+                oem.BANK_1: memory_bank_1_invalid,
+                energy.BANK_202: memory_bank_202_invalid,
+                maintenance.BANK_207: memory_bank_207_invalid,
                 DUMMY_BANK1: [],
                 DUMMY_BANK2: [],
             })
         ])
 
-    def _test_value(self, memory_value, expected):
-        r = self.bus.run_sequence(memory_value.read(self.addr[0]))
+    def _test_value(self, memory_value, expected, addr=0):
+        r = self.bus.run_sequence(memory_value.read(self.addr[addr]))
         self.assertEqual(r, expected)
 
     def test_missingMemoryLocation(self):
@@ -335,7 +387,9 @@ class TestMemory(unittest.TestCase):
     def test_energy(self):
         self._test_value(energy.ActiveBankVersion, 1)
         self._test_value(energy.ActiveEnergy, Decimal("10000"))
+        self._test_value(energy.ActiveEnergy, FlagValue.Invalid, addr=1)
         self._test_value(energy.ActivePower, Decimal("1000"))
+        self._test_value(energy.ActivePower, FlagValue.TMASK, addr=1)
         self._test_value(energy.ApparentBankVersion, 1)
         self._test_value(energy.ApparentEnergy, Decimal("100"))
         self._test_value(energy.ApparentPower, Decimal("10"))
@@ -349,24 +403,40 @@ class TestMemory(unittest.TestCase):
         self._test_value(
             maintenance.RatedMedianUsefulLifeOfLuminaire, 50000)
         self._test_value(
+            maintenance.RatedMedianUsefulLifeOfLuminaire,
+            FlagValue.TMASK, addr=1)
+        self._test_value(
             maintenance.InternalControlGearReferenceTemperature, 30)
         self._test_value(
+            maintenance.InternalControlGearReferenceTemperature,
+            FlagValue.MASK, addr=1)
+        self._test_value(
             maintenance.RatedMedianUsefulLightSourceStarts, 500000)
+        self._test_value(
+            maintenance.RatedMedianUsefulLightSourceStarts,
+            FlagValue.TMASK, addr=1)
 
     def test_oem(self):
         self._test_value(oem.ManufacturerGTIN, 7654321234567)
         self._test_value(oem.LuminaireID, 2)
         self._test_value(oem.ContentFormatID, 3)
         self._test_value(oem.YearOfManufacture, 21)
+        self._test_value(oem.YearOfManufacture, FlagValue.Invalid, addr=1)
         self._test_value(oem.WeekOfManufacture, 43)
+        self._test_value(oem.WeekOfManufacture, FlagValue.Invalid, addr=1)
         self._test_value(oem.InputPowerNominal, 1500)
+        self._test_value(oem.InputPowerNominal, FlagValue.MASK, addr=1)
         self._test_value(oem.InputPowerMinimumDim, 100)
+        self._test_value(oem.InputPowerMinimumDim, FlagValue.MASK, addr=1)
         self._test_value(oem.MainsVoltageMinimum, 220)
         self._test_value(oem.MainsVoltageMaximum, 250)
         self._test_value(oem.LightOutputNominal, 15000)
         self._test_value(oem.CRI, 100)
+        self._test_value(oem.CRI, FlagValue.Invalid, addr=1)
         self._test_value(oem.CCT, 1)
+        self._test_value(oem.CCT, "Part 209 implemented", addr=1)
         self._test_value(oem.LightDistributionType, "Type V")
+        self._test_value(oem.LightDistributionType, FlagValue.MASK, addr=1)
         self._test_value(oem.LuminaireColor, "Octarine")
         self._test_value(oem.LuminaireIdentification, "Wizard's Staff")
 

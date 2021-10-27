@@ -38,7 +38,10 @@ class RatedMedianUsefulLifeOfLuminaire(FixedScaleNumericValue):
     unit = 'h'
     scaling_factor = 1000
     locations = (MemoryLocation(address=0x04, default=0xff,
-                                type_=MemoryType.NVM_RW),)
+                                type_=MemoryType.NVM_RW_L),)
+    tmask_supported = True
+    mask_supported = True
+    max_value = 0xfd
 
 
 class InternalControlGearReferenceTemperature(TemperatureValue):
@@ -57,7 +60,10 @@ class InternalControlGearReferenceTemperature(TemperatureValue):
     """
     bank = BANK_207
     locations = (MemoryLocation(address=0x05, default=0xff,
-                                type_=MemoryType.NVM_RW),)
+                                type_=MemoryType.NVM_RW_L),)
+    tmask_supported = True
+    mask_supported = True
+    max_value = 0xfd
 
 
 class RatedMedianUsefulLightSourceStarts(FixedScaleNumericValue):
@@ -74,4 +80,7 @@ class RatedMedianUsefulLightSourceStarts(FixedScaleNumericValue):
     bank = BANK_207
     scaling_factor = 100
     locations = MemoryRange(start=0x06, end=0x07, default=0xff,
-                            type_=MemoryType.NVM_RW).locations
+                            type_=MemoryType.NVM_RW_L).locations
+    tmask_supported = True
+    mask_supported = True
+    max_value = 0xfffd

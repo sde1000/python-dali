@@ -128,6 +128,7 @@ class DeviceUnitCount(NumericValue):
     """
     bank = BANK_0
     locations = (MemoryLocation(address=0x18, type_=MemoryType.ROM),)
+    max_value = 64
 
 
 class GearUnitCount(NumericValue):
@@ -139,6 +140,7 @@ class GearUnitCount(NumericValue):
     """
     bank = BANK_0
     locations = (MemoryLocation(address=0x19, type_=MemoryType.ROM),)
+    max_value = 64
 
 
 class UnitIndex(NumericValue):

@@ -12,7 +12,8 @@ class MemoryType(Enum):
     RAM_RW = auto()    # RAM-RW
     NVM_RO = auto()    # NVM-RO
     NVM_RW = auto()    # NVM-RW
-    NVM_RW_P = auto()  # NVM-RW (protectable)
+    NVM_RW_L = auto()  # NVM-RW (lockable)
+    NVM_RW_P = auto()  # NVM-RW (protectable — vendor-specific mechanism)
 
 
 class MemoryLocationNotImplemented(Exception):
@@ -135,8 +136,8 @@ class MemoryBank:
 
     def __repr__(self):
         return f'MemoryBank(address={self.address}, ' \
-            f'has_lock={bool(self.__lock_byte_address)}, ' \
-            f'has_latch={bool(self.__latch_byte_address)})'
+            f'has_lock={self.LockByte and self.LockByte.lock}, ' \
+            f'has_latch={self.LockByte and self.LockByte.latch})'
 
 
 class MemoryLocation:
@@ -226,6 +227,12 @@ class _RegisterMemoryValue(type):
         return super().__str__()
 
 
+class FlagValue(Enum):
+    Invalid = "Invalid"  # Memory value not valid according to the standard
+    MASK = "MASK"        # Memory value not implemented
+    TMASK = "TMASK"      # Memory value temporarily unavailable
+
+
 class MemoryValue(metaclass=_RegisterMemoryValue):
     """A group of memory locations that together represent a value
 
@@ -238,17 +245,68 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
     order required by the _to_value() method. It is most efficient if
     these memory locations are contiguous increasing in address.
     """
+    # Is MASK a possible value?  MASK is part of the DiiA extended
+    # memory bank specifications, parts 252 and 253.
+    mask_supported = False
+
+    # Is TMASK a possible value?  TMASK is part of the DiiA extended
+    # memory bank specifications, parts 252 and 253.
+    tmask_supported = False
+
+    # Should the value be treated as signed when checking for MASK
+    # and/or TMASK?
+    signed = False
+
     @classmethod
-    def _to_value(cls, raw):
-        """Converts raw bytes to the wanted result."""
+    def raw_to_value(cls, raw):
+        """Converts raw bytes to the wanted result
+
+        This method should only be called with valid values for 'raw'.
+        Checks for invalid and special values should be performed first.
+        """
         return raw
 
     @classmethod
-    def read(cls, addr):
-        """Returns the value.
+    def is_valid(cls, raw):
+        """Check whether raw bytes are valid for this memory value"""
+        return True
 
-        Raises MemoryLocationNotImplemented exception if device does
+    @classmethod
+    def check_raw(cls, raw):
+        """Check for invalid or special patterns in raw bytes
+
+        Returns None if no invalid or special patterns were found, otherwise
+        returns the appropriate FlagValue
+        """
+        if cls.mask_supported:
+            if cls.signed:
+                mask = (pow(2, len(raw) * 8 - 1) - 1).to_bytes(
+                    len(raw), 'big', signed=True)
+            else:
+                mask = (pow(2, len(raw) * 8) - 1).to_bytes(
+                    len(raw), 'big')
+            if raw == mask:
+                return FlagValue.MASK
+        if cls.tmask_supported:
+            if cls.signed:
+                tmask = (pow(2, len(raw) * 8 - 1) - 2).to_bytes(
+                    len(raw), 'big', signed=True)
+            else:
+                tmask = (pow(2, len(raw) * 8) - 2).to_bytes(
+                    len(raw), 'big')
+            if raw == tmask:
+                return FlagValue.TMASK
+        if not cls.is_valid(raw):
+            return FlagValue.Invalid
+
+    @classmethod
+    def read_raw(cls, addr):
+        """Read the value from the bus unit without interpretation
+
+        Raises MemoryLocationNotImplemented if the device does
         not respond, e.g. the location is not implemented.
+
+        Returns a bytes() object with the same length as cls.locations
         """
         result = []
         dtr0 = None
@@ -272,7 +330,18 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
                     f'"{str(addr)}" while reading '
                     f'memory bank {cls.bank.address} {str(location)}.')
             result.append(r.raw_value.as_integer)
-        return cls._to_value(bytes(result))
+        return bytes(result)
+
+    @classmethod
+    def read(cls, addr):
+        """Read the value from the bus unit
+
+        Raises MemoryLocationNotImplemented if the device does not respond.
+
+        Returns an interpreted value if possible, otherwise a FlagValue
+        """
+        raw = yield from cls.read_raw(addr)
+        return cls.check_raw(raw) or cls.raw_to_value(raw)
 
     @classmethod
     def from_list(cls, list_):
@@ -287,7 +356,8 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
             if r is None:
                 raise MemoryLocationNotImplemented(f'List is missing memory location {str(location)}.')
             raw.append(r)
-        return cls._to_value(raw)
+        raw = bytes(raw)
+        return cls.check_raw(raw) or cls.raw_to_value(raw)
 
     @classmethod
     def is_addressable(cls, addr):
@@ -307,7 +377,7 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
     def is_locked(cls, addr):
         """Checks whether this value is locked
         """
-        if cls.locations[0].type_ == MemoryType.NVM_RW_P:
+        if cls.locations[0].type_ == MemoryType.NVM_RW_L:
             locked = yield from cls.bank.is_locked(addr)
             return locked
         else:
@@ -318,10 +388,23 @@ class NumericValue(MemoryValue):
     """Numeric value stored with MSB at the first location
     """
     unit = ''
+    min_value = None
+    max_value = None
 
     @classmethod
-    def _to_value(cls, raw):
-        return int.from_bytes(raw, 'big')
+    def raw_to_value(cls, raw):
+        return int.from_bytes(raw, 'big', signed=cls.signed)
+
+    @classmethod
+    def is_valid(cls, raw):
+        trial = int.from_bytes(raw, 'big', signed=cls.signed)
+        if cls.min_value is not None:
+            if trial < cls.min_value:
+                return False
+        if cls.max_value is not None:
+            if trial > cls.max_value:
+                return False
+        return True
 
 
 class FixedScaleNumericValue(NumericValue):
@@ -330,13 +413,13 @@ class FixedScaleNumericValue(NumericValue):
     scaling_factor = 1
 
     @classmethod
-    def _to_value(cls, raw):
-        return cls.scaling_factor * int.from_bytes(raw, 'big')
+    def raw_to_value(cls, raw):
+        return cls.scaling_factor * super().raw_to_value(raw)
 
 
 class StringValue(MemoryValue):
     @classmethod
-    def _to_value(cls, raw):
+    def raw_to_value(cls, raw):
         result = ''
         for value in raw:
             if value == 0:
@@ -348,11 +431,15 @@ class StringValue(MemoryValue):
 
 class BinaryValue(MemoryValue):
     @classmethod
-    def _to_value(cls, raw):
+    def raw_to_value(cls, raw):
         if raw[0] == 1:
             return True
         else:
             return False
+
+    @classmethod
+    def is_valid(cls, raw):
+        return raw[0] in (0, 1)
 
 
 class TemperatureValue(NumericValue):
@@ -360,7 +447,7 @@ class TemperatureValue(NumericValue):
     offset = 60
 
     @classmethod
-    def _to_value(cls, raw):
+    def raw_to_value(cls, raw):
         return int.from_bytes(raw, 'big') - cls.offset
 
 
@@ -379,9 +466,9 @@ class VersionNumberValue(NumericValue):
     first byte and the minor version number is in the second byte.
     """
     @classmethod
-    def _to_value(cls, raw):
+    def raw_to_value(cls, raw):
         if len(raw) == 1:
-            n = super()._to_value(raw)
+            n = super().raw_to_value(raw)
             if n == 0xff:
                 return "not implemented"
             return f"{n >> 2}.{n & 0x3}"

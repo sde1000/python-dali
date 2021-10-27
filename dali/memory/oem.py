@@ -17,7 +17,7 @@ class ManufacturerGTIN(NumericValue):
     """
     bank = BANK_1
     locations = MemoryRange(start=0x03, end=0x08, default=0xff,
-                            type_=MemoryType.NVM_RW_P).locations
+                            type_=MemoryType.NVM_RW_L).locations
 
 
 class LuminaireID(NumericValue):
@@ -27,7 +27,7 @@ class LuminaireID(NumericValue):
     """
     bank = BANK_1
     locations = MemoryRange(start=0x09, end=0x10, default=0xff,
-                            type_=MemoryType.NVM_RW_P).locations
+                            type_=MemoryType.NVM_RW_L).locations
 
 
 class ContentFormatID(NumericValue):
@@ -40,8 +40,8 @@ class ContentFormatID(NumericValue):
     # be set?
     bank = BANK_1
     locations = (
-        MemoryLocation(address=0x11, default=0x00, type_=MemoryType.NVM_RW_P),
-        MemoryLocation(address=0x12, default=0x03, type_=MemoryType.NVM_RW_P),
+        MemoryLocation(address=0x11, default=0x00, type_=MemoryType.NVM_RW_L),
+        MemoryLocation(address=0x12, default=0x03, type_=MemoryType.NVM_RW_L),
     )
 
 
@@ -52,7 +52,9 @@ class YearOfManufacture(NumericValue):
     """
     bank = BANK_1
     locations = (MemoryLocation(address=0x13, default=0xff,
-                                type_=MemoryType.NVM_RW_P),)
+                                type_=MemoryType.NVM_RW_L),)
+    mask_supported = True
+    max_value = 99
 
 
 class WeekOfManufacture(NumericValue):
@@ -62,7 +64,10 @@ class WeekOfManufacture(NumericValue):
     """
     bank = BANK_1
     locations = (MemoryLocation(address=0x14, default=0xff,
-                                type_=MemoryType.NVM_RW_P),)
+                                type_=MemoryType.NVM_RW_L),)
+    mask_supported = True
+    min_value = 1
+    max_value = 53
 
 
 class InputPowerNominal(NumericValue):
@@ -73,7 +78,8 @@ class InputPowerNominal(NumericValue):
     bank = BANK_1
     unit = 'W'
     locations = MemoryRange(start=0x15, end=0x16, default=0xff,
-                            type_=MemoryType.NVM_RW_P).locations
+                            type_=MemoryType.NVM_RW_L).locations
+    mask_supported = True
 
 
 class InputPowerMinimumDim(NumericValue):
@@ -84,7 +90,8 @@ class InputPowerMinimumDim(NumericValue):
     bank = BANK_1
     unit = 'W'
     locations = MemoryRange(start=0x17, end=0x18, default=0xff,
-                            type_=MemoryType.NVM_RW_P).locations
+                            type_=MemoryType.NVM_RW_L).locations
+    mask_supported = True
 
 
 class MainsVoltageMinimum(NumericValue):
@@ -95,7 +102,10 @@ class MainsVoltageMinimum(NumericValue):
     bank = BANK_1
     unit = 'V'
     locations = MemoryRange(start=0x19, end=0x1a, default=0xff,
-                            type_=MemoryType.NVM_RW_P).locations
+                            type_=MemoryType.NVM_RW_L).locations
+    min_value = 90
+    max_value = 480
+    mask_supported = True
 
 
 class MainsVoltageMaximum(NumericValue):
@@ -106,7 +116,10 @@ class MainsVoltageMaximum(NumericValue):
     bank = BANK_1
     unit = 'V'
     locations = MemoryRange(start=0x1b, end=0x1c, default=0xff,
-                            type_=MemoryType.NVM_RW_P).locations
+                            type_=MemoryType.NVM_RW_L).locations
+    min_value = 90
+    max_value = 480
+    mask_supported = True
 
 
 class LightOutputNominal(NumericValue):
@@ -117,7 +130,8 @@ class LightOutputNominal(NumericValue):
     bank = BANK_1
     unit = 'Lm'
     locations = MemoryRange(start=0x1d, end=0x1f, default=0xff,
-                            type_=MemoryType.NVM_RW_P).locations
+                            type_=MemoryType.NVM_RW_L).locations
+    mask_supported = True
 
 
 class CRI(NumericValue):
@@ -127,19 +141,36 @@ class CRI(NumericValue):
     """
     bank = BANK_1
     locations = (MemoryLocation(address=0x20, default=0xff,
-                                type_=MemoryType.NVM_RW_P),)
+                                type_=MemoryType.NVM_RW_L),)
+    max_value = 100
+    mask_supported = True
 
 
 class CCT(NumericValue):
     """CCT in K
 
-    Valid when in the range 0.17000; 17001..65533 or 65535 indicates
-    "unknown", 65534 indicates "Part 209 implemented"
+    Valid when in the range 0..17000
+
+    May return "Part 209 implemented" for raw value 0xfffe
     """
     bank = BANK_1
     unit = 'K'
     locations = MemoryRange(start=0x21, end=0x22, default=0xff,
-                            type_=MemoryType.NVM_RW_P).locations
+                            type_=MemoryType.NVM_RW_L).locations
+    mask_supported = True
+    max_value = 17000
+
+    @classmethod
+    def raw_to_value(cls, raw):
+        if raw == bytes([0xff, 0xfe]):
+            return "Part 209 implemented"
+        return super().raw_to_value(raw)
+
+    @classmethod
+    def is_valid(cls, raw):
+        if raw == bytes([0xff, 0xfe]):
+            return True
+        return super().is_valid(raw)
 
 
 class LightDistributionType(MemoryValue):
@@ -155,10 +186,11 @@ class LightDistributionType(MemoryValue):
     """
     bank = BANK_1
     locations = (MemoryLocation(address=0x23, default=0xff,
-                                type_=MemoryType.NVM_RW_P),)
+                                type_=MemoryType.NVM_RW_L),)
+    mask_supported = True
 
     @classmethod
-    def _to_value(cls, r):
+    def raw_to_value(cls, r):
         light_distribution_type = r[0]
         if light_distribution_type == 0:
             return 'not specified'
@@ -183,7 +215,7 @@ class LuminaireColor(StringValue):
     """
     bank = BANK_1
     locations = MemoryRange(start=0x24, end=0x3b, default=0x00,
-                            type_=MemoryType.NVM_RW_P).locations
+                            type_=MemoryType.NVM_RW_L).locations
 
 
 class LuminaireIdentification(StringValue):
@@ -193,4 +225,4 @@ class LuminaireIdentification(StringValue):
     """
     bank = BANK_1
     locations = MemoryRange(start=0x3c, end=0x77, default=0x00,
-                            type_=MemoryType.NVM_RW_P).locations
+                            type_=MemoryType.NVM_RW_L).locations

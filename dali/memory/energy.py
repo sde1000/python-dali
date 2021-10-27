@@ -1,5 +1,5 @@
 from .location import MemoryBank, MemoryLocation, MemoryRange, \
-    MemoryType, NumericValue
+    MemoryType, NumericValue, FlagValue
 from decimal import Decimal
 
 # Memory bank definitions from DiiA Specification, DALI Part 252 -
@@ -19,10 +19,20 @@ class ScaledNumericValue(NumericValue):
     Values are returned as Decimals to preserve precision.
     """
     @classmethod
-    def _to_value(cls, raw):
+    def raw_to_value(cls, raw):
         scaling_factor = pow(Decimal(10), int.from_bytes(
             raw[:1], 'big', signed=True))
         return int.from_bytes(raw[1:], 'big') * scaling_factor
+
+    @classmethod
+    def check_raw(cls, raw):
+        # Check the scale factor here rather than in is_valid(); the
+        # raw value passed to is_valid() by check_raw() will be
+        # missing the scale factor
+        if raw[0] > 6 and raw[0] < 0xfa:
+            return FlagValue.Invalid
+        # Ignore the first location when checking for MASK or TMASK
+        return super().check_raw(raw[1:])
 
 
 class ActiveBankVersion(NumericValue):
@@ -44,6 +54,8 @@ class ActiveEnergy(ScaledNumericValue):
         MemoryLocation(address=0x04, type_=MemoryType.ROM),
     ) + MemoryRange(start=0x05, end=0x0a, default=0x00,
                     type_=MemoryType.NVM_RO).locations
+    tmask_supported = True
+    max_value = 0xfffffffffffd
 
 
 class ActivePower(ScaledNumericValue):
@@ -57,6 +69,8 @@ class ActivePower(ScaledNumericValue):
     locations = (
         MemoryLocation(address=0x0b, type_=MemoryType.ROM),
     ) + MemoryRange(start=0x0c, end=0x0f, type_=MemoryType.RAM_RO).locations
+    tmask_supported = True
+    max_value = 0xfffffffd
 
 
 class ApparentBankVersion(NumericValue):
@@ -78,6 +92,8 @@ class ApparentEnergy(ScaledNumericValue):
         MemoryLocation(address=0x04, type_=MemoryType.ROM),
     ) + MemoryRange(start=0x05, end=0x0a, default=0x00,
                     type_=MemoryType.NVM_RO).locations
+    tmask_supported = True
+    max_value = 0xfffffffffffd
 
 
 class ApparentPower(ScaledNumericValue):
@@ -92,6 +108,8 @@ class ApparentPower(ScaledNumericValue):
     locations = (
         MemoryLocation(address=0x0b, type_=MemoryType.ROM),
     ) + MemoryRange(start=0x0c, end=0x0f, type_=MemoryType.RAM_RO).locations
+    tmask_supported = True
+    max_value = 0xfffffffd
 
 
 class LoadsideBankVersion(NumericValue):
@@ -113,6 +131,8 @@ class ActiveEnergyLoadside(ScaledNumericValue):
         MemoryLocation(address=0x04, type_=MemoryType.ROM),
     ) + MemoryRange(start=0x05, end=0x0a, default=0x00,
                     type_=MemoryType.NVM_RO).locations
+    tmask_supported = True
+    max_value = 0xfffffffffffd
 
 
 class ActivePowerLoadside(ScaledNumericValue):
@@ -130,3 +150,5 @@ class ActivePowerLoadside(ScaledNumericValue):
     locations = (
         MemoryLocation(address=0x0b, type_=MemoryType.ROM),
     ) + MemoryRange(start=0x0c, end=0x0f, type_=MemoryType.RAM_RO).locations
+    tmask_supported = True
+    max_value = 0xfffffffd

@@ -37,6 +37,8 @@ class ControlGearOperatingTime(NumericValue):
     unit = 's'
     locations = MemoryRange(start=0x04, end=0x07, default=0x00,
                             type_=MemoryType.NVM_RO).locations
+    tmask_supported = True
+    max_value = 0xfffffffd
 
 
 class ControlGearStartCounter(NumericValue):
@@ -51,6 +53,8 @@ class ControlGearStartCounter(NumericValue):
     bank = BANK_205
     locations = MemoryRange(start=0x08, end=0x0a, default=0x00,
                             type_=MemoryType.NVM_RO).locations
+    tmask_supported = True
+    max_value = 0xfffffd
 
 
 class ControlGearExternalSupplyVoltage(FixedScaleNumericValue):
@@ -63,6 +67,9 @@ class ControlGearExternalSupplyVoltage(FixedScaleNumericValue):
     scaling_factor = Decimal("0.1")
     locations = MemoryRange(start=0x0b, end=0x0c,
                             type_=MemoryType.RAM_RO).locations
+    tmask_supported = True
+    mask_supported = True
+    max_value = 0xfffd
 
 
 class ControlGearExternalSupplyVoltageFrequency(NumericValue):
@@ -81,6 +88,9 @@ class ControlGearExternalSupplyVoltageFrequency(NumericValue):
     bank = BANK_205
     unit = 'Hz'
     locations = (MemoryLocation(address=0x0d, type_=MemoryType.RAM_RO),)
+    tmask_supported = True
+    mask_supported = True
+    max_value = 0xfd
 
 
 class ControlGearPowerFactor(FixedScaleNumericValue):
@@ -89,6 +99,9 @@ class ControlGearPowerFactor(FixedScaleNumericValue):
     bank = BANK_205
     scaling_factor = Decimal("0.01")
     locations = (MemoryLocation(address=0x0e, type_=MemoryType.RAM_RO),)
+    tmask_supported = True
+    mask_supported = True
+    max_value = 100
 
 
 class ControlGearOverallFailureCondition(BinaryValue):
@@ -103,6 +116,7 @@ class ControlGearOverallFailureCondition(BinaryValue):
     """
     bank = BANK_205
     locations = (MemoryLocation(address=0x0f, type_=MemoryType.RAM_RO),)
+    tmask_supported = True
 
 
 class ControlGearOverallFailureConditionCounter(NumericValue):
@@ -113,6 +127,8 @@ class ControlGearOverallFailureConditionCounter(NumericValue):
     bank = BANK_205
     locations = (MemoryLocation(address=0x10, default=0x00,
                                 reset=0x0e, type_=MemoryType.NVM_RO),)
+    tmask_supported = True
+    max_value = 0xfd
 
 
 class ControlGearExternalSupplyUndervoltage(BinaryValue):
@@ -150,6 +166,8 @@ class ControlGearExternalSupplyUndervoltage(BinaryValue):
     """
     bank = BANK_205
     locations = (MemoryLocation(address=0x11, type_=MemoryType.RAM_RO),)
+    tmask_supported = True
+    mask_supported = True
 
 
 class ControlGearExternalSupplyUndervoltageCounter(NumericValue):
@@ -160,6 +178,9 @@ class ControlGearExternalSupplyUndervoltageCounter(NumericValue):
     bank = BANK_205
     locations = (MemoryLocation(address=0x12, default=0x00,
                                 reset=0x0e, type_=MemoryType.NVM_RO),)
+    tmask_supported = True
+    mask_supported = True
+    max_value = 0xfd
 
 
 class ControlGearExternalSupplyOvervoltage(BinaryValue):
@@ -197,6 +218,8 @@ class ControlGearExternalSupplyOvervoltage(BinaryValue):
     """
     bank = BANK_205
     locations = (MemoryLocation(address=0x13, type_=MemoryType.RAM_RO),)
+    tmask_supported = True
+    mask_supported = True
 
 
 class ControlGearExternalSupplyOvervoltageCounter(NumericValue):
@@ -207,6 +230,9 @@ class ControlGearExternalSupplyOvervoltageCounter(NumericValue):
     bank = BANK_205
     locations = (MemoryLocation(address=0x14, default=0x00,
                                 reset=0x0e, type_=MemoryType.NVM_RO),)
+    tmask_supported = True
+    mask_supported = True
+    max_value = 0xfd
 
 
 class ControlGearOutputPowerLimitation(BinaryValue):
@@ -232,6 +258,8 @@ class ControlGearOutputPowerLimitation(BinaryValue):
     """
     bank = BANK_205
     locations = (MemoryLocation(address=0x15, type_=MemoryType.RAM_RO),)
+    tmask_supported = True
+    mask_supported = True
 
 
 class ControlGearOutputPowerLimitationCounter(NumericValue):
@@ -242,6 +270,9 @@ class ControlGearOutputPowerLimitationCounter(NumericValue):
     bank = BANK_205
     locations = (MemoryLocation(address=0x16, default=0x00,
                                 reset=0x0e, type_=MemoryType.NVM_RO),)
+    tmask_supported = True
+    mask_supported = True
+    max_value = 0xfd
 
 
 class ControlGearThermalDerating(BinaryValue):
@@ -266,6 +297,8 @@ class ControlGearThermalDerating(BinaryValue):
     """
     bank = BANK_205
     locations = (MemoryLocation(address=0x17, type_=MemoryType.RAM_RO),)
+    tmask_supported = True
+    mask_supported = True
 
 
 class ControlGearThermalDeratingCounter(NumericValue):
@@ -276,6 +309,9 @@ class ControlGearThermalDeratingCounter(NumericValue):
     bank = BANK_205
     locations = (MemoryLocation(address=0x18, default=0x00,
                                 reset=0x0e, type_=MemoryType.NVM_RO),)
+    tmask_supported = True
+    mask_supported = True
+    max_value = 0xfd
 
 
 class ControlGearThermalShutdown(BinaryValue):
@@ -304,6 +340,8 @@ class ControlGearThermalShutdown(BinaryValue):
     """
     bank = BANK_205
     locations = (MemoryLocation(address=0x19, type_=MemoryType.RAM_RO),)
+    tmask_supported = True
+    mask_supported = True
 
 
 class ControlGearThermalShutdownCounter(NumericValue):
@@ -314,6 +352,9 @@ class ControlGearThermalShutdownCounter(NumericValue):
     bank = BANK_205
     locations = (MemoryLocation(address=0x1a, default=0x00,
                                 reset=0x0e, type_=MemoryType.NVM_RO),)
+    tmask_supported = True
+    mask_supported = True
+    max_value = 0xfd
 
 
 class ControlGearTemperature(TemperatureValue):
@@ -328,6 +369,8 @@ class ControlGearTemperature(TemperatureValue):
     """
     bank = BANK_205
     locations = (MemoryLocation(address=0x1b, type_=MemoryType.RAM_RO),)
+    tmask_supported = True
+    max_value = 0xfd
 
 
 class ControlGearOutputCurrentPercent(NumericValue):
@@ -360,6 +403,8 @@ class ControlGearOutputCurrentPercent(NumericValue):
     bank = BANK_205
     unit = '%'
     locations = (MemoryLocation(address=0x1c, type_=MemoryType.RAM_RO),)
+    tmask_supported = True
+    max_value = 100
 
 
 class LightSourceDiagnosticBankVersion(NumericValue):
@@ -392,6 +437,8 @@ class LightSourceStartCounterResettable(NumericValue):
     bank = BANK_206
     locations = MemoryRange(start=0x04, end=0x06, default=0x00,
                             type_=MemoryType.NVM_RW).locations
+    tmask_supported = True
+    max_value = 0xfffffd
 
 
 class LightSourceStartCounter(NumericValue):
@@ -406,6 +453,8 @@ class LightSourceStartCounter(NumericValue):
     bank = BANK_206
     locations = MemoryRange(start=0x07, end=0x09, default=0x00,
                             type_=MemoryType.NVM_RO).locations
+    tmask_supported = True
+    max_value = 0xfffffd
 
 
 class LightSourceOnTimeResettable(NumericValue):
@@ -431,6 +480,8 @@ class LightSourceOnTimeResettable(NumericValue):
     unit = 's'
     locations = MemoryRange(start=0x0a, end=0x0d, default=0x00,
                             type_=MemoryType.NVM_RW).locations
+    tmask_supported = True
+    max_value = 0xfffffffd
 
 
 class LightSourceOnTime(NumericValue):
@@ -446,6 +497,8 @@ class LightSourceOnTime(NumericValue):
     unit = 's'
     locations = MemoryRange(start=0x0e, end=0x11, default=0x00,
                             type_=MemoryType.NVM_RO).locations
+    tmask_supported = True
+    max_value = 0xfffffffd
 
 
 class LightSourceVoltage(FixedScaleNumericValue):
@@ -460,6 +513,8 @@ class LightSourceVoltage(FixedScaleNumericValue):
     scaling_factor = Decimal("0.1")
     locations = MemoryRange(start=0x12, end=0x13,
                             type_=MemoryType.RAM_RO).locations
+    tmask_supported = True
+    max_value = 0xfffd
 
 
 class LightSourceCurrent(FixedScaleNumericValue):
@@ -474,6 +529,8 @@ class LightSourceCurrent(FixedScaleNumericValue):
     scaling_factor = Decimal("0.001")
     locations = MemoryRange(start=0x14, end=0x15,
                             type_=MemoryType.RAM_RO).locations
+    tmask_supported = True
+    max_value = 0xfffd
 
 
 class LightSourceOverallFailureCondition(BinaryValue):
@@ -486,6 +543,7 @@ class LightSourceOverallFailureCondition(BinaryValue):
     """
     bank = BANK_206
     locations = (MemoryLocation(address=0x16, type_=MemoryType.RAM_RO),)
+    tmask_supported = True
 
 
 class LightSourceOverallFailureConditionCounter(NumericValue):
@@ -496,6 +554,8 @@ class LightSourceOverallFailureConditionCounter(NumericValue):
     bank = BANK_206
     locations = (MemoryLocation(address=0x17, default=0x00,
                                 reset=0x0e, type_=MemoryType.NVM_RO),)
+    tmask_supported = True
+    max_value = 0xfd
 
 
 class LightSourceShortCircuit(BinaryValue):
@@ -513,6 +573,8 @@ class LightSourceShortCircuit(BinaryValue):
     """
     bank = BANK_206
     locations = (MemoryLocation(address=0x18, type_=MemoryType.RAM_RO),)
+    tmask_supported = True
+    mask_supported = True
 
 
 class LightSourceShortCircuitCounter(NumericValue):
@@ -523,6 +585,9 @@ class LightSourceShortCircuitCounter(NumericValue):
     bank = BANK_206
     locations = (MemoryLocation(address=0x19, default=0x00,
                                 reset=0x0e, type_=MemoryType.NVM_RO),)
+    tmask_supported = True
+    mask_supported = True
+    max_value = 0xfd
 
 
 class LightSourceOpenCircuit(BinaryValue):
@@ -540,6 +605,8 @@ class LightSourceOpenCircuit(BinaryValue):
     """
     bank = BANK_206
     locations = (MemoryLocation(address=0x1a, type_=MemoryType.RAM_RO),)
+    tmask_supported = True
+    mask_supported = True
 
 
 class LightSourceOpenCircuitCounter(NumericValue):
@@ -550,6 +617,9 @@ class LightSourceOpenCircuitCounter(NumericValue):
     bank = BANK_206
     locations = (MemoryLocation(address=0x1b, default=0x00,
                                 reset=0x0e, type_=MemoryType.NVM_RO),)
+    tmask_supported = True
+    mask_supported = True
+    max_value = 0xfd
 
 
 class LightSourceThermalDerating(BinaryValue):
@@ -576,6 +646,8 @@ class LightSourceThermalDerating(BinaryValue):
     """
     bank = BANK_206
     locations = (MemoryLocation(address=0x1c, type_=MemoryType.RAM_RO),)
+    tmask_supported = True
+    mask_supported = True
 
 
 class LightSourceThermalDeratingCounter(NumericValue):
@@ -586,6 +658,9 @@ class LightSourceThermalDeratingCounter(NumericValue):
     bank = BANK_206
     locations = (MemoryLocation(address=0x1d, default=0x00,
                                 reset=0x0e, type_=MemoryType.NVM_RO),)
+    tmask_supported = True
+    mask_supported = True
+    max_value = 0xfd
 
 
 class LightSourceThermalShutdown(BinaryValue):
@@ -614,6 +689,8 @@ class LightSourceThermalShutdown(BinaryValue):
     """
     bank = BANK_206
     locations = (MemoryLocation(address=0x1e, type_=MemoryType.RAM_RO),)
+    tmask_supported = True
+    mask_supported = True
 
 
 class LightSourceThermalShutdownCounter(NumericValue):
@@ -624,6 +701,9 @@ class LightSourceThermalShutdownCounter(NumericValue):
     bank = BANK_206
     locations = (MemoryLocation(address=0x1f, default=0x00,
                                 reset=0x0e, type_=MemoryType.NVM_RO),)
+    tmask_supported = True
+    mask_supported = True
+    max_value = 0xfd
 
 
 class LightSourceTemperature(TemperatureValue):
@@ -639,3 +719,6 @@ class LightSourceTemperature(TemperatureValue):
     """
     bank = BANK_206
     locations = (MemoryLocation(address=0x20, type_=MemoryType.RAM_RO),)
+    tmask_supported = True
+    mask_supported = True
+    max_value = 0xfd
