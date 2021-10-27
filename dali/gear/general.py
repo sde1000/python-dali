@@ -562,6 +562,16 @@ class EnableWriteMemory(_StandardCommand):
     NB there is no command to explicitly disable memory write access;
     any command that is not directly involved with writing to memory
     banks will set writeEnableState to DISABLED.
+
+    The commands that do not set writeEnableState to DISABLED are:
+     - WriteMemoryLocation
+     - WriteMemoryLocationNoReply
+     - DTR0
+     - DTR1
+     - DTR2
+     - QueryContentDTR0
+     - QueryContentDTR1
+     - QueryContentDTR2
     """
     _cmdval = 0x81
     sendtwice = True
