@@ -4,7 +4,8 @@ from dali.tests import fakes
 from dali.memory import info, diagnostics, energy, maintenance, oem
 from dali.memory.location import MemoryBank, MemoryRange, MemoryValue, \
     NumericValue, FixedScaleNumericValue, StringValue, \
-    BinaryValue, TemperatureValue,  \
+    BinaryValue, TemperatureValue, \
+    MemoryLocationNotWriteable, \
     MemoryType, MemoryLocationNotImplemented, FlagValue
 from dali.command import Command, Response
 from dali.frame import BackwardFrame
@@ -223,7 +224,7 @@ DUMMY_BANK1 = MemoryBank(101, 20, has_lock=False)
 
 class DummyUnlockedMemoryValue(MemoryValue):
     bank = DUMMY_BANK1
-    locations = MemoryRange(3, 7, type_=MemoryType.NVM_RW_L)
+    locations = MemoryRange(3, 7, type_=MemoryType.NVM_RW)
 
 
 class DummyAddressableValue(MemoryValue):
@@ -266,6 +267,9 @@ class TestLocations(unittest.TestCase):
 class TestMemory(unittest.TestCase):
     def setUp(self):
         self.addr = (1, 2)
+        # The unit at self.addr[0] behaves normally, the unit at
+        # self.addr[1] has some oddities which we use to test special
+        # value handling and write errors
         self.bus = fakes.Bus([
             fakes.Gear(self.addr[0], memory_banks={
                 info.BANK_0: fakes.memory_bank_0,
@@ -277,13 +281,13 @@ class TestMemory(unittest.TestCase):
                 diagnostics.BANK_206: memory_bank_206,
                 maintenance.BANK_207: memory_bank_207,
             }),
-            fakes.Gear(self.addr[1], memory_banks={
+            fakes.Gear(self.addr[1], bank_unlock_value=0x54, memory_banks={
                 oem.BANK_1: memory_bank_1_invalid,
                 energy.BANK_202: memory_bank_202_invalid,
                 maintenance.BANK_207: memory_bank_207_invalid,
                 DUMMY_BANK1: [],
                 DUMMY_BANK2: [],
-            })
+            }),
         ])
 
     def _test_value(self, memory_value, expected, addr=0):
@@ -478,6 +482,37 @@ class TestMemory(unittest.TestCase):
         self._test_value(info.DeviceUnitCount, 0)
         self._test_value(info.GearUnitCount, 1)
         self._test_value(info.UnitIndex, 0)
+
+    def test_write(self):
+        # Write a new OEM GTIN and see if we can read it back
+        self.bus.run_sequence(
+            oem.ManufacturerGTIN.write(self.addr[0], 123123123))
+        self._test_value(oem.ManufacturerGTIN, 123123123)
+        # Try to write a new gear GTIN and ensure we fail
+        self.assertRaises(
+            MemoryLocationNotWriteable, self.bus.run_sequence,
+            info.GTIN.write(self.addr[0], 123123123))
+        # Write a new luminaire identification and read it back
+        test_string = "A wizard's staff has a knob on the end"
+        self.bus.run_sequence(
+            oem.LuminaireIdentification.write(self.addr[0], test_string))
+        self._test_value(oem.LuminaireIdentification, test_string)
+        # Write MASK to nominal output and check it reads back correctly
+        self.bus.run_sequence(
+            oem.LightOutputNominal.write(self.addr[0], "MASK"))
+        self._test_value(oem.LightOutputNominal, FlagValue.MASK)
+        # Try to write MASK to a value that does not support it;
+        self.assertRaises(
+            ValueError, self.bus.run_sequence,
+            info.GTIN.write(self.addr[0], "MASK"))
+
+    def test_write_fail(self):
+        # The unit at self.addr[1] uses non-standard lock byte value
+        # 0x54 to unlock, so attempts to write to lockable values
+        # using the normal 0x55 should fail
+        self.assertRaises(
+            MemoryLocationNotWriteable, self.bus.run_sequence,
+            oem.ManufacturerGTIN.write(self.addr[1], 123123123))
 
 
 if __name__ == '__main__':

@@ -3,7 +3,8 @@ from collections import namedtuple
 
 from dali.exceptions import ResponseError
 from dali.gear.general import ReadMemoryLocation, DTR0, DTR1, \
-    WriteMemoryLocationNoReply
+    EnableWriteMemory, WriteMemoryLocation, WriteMemoryLocationNoReply, \
+    QueryContentDTR0
 
 
 class MemoryType(Enum):
@@ -20,8 +21,19 @@ class MemoryLocationNotImplemented(Exception):
     pass
 
 
+class MemoryWriteError(Exception):
+    pass
+
+
+class MemoryLocationNotWriteable(MemoryWriteError):
+    pass
+
+
 class MemoryBank:
     class MemoryLocationOverlap(Exception):
+        pass
+
+    class LockingNotSupported(Exception):
         pass
 
     class LatchingNotSupported(Exception):
@@ -52,7 +64,6 @@ class MemoryBank:
                 latch = has_latch
                 locations = (MemoryLocation(
                     0x02, reset=0xff, default=0xff, type_=MemoryType.RAM_RW),)
-
             self.LockByte = LockByte
         else:
             self.LockByte = None
@@ -61,12 +72,22 @@ class MemoryBank:
     def address(self):
         return self.__address
 
+    @property
+    def has_lock(self):
+        return self.LockByte and self.LockByte.lock
+
+    @property
+    def has_latch(self):
+        return self.LockByte and self.LockByte.latch
+
     def add_memory_value(self, memory_value):
         self.values.append(memory_value)
         for location in memory_value.locations:
             if self.locations[location.address]:
                 raise self.MemoryLocationOverlap(
                     f'Overlapping MemoryLocation at address {location.address}')
+            if location.type_ == MemoryType.NVM_RW_L and not self.has_lock:
+                raise self.LockingNotSupported()
             self.locations[location.address] = self.MemoryBankEntry(
                 location, memory_value)
 
@@ -110,17 +131,28 @@ class MemoryBank:
         Raises LatchingNotSupported exception if bank does not support
         latching.
         """
-        if self.LockByte and self.LockByte.latch:
-            yield DTR1(self.address)
-            yield DTR0(self.LockByte.locations[0].address)
-            yield WriteMemoryLocationNoReply(0xAA, addr)
+        if self.has_latch:
+            yield from self.LockByte.write(addr, 0xaa, ignore_feedback=True)
         else:
-            raise self.LatchingNotSupported(f'Latching not supported for {str(self)}.')
+            raise self.LatchingNotSupported(
+                f'Latching not supported for {str(self)}.')
+
+    def unlatch(self, addr):
+        """Unlatch all memory locations of this bank.
+
+        Raises LatchingNotSupported exception if bank does not support
+        latching.
+        """
+        if self.has_latch:
+            yield from self.LockByte.write(addr, 0xff, ignore_feedback=True)
+        else:
+            raise self.LatchingNotSupported(
+                f'Latching not supported for {str(self)}.')
 
     def is_locked(self, addr):
         """Check whether this bank is locked
         """
-        if self.LockByte and self.LockByte.lock:
+        if self.has_lock:
             r = yield from self.LockByte.read(addr)
             return r[0] != 0x55
         else:
@@ -138,6 +170,15 @@ class MemoryBank:
             f'has_lock={bool(self.LockByte and self.LockByte.lock)}, ' \
             f'has_latch={bool(self.LockByte and self.LockByte.latch)})'
 
+
+# It would be nice to implement MemoryLocation as follows:
+#
+# MemoryLocation = namedtuple(
+#     'MemoryLocation', ['address', 'default', 'reset', 'type_'],
+#     defaults=[None] * 3)
+#
+# Unfortunately the 'defaults' keyword argument is only available from
+# Python 3.7
 
 class MemoryLocation:
     def __init__(self, address, default=None, reset=None, type_=None):
@@ -191,6 +232,26 @@ class _RegisterMemoryValue(type):
                 cls.locations = (cls.locations, )
             cls.bank.add_memory_value(cls)
 
+            # Some types of value may need to adjust the number of
+            # bytes for 'mas' or 'tmask'
+            num_loc = len(cls.locations) + getattr(cls, 'mask_length_adjust', 0)
+
+            if cls.mask_supported:
+                if cls.signed:
+                    cls.mask = (pow(2, num_loc * 8 - 1) - 1).to_bytes(
+                        num_loc, 'big', signed=True)
+                else:
+                    cls.mask = (pow(2, num_loc * 8) - 1).to_bytes(
+                        num_loc, 'big')
+
+            if cls.tmask_supported:
+                if cls.signed:
+                    cls.tmask = (pow(2, num_loc * 8 - 1) - 2).to_bytes(
+                        num_loc, 'big', signed=True)
+                else:
+                    cls.tmask = (pow(2, num_loc * 8) - 2).to_bytes(
+                        num_loc, 'big')
+
     def __str__(cls):
         if hasattr(cls, 'name'):
             return cls.name
@@ -237,6 +298,14 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
         return raw
 
     @classmethod
+    def value_to_raw(cls, value):
+        """Converts a value to raw bytes to write to the memory bank
+
+        If the conversion cannot be performed, raises ValueError
+        """
+        raise ValueError
+
+    @classmethod
     def is_valid(cls, raw):
         """Check whether raw bytes are valid for this memory value"""
         return True
@@ -249,22 +318,10 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
         returns the appropriate FlagValue
         """
         if cls.mask_supported:
-            if cls.signed:
-                mask = (pow(2, len(raw) * 8 - 1) - 1).to_bytes(
-                    len(raw), 'big', signed=True)
-            else:
-                mask = (pow(2, len(raw) * 8) - 1).to_bytes(
-                    len(raw), 'big')
-            if raw == mask:
+            if raw == cls.mask:
                 return FlagValue.MASK
         if cls.tmask_supported:
-            if cls.signed:
-                tmask = (pow(2, len(raw) * 8 - 1) - 2).to_bytes(
-                    len(raw), 'big', signed=True)
-            else:
-                tmask = (pow(2, len(raw) * 8) - 2).to_bytes(
-                    len(raw), 'big')
-            if raw == tmask:
+            if raw == cls.tmask:
                 return FlagValue.TMASK
         if not cls.is_valid(raw):
             return FlagValue.Invalid
@@ -330,6 +387,110 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
         return cls.check_raw(raw) or cls.raw_to_value(raw)
 
     @classmethod
+    def write_raw(cls, addr, raw, allow_short_write=False,
+                  force_unlock=False, ignore_feedback=False):
+        """Write a value to the bus unit without interpretation
+
+        Raises MemoryLocationNotWriteable if the memory location is
+        not of an appropriate type. If the value to be written is of
+        the wrong length, raises ValueError. Pass
+        allow_short_write=True if you need to write less than the full
+        memory value length (for example, a null-terminated string).
+
+        Handles unlocking and relocking the memory bank if the memory
+        location types indicate that this is required. This can be
+        forced by passing force_unlock=True.
+
+        By default, checks responses from the bus unit and raises
+        MemoryLocationNotWriteable if the bus unit responds to the
+        write with NO or MemoryWriteError if the post-write check of
+        DTR0 yields an unexpected value. If the bus unit responds with
+        an incorrect value or framing error, raises
+        ResponseError. These checks can be skipped by setting
+        ignore_feedback=True.
+        """
+        if allow_short_write:
+            if len(raw) > len(cls.locations):
+                raise ValueError("Raw data too long")
+        else:
+            if len(raw) != len(cls.locations):
+                raise ValueError("Incorrect raw data length")
+        unlock_required = force_unlock
+        # Check that all locations are writeable
+        for location in cls.locations:
+            if location.type_ not in (
+                    MemoryType.RAM_RW, MemoryType.NVM_RW,
+                    MemoryType.NVM_RW_L, MemoryType.NVM_RW_P):
+                raise MemoryLocationNotWriteable(
+                    f"{str(cls)} is not a writeable MemoryValue")
+            # Memory of type NVM_RW_P may be write (or read!)
+            # protected, but there is no standard way of unprotecting
+            # it.
+            if location.type_ == MemoryType.NVM_RW_L:
+                unlock_required = True
+
+        dtr0 = None
+        yield DTR1(cls.bank.address)
+        yield EnableWriteMemory(addr)
+        if unlock_required:
+            yield DTR0(2)
+            yield WriteMemoryLocationNoReply(0x55)
+            dtr0 = 3
+        for location, value in zip(cls.locations, raw):
+            if location.address != dtr0:
+                yield DTR0(location.address)
+                dtr0 = location.address
+            if ignore_feedback:
+                yield WriteMemoryLocationNoReply(value)
+            else:
+                r = yield WriteMemoryLocation(value)
+                if r.raw_value is None:
+                    raise MemoryLocationNotWriteable(
+                        f'Bus unit at address "{str(addr)}" responded NO to '
+                        f'write of memory bank {cls.bank.address} location '
+                        f'{location.address}.')
+                if r.raw_value.error:
+                    raise ResponseError(
+                        f'Framing error in response from bus unit at address '
+                        f'"{str(addr)}" while writing memory bank '
+                        f'{cls.bank.address} location {location.address}.')
+                if r.raw_value.as_integer != value:
+                    raise ResponseError(
+                        f'Incorrect value in response from bus unit at address '
+                        f'"{str(addr)}" while writing memory bank '
+                        f'{cls.bank.address} location {location.address}. '
+                        f'Expected: {value}, received {r.raw_value.as_integer}')
+            dtr0 = min(dtr0 + 1, 255)
+        if not ignore_feedback:
+            # IEC 62386-102 section 9.10.6 recommends that the
+            # application controller checks the value of DTR0 to
+            # verify it is at the expected location, with any mismatch
+            # indicating an error while writing.
+            r = yield QueryContentDTR0(addr)
+            if r.raw_value is None:
+                raise ResponseError(
+                    f'Bus unit at address "{str(addr)}" responded NO to '
+                    f'check of DTR0')
+            if r.raw_value.error:
+                raise ResponseError(
+                    f'Framing error in response from bus unit at address '
+                    f'"{str(addr)}" while checking DTR0 after write')
+            if r.raw_value.as_integer != dtr0:
+                raise MemoryWriteError(
+                    f'Incorrect value in response from bus unit at address '
+                    f'"{str(addr)}" while checking DTR0 after writing memory '
+                    f'bank {cls.bank.address}. '
+                    f'Expected: {dtr0}, received {r.raw_value.as_integer}')
+        if unlock_required:
+            yield DTR0(2)
+            yield WriteMemoryLocationNoReply(0xff)
+
+    @classmethod
+    def write(cls, addr, value, **kwargs):
+        raw = cls.value_to_raw(value)
+        yield from cls.write_raw(addr, raw, **kwargs)
+
+    @classmethod
     def is_addressable(cls, addr):
         """Checks whether this value is addressable
 
@@ -366,6 +527,16 @@ class NumericValue(MemoryValue):
         return int.from_bytes(raw, 'big', signed=cls.signed)
 
     @classmethod
+    def value_to_raw(cls, value):
+        if cls.mask_supported and value == 'MASK':
+            return cls.mask
+        if cls.tmask_supported and value == 'TMASK':
+            return cls.tmask
+        if not isinstance(value, int):
+            raise ValueError("An int is required here")
+        return value.to_bytes(len(cls.locations), 'big', signed=cls.signed)
+
+    @classmethod
     def is_valid(cls, raw):
         trial = int.from_bytes(raw, 'big', signed=cls.signed)
         if cls.min_value is not None:
@@ -397,6 +568,20 @@ class StringValue(MemoryValue):
             else:
                 result += chr(value)
         return result
+
+    @classmethod
+    def value_to_raw(cls, value):
+        raw = value.encode('ascii')
+        if len(raw) > len(cls.locations):
+            raise ValueError("String is too long to write to location")
+        if len(raw) < len(cls.locations):
+            raw = raw + b'\0'
+        return raw
+
+    @classmethod
+    def write(cls, addr, value, **kwargs):
+        kwargs['allow_short_write'] = True
+        return super().write(addr, value, **kwargs)
 
 
 class BinaryValue(MemoryValue):

@@ -18,6 +18,9 @@ class ScaledNumericValue(NumericValue):
 
     Values are returned as Decimals to preserve precision.
     """
+    # We remove a byte before checking for MASK or TMASK
+    mask_length_adjust = -1
+
     @classmethod
     def raw_to_value(cls, raw):
         scaling_factor = pow(Decimal(10), int.from_bytes(

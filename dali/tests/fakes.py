@@ -5,6 +5,7 @@ from dali.command import Command
 from dali.gear import general
 from dali.sequences import progress
 from dali.memory import info, oem
+from dali.memory.location import MemoryType
 import random
 
 _yes = 0xff
@@ -38,7 +39,8 @@ class Gear:
     def __init__(self, shortaddr=None, groups=set(),
                  devicetypes=[], random_preload=[],
                  memory_banks={info.BANK_0: memory_bank_0,
-                               oem.BANK_1: memory_bank_1}):
+                               oem.BANK_1: memory_bank_1},
+                 bank_unlock_value=0x55):
         self.shortaddr = shortaddr
         self.scenes = [255] * 16
         self.groups = set(groups)
@@ -60,6 +62,8 @@ class Gear:
         }
         for bank, contents in memory_banks.items():
             self.set_memory_data(bank.address, contents)
+        self.bank_unlock_value = bank_unlock_value
+        self.enableWriteMemory = False
 
     def set_memory_data(self, bank, new_contents):
         # Update memory bank using new_contents. Locations with
@@ -92,6 +96,16 @@ class Gear:
 
     def send(self, cmd):
         self.dt_gap += 1
+        # Reset enableWriteMemory if command is not one of the memory
+        # writing commands, even if the command is not addressed to us
+        if self.enableWriteMemory and not any(
+                isinstance(cmd, ct) for ct in (
+                    general.WriteMemoryLocation,
+                    general.WriteMemoryLocationNoReply,
+                    general.DTR0, general.DTR1, general.DTR2,
+                    general.QueryContentDTR0, general.QueryContentDTR1,
+                    general.QueryContentDTR2)):
+            self.enableWriteMemory = False
         if not self.valid_address(cmd):
             return
         # Command is either addressed to us, or is a broadcast
@@ -199,7 +213,14 @@ class Gear:
             self.dtr1 = cmd.param
         elif isinstance(cmd, general.DTR2):
             self.dtr2 = cmd.param
+        elif isinstance(cmd, general.EnableWriteMemory):
+            self.enableWriteMemory = True
         elif isinstance(cmd, general.ReadMemoryLocation):
+            # "If the selected memory bank is not implemented, the
+            # command shall be ignored."
+            bank = self.memory_banks.get(self.dtr1)
+            if not bank:
+                return
             try:
                 memory_value = self.memory_contents[self.dtr1][self.dtr0]
             except (KeyError, AttributeError):
@@ -209,7 +230,38 @@ class Gear:
             else:
                 return memory_value
             finally:
-                # increment DTR0 but limit to 0xFF
+                # increment DTR0 but limit to 0xFF, even if the memory
+                # location is not implemented
+                self.dtr0 = min(self.dtr0 + 1, 255)
+        elif isinstance(cmd, general.WriteMemoryLocation) \
+             or isinstance(cmd, general.WriteMemoryLocationNoReply):  # noqa
+            bank = self.memory_banks.get(self.dtr1)
+            # "Only while writeEnableState is ENABLED, and the
+            # addressed memory bank is implemented, the control gear
+            # shall accept..."
+            if not self.enableWriteMemory or not bank:
+                return
+            try:
+                # "If the selected memory bank location is not
+                # implemented, or above the last accessible memory
+                # location, or locked, or not writeable, the answer [...]
+                # shall be NO and no memory location shall be written to."
+                location = bank.locations[self.dtr0].memory_location
+                if not location:
+                    return  # not implemented
+                if self.dtr0 > self.memory_contents[bank.address][0]:
+                    return  # above the last accessible memory location
+                if location.type_ == MemoryType.NVM_RW_L \
+                   and self.memory_contents[bank.address][2] != self.bank_unlock_value:
+                    return  # locked
+                if location.type_ not in (
+                        MemoryType.RAM_RW, MemoryType.NVM_RW,
+                        MemoryType.NVM_RW_L, MemoryType.NVM_RW_P):
+                    return  # not writeable
+                self.memory_contents[bank.address][self.dtr0] = cmd.param
+                if isinstance(cmd, general.WriteMemoryLocation):
+                    return cmd.param
+            finally:
                 self.dtr0 = min(self.dtr0 + 1, 255)
 
 
