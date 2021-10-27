@@ -31,10 +31,7 @@ class MemoryBank:
         'MemoryBankEntry', ['memory_location', 'memory_value'])
 
     def __init__(self, address, last_address, has_lock=False, has_latch=False):
-        """Defines a memory bank at a given address.
-
-        The address of the lock/latch byte can be defined by passing
-        an int to has_lock/has_latch.
+        """Declares a memory bank at a given address
         """
         self.__address = address
         self.locations = {x: None for x in range(0xff)}
@@ -136,8 +133,8 @@ class MemoryBank:
 
     def __repr__(self):
         return f'MemoryBank(address={self.address}, ' \
-            f'has_lock={self.LockByte and self.LockByte.lock}, ' \
-            f'has_latch={self.LockByte and self.LockByte.latch})'
+            f'has_lock={bool(self.LockByte and self.LockByte.lock)}, ' \
+            f'has_latch={bool(self.LockByte and self.LockByte.latch)})'
 
 
 class MemoryLocation:

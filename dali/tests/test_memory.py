@@ -247,6 +247,13 @@ class DummyUnaddressableValue(MemoryValue):
     locations = MemoryRange(11, 15).locations
 
 
+class TestMemoryBank(unittest.TestCase):
+    def test_repr_memorybank(self):
+        self.assertEqual(
+            repr(MemoryBank(3, 45)),
+            "MemoryBank(address=3, has_lock=False, has_latch=False)")
+
+
 class TestLocations(unittest.TestCase):
     def test_str_memoryvalue(self):
         # str() on a concrete memory value class should return the class name
