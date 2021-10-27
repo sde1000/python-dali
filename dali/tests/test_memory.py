@@ -349,6 +349,25 @@ class TestMemory(unittest.TestCase):
         self.assertEqual(dtr0_counter, 1)
         self.assertEqual(dtr1_counter, 1)
 
+    def test_memorybank_read_all(self):
+        values = self.bus.run_sequence(info.BANK_0.read_all(self.addr[0]))
+        # We can't rely on LastMemoryBank being unchanged, so remove it
+        # from the results
+        del values[info.LastMemoryBank]
+        expected = {
+            info.GTIN: 1234567654321,
+            info.FirmwareVersion: "1.0",
+            info.IdentificationNumber: 1,
+            info.HardwareVersion: "2.1",
+            info.Part101Version: "2.0",
+            info.Part102Version: "2.0",
+            info.Part103Version: "not implemented",
+            info.DeviceUnitCount: 0,
+            info.GearUnitCount: 1,
+            info.UnitIndex: 0,
+        }
+        self.assertEqual(values, expected)
+
     def test_diagnostics(self):
         self._test_value(diagnostics.ControlGearDiagnosticBankVersion, 1)
         self._test_value(diagnostics.ControlGearOperatingTime, 3600)

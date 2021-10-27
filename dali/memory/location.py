@@ -35,13 +35,15 @@ class MemoryBank:
         """
         self.__address = address
         self.locations = {x: None for x in range(0xff)}
+        self.values = []
 
         # add value for last addressable location
-        class LastAddress(MemoryValue):
+        class LastAddress(NumericValue):
             bank = self
             locations = (MemoryLocation(
                 0x00, default=last_address,
                 reset=last_address, type_=MemoryType.ROM),)
+        self.LastAddress = LastAddress
 
         if has_lock or has_latch:
             class LockByte(MemoryValue):
@@ -59,41 +61,41 @@ class MemoryBank:
     def address(self):
         return self.__address
 
-    def add_memory_location(self, memory_location, memory_value):
-        if self.locations[memory_location.address]:
-            raise self.MemoryLocationOverlap(
-                f'Can not add overlapping MemoryLocation at address {memory_location.address}.')
-        self.locations[memory_location.address] = self.MemoryBankEntry(
-            memory_location, memory_value)
+    def add_memory_value(self, memory_value):
+        self.values.append(memory_value)
+        for location in memory_value.locations:
+            if self.locations[location.address]:
+                raise self.MemoryLocationOverlap(
+                    f'Overlapping MemoryLocation at address {location.address}')
+            self.locations[location.address] = self.MemoryBankEntry(
+                location, memory_value)
 
     def last_address(self, addr):
         """Sequence that returns the last available address in this bank
         """
-        yield DTR1(self.address)
-        yield DTR0(0x00)
-        r = yield ReadMemoryLocation(addr)
-        if r.raw_value is None:
-            raise MemoryLocationNotImplemented(
-                f'Device at address "{str(addr)}" does not implement {self}.')
-        return r.raw_value.as_integer
+        la = yield from self.LastAddress.read(addr)
+        return la
 
     def read_all(self, addr):
-        last_address = yield from self.last_address(addr)
+        last_address = yield from self.LastAddress.read(addr)
         # Bank 0 has a useful value at address 0x02; all other banks
         # use this for the lock/latch byte
         start_address = 0x02 if self.address == 0 else 0x03
         # don't need to set DTR1, as we just did that in last_address()
         yield DTR0(start_address)
         raw_data = [None] * start_address
-        for _ in range(start_address, last_address + 1):
+        for loc in range(start_address, last_address + 1):
             r = yield ReadMemoryLocation(addr)
             if r.raw_value is not None:
+                if r.raw_value.error:
+                    raise ResponseError(
+                        f"Framing error while reading memory bank "
+                        f"{self.address} location {loc}")
                 raw_data.append(r.raw_value.as_integer)
             else:
                 raw_data.append(None)
         result = {}
-        for memory_value in set(
-                [x.memory_value for x in self.locations.values() if x]):
+        for memory_value in self.values:
             try:
                 r = memory_value.from_list(raw_data)
             except MemoryLocationNotImplemented:
@@ -159,8 +161,10 @@ class _RegisterMemoryValue(type):
                 raise Exception(
                     f"MemoryValue subclass {name} missing 'bank' attribute")
             cls.name = name
-            for location in cls.locations:
-                cls.bank.add_memory_location(location, cls)
+            # Shorthand: locations can be a single MemoryLoction instance
+            if isinstance(cls.locations, MemoryLocation):
+                cls.locations = (cls.locations, )
+            cls.bank.add_memory_value(cls)
 
     def __str__(cls):
         if hasattr(cls, 'name'):
@@ -307,12 +311,12 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
         Queries the value of the last addressable memory location for
         this memory bank
         """
-        last_location = cls.locations[-1]
+        last_location = max(loc.address for loc in cls.locations)
         try:
             last_address = yield from cls.bank.last_address(addr)
         except MemoryLocationNotImplemented:
             return False
-        return last_address >= last_location.address
+        return last_address >= last_location
 
     @classmethod
     def is_locked(cls, addr):
