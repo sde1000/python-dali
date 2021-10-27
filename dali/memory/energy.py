@@ -39,8 +39,8 @@ class ActiveBankVersion(NumericValue):
     """Version of the active energy and power memory bank
     """
     bank = BANK_202
-    locations = (MemoryLocation(address=0x03, default=0x01,
-                                type_=MemoryType.ROM),)
+    locations = MemoryLocation(address=0x03, default=0x01,
+                               type_=MemoryType.ROM)
 
 
 class ActiveEnergy(ScaledNumericValue):
@@ -77,8 +77,8 @@ class ApparentBankVersion(NumericValue):
     """Version of the apparent energy and power memory bank
     """
     bank = BANK_203
-    locations = (MemoryLocation(address=0x03, default=0x01,
-                                type_=MemoryType.ROM),)
+    locations = MemoryLocation(address=0x03, default=0x01,
+                               type_=MemoryType.ROM)
 
 
 class ApparentEnergy(ScaledNumericValue):
@@ -116,8 +116,8 @@ class LoadsideBankVersion(NumericValue):
     """Version of the loadside energy and power memory bank
     """
     bank = BANK_204
-    locations = (MemoryLocation(address=0x03, default=0x01,
-                                type_=MemoryType.ROM),)
+    locations = MemoryLocation(address=0x03, default=0x01,
+                               type_=MemoryType.ROM)
 
 
 class ActiveEnergyLoadside(ScaledNumericValue):

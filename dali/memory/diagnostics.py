@@ -21,8 +21,8 @@ class ControlGearDiagnosticBankVersion(NumericValue):
     """Version of the gear diagnostics memory bank
     """
     bank = BANK_205
-    locations = (MemoryLocation(address=0x03, default=0x01,
-                                type_=MemoryType.ROM),)
+    locations = MemoryLocation(address=0x03, default=0x01,
+                               type_=MemoryType.ROM)
 
 
 class ControlGearOperatingTime(NumericValue):
@@ -87,7 +87,7 @@ class ControlGearExternalSupplyVoltageFrequency(NumericValue):
     """
     bank = BANK_205
     unit = 'Hz'
-    locations = (MemoryLocation(address=0x0d, type_=MemoryType.RAM_RO),)
+    locations = MemoryLocation(address=0x0d, type_=MemoryType.RAM_RO)
     tmask_supported = True
     mask_supported = True
     max_value = 0xfd
@@ -98,7 +98,7 @@ class ControlGearPowerFactor(FixedScaleNumericValue):
     """
     bank = BANK_205
     scaling_factor = Decimal("0.01")
-    locations = (MemoryLocation(address=0x0e, type_=MemoryType.RAM_RO),)
+    locations = MemoryLocation(address=0x0e, type_=MemoryType.RAM_RO)
     tmask_supported = True
     mask_supported = True
     max_value = 100
@@ -115,7 +115,7 @@ class ControlGearOverallFailureCondition(BinaryValue):
     TMASK is supported
     """
     bank = BANK_205
-    locations = (MemoryLocation(address=0x0f, type_=MemoryType.RAM_RO),)
+    locations = MemoryLocation(address=0x0f, type_=MemoryType.RAM_RO)
     tmask_supported = True
 
 
@@ -125,8 +125,8 @@ class ControlGearOverallFailureConditionCounter(NumericValue):
     Valid in the range 0..0xfd; TMASK is supported
     """
     bank = BANK_205
-    locations = (MemoryLocation(address=0x10, default=0x00,
-                                reset=0x0e, type_=MemoryType.NVM_RO),)
+    locations = MemoryLocation(address=0x10, default=0x00,
+                               reset=0x0e, type_=MemoryType.NVM_RO)
     tmask_supported = True
     max_value = 0xfd
 
@@ -165,7 +165,7 @@ class ControlGearExternalSupplyUndervoltage(BinaryValue):
     TMASK and MASK are supported.
     """
     bank = BANK_205
-    locations = (MemoryLocation(address=0x11, type_=MemoryType.RAM_RO),)
+    locations = MemoryLocation(address=0x11, type_=MemoryType.RAM_RO)
     tmask_supported = True
     mask_supported = True
 
@@ -176,8 +176,8 @@ class ControlGearExternalSupplyUndervoltageCounter(NumericValue):
     Valid in the range 0..0xfd; TMASK and MASK are supported
     """
     bank = BANK_205
-    locations = (MemoryLocation(address=0x12, default=0x00,
-                                reset=0x0e, type_=MemoryType.NVM_RO),)
+    locations = MemoryLocation(address=0x12, default=0x00,
+                               reset=0x0e, type_=MemoryType.NVM_RO)
     tmask_supported = True
     mask_supported = True
     max_value = 0xfd
@@ -217,7 +217,7 @@ class ControlGearExternalSupplyOvervoltage(BinaryValue):
     TMASK and MASK are supported
     """
     bank = BANK_205
-    locations = (MemoryLocation(address=0x13, type_=MemoryType.RAM_RO),)
+    locations = MemoryLocation(address=0x13, type_=MemoryType.RAM_RO)
     tmask_supported = True
     mask_supported = True
 
@@ -228,8 +228,8 @@ class ControlGearExternalSupplyOvervoltageCounter(NumericValue):
     Valid in the range 0..0xfd; TMASK and MASK are supported
     """
     bank = BANK_205
-    locations = (MemoryLocation(address=0x14, default=0x00,
-                                reset=0x0e, type_=MemoryType.NVM_RO),)
+    locations = MemoryLocation(address=0x14, default=0x00,
+                               reset=0x0e, type_=MemoryType.NVM_RO)
     tmask_supported = True
     mask_supported = True
     max_value = 0xfd
@@ -257,7 +257,7 @@ class ControlGearOutputPowerLimitation(BinaryValue):
     TMASK and MASK are supported
     """
     bank = BANK_205
-    locations = (MemoryLocation(address=0x15, type_=MemoryType.RAM_RO),)
+    locations = MemoryLocation(address=0x15, type_=MemoryType.RAM_RO)
     tmask_supported = True
     mask_supported = True
 
@@ -268,8 +268,8 @@ class ControlGearOutputPowerLimitationCounter(NumericValue):
     Valid in the range 0..0xfd; TMASK and MASK are supported
     """
     bank = BANK_205
-    locations = (MemoryLocation(address=0x16, default=0x00,
-                                reset=0x0e, type_=MemoryType.NVM_RO),)
+    locations = MemoryLocation(address=0x16, default=0x00,
+                               reset=0x0e, type_=MemoryType.NVM_RO)
     tmask_supported = True
     mask_supported = True
     max_value = 0xfd
@@ -296,7 +296,7 @@ class ControlGearThermalDerating(BinaryValue):
     TMASK and MASK are supported
     """
     bank = BANK_205
-    locations = (MemoryLocation(address=0x17, type_=MemoryType.RAM_RO),)
+    locations = MemoryLocation(address=0x17, type_=MemoryType.RAM_RO)
     tmask_supported = True
     mask_supported = True
 
@@ -307,8 +307,8 @@ class ControlGearThermalDeratingCounter(NumericValue):
     Valid in the range 0..0xfd; TMASK and MASK are supported
     """
     bank = BANK_205
-    locations = (MemoryLocation(address=0x18, default=0x00,
-                                reset=0x0e, type_=MemoryType.NVM_RO),)
+    locations = MemoryLocation(address=0x18, default=0x00,
+                               reset=0x0e, type_=MemoryType.NVM_RO)
     tmask_supported = True
     mask_supported = True
     max_value = 0xfd
@@ -339,7 +339,7 @@ class ControlGearThermalShutdown(BinaryValue):
     TMASK and MASK are supported
     """
     bank = BANK_205
-    locations = (MemoryLocation(address=0x19, type_=MemoryType.RAM_RO),)
+    locations = MemoryLocation(address=0x19, type_=MemoryType.RAM_RO)
     tmask_supported = True
     mask_supported = True
 
@@ -350,8 +350,8 @@ class ControlGearThermalShutdownCounter(NumericValue):
     Valid in the range 0..0xfd; TMASK and MASK are supported
     """
     bank = BANK_205
-    locations = (MemoryLocation(address=0x1a, default=0x00,
-                                reset=0x0e, type_=MemoryType.NVM_RO),)
+    locations = MemoryLocation(address=0x1a, default=0x00,
+                               reset=0x0e, type_=MemoryType.NVM_RO)
     tmask_supported = True
     mask_supported = True
     max_value = 0xfd
@@ -368,7 +368,7 @@ class ControlGearTemperature(TemperatureValue):
     TMASK is supported
     """
     bank = BANK_205
-    locations = (MemoryLocation(address=0x1b, type_=MemoryType.RAM_RO),)
+    locations = MemoryLocation(address=0x1b, type_=MemoryType.RAM_RO)
     tmask_supported = True
     max_value = 0xfd
 
@@ -402,7 +402,7 @@ class ControlGearOutputCurrentPercent(NumericValue):
     """
     bank = BANK_205
     unit = '%'
-    locations = (MemoryLocation(address=0x1c, type_=MemoryType.RAM_RO),)
+    locations = MemoryLocation(address=0x1c, type_=MemoryType.RAM_RO)
     tmask_supported = True
     max_value = 100
 
@@ -411,8 +411,8 @@ class LightSourceDiagnosticBankVersion(NumericValue):
     """Version of the light source diagnostics memory bank
     """
     bank = BANK_206
-    locations = (MemoryLocation(address=0x03, default=0x01,
-                                type_=MemoryType.ROM),)
+    locations = MemoryLocation(address=0x03, default=0x01,
+                               type_=MemoryType.ROM)
 
 
 class LightSourceStartCounterResettable(NumericValue):
@@ -542,7 +542,7 @@ class LightSourceOverallFailureCondition(BinaryValue):
     TMASK is supported
     """
     bank = BANK_206
-    locations = (MemoryLocation(address=0x16, type_=MemoryType.RAM_RO),)
+    locations = MemoryLocation(address=0x16, type_=MemoryType.RAM_RO)
     tmask_supported = True
 
 
@@ -552,8 +552,8 @@ class LightSourceOverallFailureConditionCounter(NumericValue):
     Valid in the range 0..0xfd; TMASK is supported
     """
     bank = BANK_206
-    locations = (MemoryLocation(address=0x17, default=0x00,
-                                reset=0x0e, type_=MemoryType.NVM_RO),)
+    locations = MemoryLocation(address=0x17, default=0x00,
+                               reset=0x0e, type_=MemoryType.NVM_RO)
     tmask_supported = True
     max_value = 0xfd
 
@@ -572,7 +572,7 @@ class LightSourceShortCircuit(BinaryValue):
     TMASK and MASK are supported
     """
     bank = BANK_206
-    locations = (MemoryLocation(address=0x18, type_=MemoryType.RAM_RO),)
+    locations = MemoryLocation(address=0x18, type_=MemoryType.RAM_RO)
     tmask_supported = True
     mask_supported = True
 
@@ -583,8 +583,8 @@ class LightSourceShortCircuitCounter(NumericValue):
     Valid in the range 0..0xfd; TMASK and MASK are supported
     """
     bank = BANK_206
-    locations = (MemoryLocation(address=0x19, default=0x00,
-                                reset=0x0e, type_=MemoryType.NVM_RO),)
+    locations = MemoryLocation(address=0x19, default=0x00,
+                               reset=0x0e, type_=MemoryType.NVM_RO)
     tmask_supported = True
     mask_supported = True
     max_value = 0xfd
@@ -604,7 +604,7 @@ class LightSourceOpenCircuit(BinaryValue):
     TMASK and MASK are supported
     """
     bank = BANK_206
-    locations = (MemoryLocation(address=0x1a, type_=MemoryType.RAM_RO),)
+    locations = MemoryLocation(address=0x1a, type_=MemoryType.RAM_RO)
     tmask_supported = True
     mask_supported = True
 
@@ -615,8 +615,8 @@ class LightSourceOpenCircuitCounter(NumericValue):
     Valid in the range 0..0xfd; TMASK and MASK are supported
     """
     bank = BANK_206
-    locations = (MemoryLocation(address=0x1b, default=0x00,
-                                reset=0x0e, type_=MemoryType.NVM_RO),)
+    locations = MemoryLocation(address=0x1b, default=0x00,
+                               reset=0x0e, type_=MemoryType.NVM_RO)
     tmask_supported = True
     mask_supported = True
     max_value = 0xfd
@@ -645,7 +645,7 @@ class LightSourceThermalDerating(BinaryValue):
     TMASK and MASK are supported
     """
     bank = BANK_206
-    locations = (MemoryLocation(address=0x1c, type_=MemoryType.RAM_RO),)
+    locations = MemoryLocation(address=0x1c, type_=MemoryType.RAM_RO)
     tmask_supported = True
     mask_supported = True
 
@@ -656,8 +656,8 @@ class LightSourceThermalDeratingCounter(NumericValue):
     Valid in the range 0..0xfd; TMASK and MASK are supported
     """
     bank = BANK_206
-    locations = (MemoryLocation(address=0x1d, default=0x00,
-                                reset=0x0e, type_=MemoryType.NVM_RO),)
+    locations = MemoryLocation(address=0x1d, default=0x00,
+                               reset=0x0e, type_=MemoryType.NVM_RO)
     tmask_supported = True
     mask_supported = True
     max_value = 0xfd
@@ -688,7 +688,7 @@ class LightSourceThermalShutdown(BinaryValue):
     TMASK and MASK are supported
     """
     bank = BANK_206
-    locations = (MemoryLocation(address=0x1e, type_=MemoryType.RAM_RO),)
+    locations = MemoryLocation(address=0x1e, type_=MemoryType.RAM_RO)
     tmask_supported = True
     mask_supported = True
 
@@ -699,8 +699,8 @@ class LightSourceThermalShutdownCounter(NumericValue):
     Valid in the range 0..0xfd; TMASK and MASK are supported
     """
     bank = BANK_206
-    locations = (MemoryLocation(address=0x1f, default=0x00,
-                                reset=0x0e, type_=MemoryType.NVM_RO),)
+    locations = MemoryLocation(address=0x1f, default=0x00,
+                               reset=0x0e, type_=MemoryType.NVM_RO)
     tmask_supported = True
     mask_supported = True
     max_value = 0xfd
@@ -718,7 +718,7 @@ class LightSourceTemperature(TemperatureValue):
     specific and is configured in a manufacturer specific way.
     """
     bank = BANK_206
-    locations = (MemoryLocation(address=0x20, type_=MemoryType.RAM_RO),)
+    locations = MemoryLocation(address=0x20, type_=MemoryType.RAM_RO)
     tmask_supported = True
     mask_supported = True
     max_value = 0xfd

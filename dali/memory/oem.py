@@ -51,8 +51,8 @@ class YearOfManufacture(NumericValue):
     Valid when in the range 0..99; 100..255 indicates "unknown"
     """
     bank = BANK_1
-    locations = (MemoryLocation(address=0x13, default=0xff,
-                                type_=MemoryType.NVM_RW_L),)
+    locations = MemoryLocation(address=0x13, default=0xff,
+                               type_=MemoryType.NVM_RW_L)
     mask_supported = True
     max_value = 99
 
@@ -63,8 +63,8 @@ class WeekOfManufacture(NumericValue):
     Valid when in the range 1..53; 0 or 54..255 indicates "unknown"
     """
     bank = BANK_1
-    locations = (MemoryLocation(address=0x14, default=0xff,
-                                type_=MemoryType.NVM_RW_L),)
+    locations = MemoryLocation(address=0x14, default=0xff,
+                               type_=MemoryType.NVM_RW_L)
     mask_supported = True
     min_value = 1
     max_value = 53
@@ -140,8 +140,8 @@ class CRI(NumericValue):
     Valid when in the range 0..100; 101..255 indicates "unknown"
     """
     bank = BANK_1
-    locations = (MemoryLocation(address=0x20, default=0xff,
-                                type_=MemoryType.NVM_RW_L),)
+    locations = MemoryLocation(address=0x20, default=0xff,
+                               type_=MemoryType.NVM_RW_L)
     max_value = 100
     mask_supported = True
 
@@ -185,8 +185,8 @@ class LightDistributionType(MemoryValue):
     6–254 = reserved for additional types
     """
     bank = BANK_1
-    locations = (MemoryLocation(address=0x23, default=0xff,
-                                type_=MemoryType.NVM_RW_L),)
+    locations = MemoryLocation(address=0x23, default=0xff,
+                               type_=MemoryType.NVM_RW_L)
     mask_supported = True
 
     @classmethod

@@ -25,14 +25,14 @@ class LastMemoryBank(NumericValue):
     """Number of last accessible memory bank
     """
     bank = BANK_0
-    locations = (MemoryLocation(address=0x02, type_=MemoryType.ROM),)
+    locations = MemoryLocation(address=0x02, type_=MemoryType.ROM)
 
 
 class LastMemoryBank_legacy(NumericValue):
     """Number of last accessible memory bank
     """
     bank = BANK_0_legacy
-    locations = (MemoryLocation(address=0x02, type_=MemoryType.ROM),)
+    locations = MemoryLocation(address=0x02, type_=MemoryType.ROM)
 
 
 class GTIN(NumericValue):
@@ -96,7 +96,7 @@ class Part101Version(VersionNumberValue):
     """The implemented IEC 62386-101 version number of the bus unit
     """
     bank = BANK_0
-    locations = (MemoryLocation(address=0x15, type_=MemoryType.ROM),)
+    locations = MemoryLocation(address=0x15, type_=MemoryType.ROM)
 
 
 class Part102Version(VersionNumberValue):
@@ -106,7 +106,7 @@ class Part102Version(VersionNumberValue):
     as 0xff which is returned as string value "not implemented"
     """
     bank = BANK_0
-    locations = (MemoryLocation(address=0x16, type_=MemoryType.ROM),)
+    locations = MemoryLocation(address=0x16, type_=MemoryType.ROM)
 
 
 class Part103Version(VersionNumberValue):
@@ -116,7 +116,7 @@ class Part103Version(VersionNumberValue):
     as 0xff which is returned as string value "not implemented"
     """
     bank = BANK_0
-    locations = (MemoryLocation(address=0x17, type_=MemoryType.ROM),)
+    locations = MemoryLocation(address=0x17, type_=MemoryType.ROM)
 
 
 class DeviceUnitCount(NumericValue):
@@ -127,7 +127,7 @@ class DeviceUnitCount(NumericValue):
     memory bank is being implemented by a control device.
     """
     bank = BANK_0
-    locations = (MemoryLocation(address=0x18, type_=MemoryType.ROM),)
+    locations = MemoryLocation(address=0x18, type_=MemoryType.ROM)
     max_value = 64
 
 
@@ -139,7 +139,7 @@ class GearUnitCount(NumericValue):
     memory bank is being implemented by a control device.
     """
     bank = BANK_0
-    locations = (MemoryLocation(address=0x19, type_=MemoryType.ROM),)
+    locations = MemoryLocation(address=0x19, type_=MemoryType.ROM)
     max_value = 64
 
 
@@ -153,4 +153,4 @@ class UnitIndex(NumericValue):
     one.
     """
     bank = BANK_0
-    locations = (MemoryLocation(address=0x1a, type_=MemoryType.ROM),)
+    locations = MemoryLocation(address=0x1a, type_=MemoryType.ROM)
