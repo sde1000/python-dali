@@ -137,34 +137,9 @@ class MemoryBank:
             f'has_latch={bool(self.LockByte and self.LockByte.latch)})'
 
 
-class MemoryLocation:
-    def __init__(self, address, default=None, reset=None, type_=None):
-        self.__address = address
-        self.__type_ = type_
-        self.__default = default
-        self.__reset = reset
-
-    @property
-    def address(self):
-        return self.__address
-
-    @property
-    def type_(self):
-        return self.__type_
-
-    @property
-    def default(self):
-        return self.__default
-
-    @property
-    def reset(self):
-        return self.__reset
-
-    def __repr__(self):
-        return f'MemoryLocation(address=0x{self.address:02x}, ' \
-            f'default={f"0x{self.default:02x}" if self.default is not None else None}, ' \
-            f'reset={f"0x{self.reset:02x}" if self.reset is not None else None}, ' \
-            f'type_={self.type_})'
+MemoryLocation = namedtuple(
+    'MemoryLocation', ['address', 'default', 'reset', 'type_'],
+    defaults=[None] * 3)
 
 
 def MemoryRange(start, end, **kwargs):
