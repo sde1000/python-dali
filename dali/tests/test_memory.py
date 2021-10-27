@@ -187,32 +187,32 @@ DUMMY_BANK0 = MemoryBank(100, 42)
 
 class DummyMemoryValue(MemoryValue):
     bank = DUMMY_BANK0
-    locations = MemoryRange(3, 7).locations
+    locations = MemoryRange(3, 7)
 
 
 class DummyNumericValue(NumericValue):
     bank = DUMMY_BANK0
-    locations = MemoryRange(8, 12).locations
+    locations = MemoryRange(8, 12)
 
 
 class DummyFixedScaleNumericValue(FixedScaleNumericValue):
     bank = DUMMY_BANK0
-    locations = MemoryRange(18, 22).locations
+    locations = MemoryRange(18, 22)
 
 
 class DummyStringValue(StringValue):
     bank = DUMMY_BANK0
-    locations = MemoryRange(23, 27).locations
+    locations = MemoryRange(23, 27)
 
 
 class DummyBinaryValue(BinaryValue):
     bank = DUMMY_BANK0
-    locations = MemoryRange(28, 32).locations
+    locations = MemoryRange(28, 32)
 
 
 class DummyTemperatureValue(TemperatureValue):
     bank = DUMMY_BANK0
-    locations = MemoryRange(33, 37).locations
+    locations = MemoryRange(33, 37)
 
 
 # the following MemoryBank will be used to check
@@ -223,12 +223,12 @@ DUMMY_BANK1 = MemoryBank(101, 20, has_lock=False)
 
 class DummyUnlockedMemoryValue(MemoryValue):
     bank = DUMMY_BANK1
-    locations = MemoryRange(3, 7, type_=MemoryType.NVM_RW_L).locations
+    locations = MemoryRange(3, 7, type_=MemoryType.NVM_RW_L)
 
 
 class DummyAddressableValue(MemoryValue):
     bank = DUMMY_BANK1
-    locations = MemoryRange(11, 15).locations
+    locations = MemoryRange(11, 15)
 
 
 # the following MemoryBank will be used to check
@@ -239,12 +239,12 @@ DUMMY_BANK2 = MemoryBank(2, 10, has_lock=True)
 
 class DummyLockedMemoryValue(MemoryValue):
     bank = DUMMY_BANK2
-    locations = MemoryRange(3, 7, type_=MemoryType.NVM_RW_L).locations
+    locations = MemoryRange(3, 7, type_=MemoryType.NVM_RW_L)
 
 
 class DummyUnaddressableValue(MemoryValue):
     bank = DUMMY_BANK2
-    locations = MemoryRange(11, 15).locations
+    locations = MemoryRange(11, 15)
 
 
 class TestMemoryBank(unittest.TestCase):

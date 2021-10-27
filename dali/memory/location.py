@@ -167,41 +167,10 @@ class MemoryLocation:
             f'type_={self.type_})'
 
 
-class MemoryRange:
-    def __init__(self, start, end, default=None, reset=None, type_=None):
-        self.__start = start
-        self.__end = end
-        self.__type_ = type_
-        self.__default = default
-        self.__reset = reset
-
-    @property
-    def start(self):
-        return self.__start
-
-    @property
-    def end(self):
-        return self.__end
-
-    @property
-    def type_(self):
-        return self.__type_
-
-    @property
-    def default(self):
-        return self.__default
-
-    @property
-    def reset(self):
-        return self.__reset
-
-    @property
-    def locations(self):
-        return tuple([
-            MemoryLocation(address=address, default=self.default,
-                           reset=self.reset, type_=self.type_)
-            for address in range(self.start, self.end + 1)
-        ])
+def MemoryRange(start, end, **kwargs):
+    return tuple(
+        MemoryLocation(address, **kwargs) for address in range(start, end + 1)
+    )
 
 
 class _RegisterMemoryValue(type):

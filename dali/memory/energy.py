@@ -53,7 +53,7 @@ class ActiveEnergy(ScaledNumericValue):
     locations = (
         MemoryLocation(address=0x04, type_=MemoryType.ROM),
     ) + MemoryRange(start=0x05, end=0x0a, default=0x00,
-                    type_=MemoryType.NVM_RO).locations
+                    type_=MemoryType.NVM_RO)
     tmask_supported = True
     max_value = 0xfffffffffffd
 
@@ -68,7 +68,7 @@ class ActivePower(ScaledNumericValue):
     unit = 'W'
     locations = (
         MemoryLocation(address=0x0b, type_=MemoryType.ROM),
-    ) + MemoryRange(start=0x0c, end=0x0f, type_=MemoryType.RAM_RO).locations
+    ) + MemoryRange(start=0x0c, end=0x0f, type_=MemoryType.RAM_RO)
     tmask_supported = True
     max_value = 0xfffffffd
 
@@ -91,7 +91,7 @@ class ApparentEnergy(ScaledNumericValue):
     locations = (
         MemoryLocation(address=0x04, type_=MemoryType.ROM),
     ) + MemoryRange(start=0x05, end=0x0a, default=0x00,
-                    type_=MemoryType.NVM_RO).locations
+                    type_=MemoryType.NVM_RO)
     tmask_supported = True
     max_value = 0xfffffffffffd
 
@@ -107,7 +107,7 @@ class ApparentPower(ScaledNumericValue):
     unit = 'VA'
     locations = (
         MemoryLocation(address=0x0b, type_=MemoryType.ROM),
-    ) + MemoryRange(start=0x0c, end=0x0f, type_=MemoryType.RAM_RO).locations
+    ) + MemoryRange(start=0x0c, end=0x0f, type_=MemoryType.RAM_RO)
     tmask_supported = True
     max_value = 0xfffffffd
 
@@ -130,7 +130,7 @@ class ActiveEnergyLoadside(ScaledNumericValue):
     locations = (
         MemoryLocation(address=0x04, type_=MemoryType.ROM),
     ) + MemoryRange(start=0x05, end=0x0a, default=0x00,
-                    type_=MemoryType.NVM_RO).locations
+                    type_=MemoryType.NVM_RO)
     tmask_supported = True
     max_value = 0xfffffffffffd
 
@@ -149,6 +149,6 @@ class ActivePowerLoadside(ScaledNumericValue):
     unit = 'W'
     locations = (
         MemoryLocation(address=0x0b, type_=MemoryType.ROM),
-    ) + MemoryRange(start=0x0c, end=0x0f, type_=MemoryType.RAM_RO).locations
+    ) + MemoryRange(start=0x0c, end=0x0f, type_=MemoryType.RAM_RO)
     tmask_supported = True
     max_value = 0xfffffffd

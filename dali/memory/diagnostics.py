@@ -36,7 +36,7 @@ class ControlGearOperatingTime(NumericValue):
     bank = BANK_205
     unit = 's'
     locations = MemoryRange(start=0x04, end=0x07, default=0x00,
-                            type_=MemoryType.NVM_RO).locations
+                            type_=MemoryType.NVM_RO)
     tmask_supported = True
     max_value = 0xfffffffd
 
@@ -52,7 +52,7 @@ class ControlGearStartCounter(NumericValue):
     """
     bank = BANK_205
     locations = MemoryRange(start=0x08, end=0x0a, default=0x00,
-                            type_=MemoryType.NVM_RO).locations
+                            type_=MemoryType.NVM_RO)
     tmask_supported = True
     max_value = 0xfffffd
 
@@ -66,7 +66,7 @@ class ControlGearExternalSupplyVoltage(FixedScaleNumericValue):
     unit = 'Vrms'
     scaling_factor = Decimal("0.1")
     locations = MemoryRange(start=0x0b, end=0x0c,
-                            type_=MemoryType.RAM_RO).locations
+                            type_=MemoryType.RAM_RO)
     tmask_supported = True
     mask_supported = True
     max_value = 0xfffd
@@ -436,7 +436,7 @@ class LightSourceStartCounterResettable(NumericValue):
     """
     bank = BANK_206
     locations = MemoryRange(start=0x04, end=0x06, default=0x00,
-                            type_=MemoryType.NVM_RW).locations
+                            type_=MemoryType.NVM_RW)
     tmask_supported = True
     max_value = 0xfffffd
 
@@ -452,7 +452,7 @@ class LightSourceStartCounter(NumericValue):
     """
     bank = BANK_206
     locations = MemoryRange(start=0x07, end=0x09, default=0x00,
-                            type_=MemoryType.NVM_RO).locations
+                            type_=MemoryType.NVM_RO)
     tmask_supported = True
     max_value = 0xfffffd
 
@@ -479,7 +479,7 @@ class LightSourceOnTimeResettable(NumericValue):
     bank = BANK_206
     unit = 's'
     locations = MemoryRange(start=0x0a, end=0x0d, default=0x00,
-                            type_=MemoryType.NVM_RW).locations
+                            type_=MemoryType.NVM_RW)
     tmask_supported = True
     max_value = 0xfffffffd
 
@@ -496,7 +496,7 @@ class LightSourceOnTime(NumericValue):
     bank = BANK_206
     unit = 's'
     locations = MemoryRange(start=0x0e, end=0x11, default=0x00,
-                            type_=MemoryType.NVM_RO).locations
+                            type_=MemoryType.NVM_RO)
     tmask_supported = True
     max_value = 0xfffffffd
 
@@ -512,7 +512,7 @@ class LightSourceVoltage(FixedScaleNumericValue):
     unit = 'V'
     scaling_factor = Decimal("0.1")
     locations = MemoryRange(start=0x12, end=0x13,
-                            type_=MemoryType.RAM_RO).locations
+                            type_=MemoryType.RAM_RO)
     tmask_supported = True
     max_value = 0xfffd
 
@@ -528,7 +528,7 @@ class LightSourceCurrent(FixedScaleNumericValue):
     unit = 'A'
     scaling_factor = Decimal("0.001")
     locations = MemoryRange(start=0x14, end=0x15,
-                            type_=MemoryType.RAM_RO).locations
+                            type_=MemoryType.RAM_RO)
     tmask_supported = True
     max_value = 0xfffd
 

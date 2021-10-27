@@ -39,28 +39,28 @@ class GTIN(NumericValue):
     """Bus unit GTIN
     """
     bank = BANK_0
-    locations = MemoryRange(start=0x03, end=0x08, type_=MemoryType.ROM).locations
+    locations = MemoryRange(start=0x03, end=0x08, type_=MemoryType.ROM)
 
 
 class GTIN_legacy(NumericValue):
     """Bus unit GTIN
     """
     bank = BANK_0_legacy
-    locations = MemoryRange(start=0x03, end=0x08, type_=MemoryType.ROM).locations
+    locations = MemoryRange(start=0x03, end=0x08, type_=MemoryType.ROM)
 
 
 class FirmwareVersion(VersionNumberValue):
     """Bus unit firmware version
     """
     bank = BANK_0
-    locations = MemoryRange(start=0x09, end=0x0a, type_=MemoryType.ROM).locations
+    locations = MemoryRange(start=0x09, end=0x0a, type_=MemoryType.ROM)
 
 
 class FirmwareVersion_legacy(VersionNumberValue):
     """Bus unit firmware version
     """
     bank = BANK_0_legacy
-    locations = MemoryRange(start=0x09, end=0x0a, type_=MemoryType.ROM).locations
+    locations = MemoryRange(start=0x09, end=0x0a, type_=MemoryType.ROM)
 
 
 # The identification number may be truncated at location 0x0e in units
@@ -72,7 +72,7 @@ class IdentificationNumber(NumericValue):
     unique
     """
     bank = BANK_0
-    locations = MemoryRange(start=0x0b, end=0x12, type_=MemoryType.ROM).locations
+    locations = MemoryRange(start=0x0b, end=0x12, type_=MemoryType.ROM)
 
 
 class IdentifictionNumber_legacy(NumericValue):
@@ -82,14 +82,14 @@ class IdentifictionNumber_legacy(NumericValue):
     unique
     """
     bank = BANK_0_legacy
-    locations = MemoryRange(start=0x0b, end=0x0e, type_=MemoryType.ROM).locations
+    locations = MemoryRange(start=0x0b, end=0x0e, type_=MemoryType.ROM)
 
 
 class HardwareVersion(VersionNumberValue):
     """The hardware version of the bus unit
     """
     bank = BANK_0
-    locations = MemoryRange(start=0x13, end=0x14, type_=MemoryType.ROM).locations
+    locations = MemoryRange(start=0x13, end=0x14, type_=MemoryType.ROM)
 
 
 class Part101Version(VersionNumberValue):

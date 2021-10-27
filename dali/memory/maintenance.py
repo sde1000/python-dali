@@ -80,7 +80,7 @@ class RatedMedianUsefulLightSourceStarts(FixedScaleNumericValue):
     bank = BANK_207
     scaling_factor = 100
     locations = MemoryRange(start=0x06, end=0x07, default=0xff,
-                            type_=MemoryType.NVM_RW_L).locations
+                            type_=MemoryType.NVM_RW_L)
     tmask_supported = True
     mask_supported = True
     max_value = 0xfffd
