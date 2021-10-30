@@ -40,7 +40,8 @@ class TestCommands(unittest.TestCase):
         """all command classes are covered by test pattern"""
         seen = {}
         for fs, d, dt in _test_pattern():
-            c = command.from_frame(frame.ForwardFrame(fs, d), devicetype=dt)
+            c = command.from_frame(
+                frame.ForwardFrame(fs, d, new_exceptions=True), devicetype=dt)
             seen[c.__class__] = True
         for cls in command.Command._commands:
             self.assertTrue(
@@ -70,7 +71,7 @@ class TestCommands(unittest.TestCase):
     def test_roundtrip(self):
         """all frames survive command.from_frame()"""
         for fs, d, dt in _test_pattern():
-            f = frame.ForwardFrame(fs, d)
+            f = frame.ForwardFrame(fs, d, new_exceptions=True)
             c = command.from_frame(f, dt)
             nf = c.frame
             self.assertEqual(
@@ -80,7 +81,7 @@ class TestCommands(unittest.TestCase):
     def test_str(self):
         """command objects can be converted to strings"""
         for fs, d, dt in _test_pattern():
-            f = frame.ForwardFrame(fs, d)
+            f = frame.ForwardFrame(fs, d, new_exceptions=True)
             self.assertIsInstance(str(command.from_frame(f, dt)),
                                   str)
 
@@ -98,7 +99,7 @@ class TestCommands(unittest.TestCase):
     def test_response(self):
         """responses act sensibly"""
         for fs, d, dt in _test_pattern():
-            f = frame.ForwardFrame(fs, d)
+            f = frame.ForwardFrame(fs, d, new_exceptions=True)
             c = command.from_frame(f, dt)
             if c.response:
                 self.assertRaises(TypeError, lambda: c.response('wibble'))

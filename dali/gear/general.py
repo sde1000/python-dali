@@ -1004,7 +1004,8 @@ class _SpecialCommand(_GearCommand):
                         self.__class__.__name__, len(args) + 1))
             param = 0
         self.param = param
-        super().__init__(frame.ForwardFrame(16, (self._cmdval, self.param)))
+        super().__init__(frame.ForwardFrame(16, (self._cmdval, self.param),
+                                            new_exceptions=True))
 
     # dict of frame[15:8] to cls
     _opcodes = {}
