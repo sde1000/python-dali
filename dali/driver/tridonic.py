@@ -7,7 +7,6 @@ from dali.driver.base import SyncDALIDriver
 from dali.driver.base import USBBackend
 from dali.driver.base import USBListener
 from dali.frame import BackwardFrame
-from dali.frame import BackwardFrameError
 from dali.frame import ForwardFrame
 import logging
 import struct
@@ -24,7 +23,9 @@ DALI_USB_TYPE_NO_RESPONSE = 0x71
 DALI_USB_TYPE_RESPONSE = 0x72
 DALI_USB_TYPE_COMPLETE = 0x73
 DALI_USB_TYPE_BROADCAST = 0x74
-# DALI_USB_TYPE_UNKNOWN = 0x77
+# Known unknowns:
+#     0x76
+#     0x77
 
 
 # debug logging related
@@ -147,6 +148,7 @@ class TridonicDALIUSBDriver(DALIDriver):
             0x72 = transfer response
             0x73 = transfer complete
             0x74 = broadcast received (?)
+            0x76 = ?
             0x77 = ?
         ec: ecommand
         ad: address
@@ -176,7 +178,7 @@ class TridonicDALIUSBDriver(DALIDriver):
                 return
             else:
                 msg = 'DALI -> DALI | Unknown type received: {}'.format(hex(ty))
-                self.logger.warning(msg)
+                self.logger.debug(msg)
             return
         # USB -> DALI
         elif dr == DALI_USB_DIRECTION_USB:
@@ -192,7 +194,7 @@ class TridonicDALIUSBDriver(DALIDriver):
                 pass
             else:
                 msg = 'USB -> DALI | Unknown type received: {}'.format(hex(ty))
-                self.logger.warning(msg)
+                self.logger.debug(msg)
             return
         # Unknown direction
         msg = 'Unknown direction received: {}'.format(hex(dr))
@@ -228,6 +230,9 @@ class SyncTridonicDALIUSBDriver(TridonicDALIUSBDriver, SyncDALIDriver):
         # frames are passed between request and response from DALI side.
         # though this may not happen at all due to DALI USB implementation
         # details.
+        #
+        # XXX: check specs if this has to do with frames which should be sent
+        #      twice
         for i in range(2):
             frame = self.extract(self.backend.read(timeout=timeout))
             if isinstance(frame, BackwardFrame):
