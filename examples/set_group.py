@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from dali.address import Group
 from dali.gear.general import DAPC

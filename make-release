@@ -17,10 +17,9 @@ urgency=low
 tmpdir=release-tmp
 
 usage="make-release [ -p packagename ] [ -d distribution ]
-             [ -u urgency ] [ -t tmpdir ] [ -r ] [-s ]"
+             [ -u urgency ] [ -t tmpdir ] [ -r ]"
 
 rerelease=no
-skiptests=no
 
 while getopts "p:d:u:t:hrs" options; do
   case $options in
@@ -31,8 +30,6 @@ while getopts "p:d:u:t:hrs" options; do
     h ) echo "$usage" ; exit;;
     r ) echo "Re-release: skipping version number and changelog update"
 	rerelease=yes;;
-    s ) echo "Skipping package tests"
-	skiptests=yes;;
     \? ) echo "$usage"
          exit 1;;
     * ) echo "$usage"
@@ -57,7 +54,7 @@ releasedate="$(date -R)"
 version="${newversion} (${releasedate})"
 
 # Put the version number in the version.py file
-echo "version=u\"${version}\"" >${pkgdir}/dali/version.py
+echo "version=\"${version}\"" >${pkgdir}/dali/version.py
 
 if [ "${rerelease}" = "yes" ]; then
   (cd ${pkgdir} ; dpkg-buildpackage -rfakeroot -us -uc)
@@ -90,11 +87,6 @@ rm ${pkgdir}/debian/changelog.old
 
 cp setup.py ${pkgdir}/setup.py
 
-# Run tests
-if [ "${skiptests}" = "no" ]; then
-  (cd ${pkgdir} ; python -m unittest discover)
-fi
-
 # Build the Debian package files
 
 (cd ${pkgdir} ; dpkg-buildpackage -rfakeroot -us -uc)
@@ -117,6 +109,11 @@ git commit -m "${packagename} ${newversion}"
 git tag -a -m "Version ${newversion}" v${newversion}
 
 The following files should be put in the "incoming" directory:
-cp ${tmpdir}/python-dali_* ~packages/incoming/
+cp ${tmpdir}/python3-dali_* ~packages/incoming/
 
+To build packages to upload to PyPI:
+cd ${pkgdir}
+python3 setup.py sdist bdist_wheel
+twine check dist/*
+twine upload dist/*
 EOF

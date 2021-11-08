@@ -1,5 +1,6 @@
 *.pyc
 *~
+/.eggs
 /.idea
 /.project
 /.pydevproject
@@ -16,5 +17,5 @@
 /.pybuild
 /debian/debhelper-build-stamp
 /debian/files
-/debian/python-dali*
 /debian/python3-dali*
+/debian/.debhelper

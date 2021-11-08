@@ -28,6 +28,10 @@ fairly expensive to obtain.  The library is designed to be extensible;
 adding support for the other parts ought to be easy and
 self-contained.
 
+Python versions supported
+-------------------------
+
+This library currently requires Python version 3.6 or later.
 
 Library structure
 -----------------
@@ -36,11 +40,7 @@ Library structure
 
   - ``address`` - Device addressing
 
-  - ``bus`` - DALI bus and attached devices
-
   - ``command`` - Command registry, interface to command decoding
-
-  - ``compat`` - Compatibility code for Python 2 and 3
 
   - ``device`` - DALI control devices as defined in IEC 62386
 
@@ -50,11 +50,13 @@ Library structure
 
     - ``base`` - General driver contracts
 
-    - ``hasseb`` - Driver for Hasseb DALI Master (needs to be adopted to dali.driver.base API)
+    - ``hasseb`` - Driver for Hasseb DALI Master
 
     - ``tridonic`` - Driver for Tridonic DALI USB
 
     - ``daliserver`` - Driver for https://github.com/onitake/daliserver (needs to be adopted to dali.driver.base API)
+
+    - ``hid`` - asyncio-based drivers for Tridonic DALI USB and hasseb DALI Master
 
   - ``exceptions`` - DALI related exceptions
 
@@ -70,6 +72,8 @@ Library structure
 
     - ``led`` - Commands from part 207
 
+  - ``sequences`` - packaged sequences of commands
+
 
 Contributors
 ------------
@@ -84,11 +88,15 @@ Contributors
 
 - Boldie
 
+- Martijn Hemeryck
+
+- Hans Baumgartner
+
 
 Copyright
 ---------
 
-python-dali is Copyright (C) 2013–2017 Stephen Early <steve@assorted.org.uk>
+python-dali is Copyright (C) 2013–2020 Stephen Early <steve@assorted.org.uk>
 
 It is distributed under the terms of the GNU Lesser General Public
 License as published by the Free Software Foundation, either version 3

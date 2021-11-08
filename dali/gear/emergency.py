@@ -1,33 +1,32 @@
 """Commands and responses from IEC 62386 part 202."""
 
-from __future__ import unicode_literals
 from dali import command
-from dali.gear.general import _StandardCommand
+from dali.gear.general import _StandardCommand, QueryExtendedVersionNumberMixin
 
 
 class _EmergencyLightingCommand(_StandardCommand):
-    _devicetype = 1
+    devicetype = 1
 
 
 class _EmergencyLightingControlCommand(_EmergencyLightingCommand):
     """An emergency lighting control command as defined in section
     11.3.4.1 of IEC 62386-202:2009
     """
-    _sendtwice = True
+    sendtwice = True
 
 
 class _EmergencyLightingConfigCommand(_EmergencyLightingCommand):
     """An emergency lighting configuration command as defined in section
     11.3.4.2 of IEC 62386-202:2009
     """
-    _sendtwice = True
+    sendtwice = True
 
 
 class _EmergencyLightingQueryCommand(_EmergencyLightingCommand):
     """An emergency lighting query command as defined in section 11.3.4.3
     of IEC 62386-202:2009
     """
-    _response = command.Response
+    response = command.Response
 
 
 ###############################################################################
@@ -211,6 +210,7 @@ class QueryBatteryCharge(_EmergencyLightingQueryCommand):
     successful duration test.
     """
     _cmdval = 0xf1
+    response = command.NumericResponseMask
 
 
 class QueryTestTiming(_EmergencyLightingQueryCommand):
@@ -237,6 +237,7 @@ class QueryDurationTestResult(_EmergencyLightingQueryCommand):
     the maximum value or longer.
     """
     _cmdval = 0xf3
+    response = command.NumericResponse
 
 
 class QueryLampEmergencyTime(_EmergencyLightingQueryCommand):
@@ -244,6 +245,7 @@ class QueryLampEmergencyTime(_EmergencyLightingQueryCommand):
     power source in hours.  255 means the maximum value or longer.
     """
     _cmdval = 0xf4
+    response = command.NumericResponse
 
 
 class QueryLampTotalOperationTime(_EmergencyLightingQueryCommand):
@@ -256,21 +258,25 @@ class QueryLampTotalOperationTime(_EmergencyLightingQueryCommand):
     time the lamp is operated by the other control device.
     """
     _cmdval = 0xf5
+    response = command.NumericResponse
 
 
 class QueryEmergencyLevel(_EmergencyLightingQueryCommand):
     """Return the Emergency Level, or MASK (255) if it is unknown."""
     _cmdval = 0xf6
+    response = command.NumericResponseMask
 
 
 class QueryEmergencyMinLevel(_EmergencyLightingQueryCommand):
     """Return the Emergency Min Level, or MASK (255) if it is unknown."""
     _cmdval = 0xf7
+    response = command.NumericResponseMask
 
 
 class QueryEmergencyMaxLevel(_EmergencyLightingQueryCommand):
     """Return the Emergency Max Level, or MASK (255) if it is unknown."""
     _cmdval = 0xf8
+    response = command.NumericResponseMask
 
 
 class QueryRatedDuration(_EmergencyLightingQueryCommand):
@@ -278,6 +284,7 @@ class QueryRatedDuration(_EmergencyLightingQueryCommand):
     longer.
     """
     _cmdval = 0xf9
+    response = command.NumericResponse
 
 
 class QueryEmergencyModeResponse(command.BitmapResponse):
@@ -303,7 +310,7 @@ class QueryEmergencyModeResponse(command.BitmapResponse):
 class QueryEmergencyMode(_EmergencyLightingQueryCommand):
     """Return the Emergency Mode Information byte."""
     _cmdval = 0xfa
-    _response = QueryEmergencyModeResponse
+    response = QueryEmergencyModeResponse
 
 
 class QueryEmergencyFeaturesResponse(command.BitmapResponse):
@@ -316,7 +323,7 @@ class QueryEmergencyFeaturesResponse(command.BitmapResponse):
 class QueryEmergencyFeatures(_EmergencyLightingQueryCommand):
     """Return the Features information byte."""
     _cmdval = 0xfb
-    _response = QueryEmergencyFeaturesResponse
+    response = QueryEmergencyFeaturesResponse
 
 
 class QueryEmergencyFailureStatusResponse(command.BitmapResponse):
@@ -329,7 +336,7 @@ class QueryEmergencyFailureStatusResponse(command.BitmapResponse):
 class QueryEmergencyFailureStatus(_EmergencyLightingQueryCommand):
     """Return the Failure Status information byte."""
     _cmdval = 0xfc
-    _response = QueryEmergencyFailureStatusResponse
+    response = QueryEmergencyFailureStatusResponse
 
 
 class QueryEmergencyStatusResponse(command.BitmapResponse):
@@ -342,7 +349,7 @@ class QueryEmergencyStatusResponse(command.BitmapResponse):
 class QueryEmergencyStatus(_EmergencyLightingQueryCommand):
     """Return the Emergency Status information byte."""
     _cmdval = 0xfd
-    _response = QueryEmergencyStatusResponse
+    response = QueryEmergencyStatusResponse
 
 
 class PerformDTRSelectedFunction(_EmergencyLightingControlCommand):
@@ -351,3 +358,8 @@ class PerformDTRSelectedFunction(_EmergencyLightingControlCommand):
     0 - restore factory default settings
     """
     _cmdval = 0xfe
+
+
+class QueryExtendedVersionNumber(QueryExtendedVersionNumberMixin,
+                                 _EmergencyLightingCommand):
+    pass

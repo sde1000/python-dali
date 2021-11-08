@@ -1,0 +1,12 @@
+# udev rules for USB-connected DALI interfaces
+
+# These rules ensure the devices are accessible by members of group
+# "dialout", and create symlinks in /dev/dali to the appropriate
+# hidraw devices.
+
+# Lunatone / Tridonic DALI USB
+SUBSYSTEMS=="usb", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="17b5", ATTRS{idProduct}=="0020", MODE="660", GROUP="dialout", SYMLINK+="dali/daliusb-%s{serial}"
+
+# hasseb DALI Master, based on NXP LPC134x reference design
+SUBSYSTEMS=="usb", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="04cc", ATTRS{idProduct}=="0802", MODE="660", GROUP="dialout", SYMLINK+="dali/hasseb-%n"
+

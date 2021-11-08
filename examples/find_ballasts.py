@@ -1,7 +1,4 @@
-#!/usr/bin/env python
-
-from __future__ import print_function
-from __future__ import division
+#!/usr/bin/env python3
 
 from dali.gear.general import Compare
 from dali.gear.general import Initialise

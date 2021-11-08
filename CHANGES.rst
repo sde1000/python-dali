@@ -1,10 +1,14 @@
 Changes
 =======
 
-0.6 (unreleased)
+0.6 (2018-11-11)
 ----------------
 
-- No changes yet.
+- Python 3 fix in async Tridonic driver
+  [jjonek]
+
+- Updated Hasseb driver
+  [dgomes]
 
 
 0.5 (2017-05-15)

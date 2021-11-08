@@ -1,5 +1,3 @@
-from __future__ import print_function
-from __future__ import unicode_literals
 from dali.command import from_frame
 from dali.driver.base import AsyncDALIDriver
 from dali.driver.base import DALIDriver
@@ -72,7 +70,7 @@ def _log_frame(logger, exco, dr, ty, ec, ad, cm, st, sn):
     ))
 
 
-class TridonicDALIUSBNoResponse(object):
+class TridonicDALIUSBNoResponse:
 
     def __repr__(self):
         return 'NO_RESPONSE'
@@ -257,7 +255,7 @@ class AsyncTridonicDALIUSBDriver(TridonicDALIUSBDriver, AsyncDALIDriver):
 
     def send(self, command, callback=None, **kw):
         data = self.construct(command)
-        sn = struct.unpack('B', data[1])[0]
+        sn = struct.unpack_from('B', data, 1)[0]
         self._transactions[sn] = {
             'command': command,
             'callback': callback,
@@ -301,7 +299,7 @@ class AsyncTridonicDALIUSBDriver(TridonicDALIUSBDriver, AsyncDALIDriver):
             return
         command = request['command']
         if command.response:
-            callback(command._response(frame), **request['kw'])
+            callback(command.response(frame), **request['kw'])
         else:
             callback(frame, **request['kw'])
 

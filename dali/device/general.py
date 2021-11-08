@@ -41,25 +41,42 @@ it may use to address multiple instances at once.  Instances can be
 members of up to three instance groups.
 """
 
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
 from dali import command
 from dali import address
 from dali import frame
-from dali.compat import python_2_unicode_compatible
 
 
 class _DeviceCommand(command.Command):
     """A command addressed to a control device."""
     _framesize = 24
 
+    _devicecommands = []
+
+    @classmethod
+    def _register_subclass(cls, subclass):
+        cls._devicecommands.append(subclass)
+
+    @classmethod
+    def from_frame(cls, f, devicetype=0):
+        for dc in cls._devicecommands:
+            r = dc.from_frame(f)
+            if r:
+                return r
+        return UnknownDeviceCommand(f)
+
+
+class UnknownDeviceCommand(_DeviceCommand):
+    """An unknown command addressed to a control device.
+    """
+    @classmethod
+    def from_frame(cls, f):
+        return
 
 ###############################################################################
 # Commands from Table 21 start here
 ###############################################################################
 
-@python_2_unicode_compatible
+
 class _StandardDeviceCommand(_DeviceCommand):
     """A standard command addressed to a control device.
 
@@ -79,17 +96,17 @@ class _StandardDeviceCommand(_DeviceCommand):
         f = frame.ForwardFrame(24, 0x1fe00 | self._opcode)
         self.destination.add_to_frame(f)
 
-        _DeviceCommand.__init__(self, f)
+        super().__init__(f)
+
+    _opcodes = {}
+
+    @classmethod
+    def _register_subclass(cls, subclass):
+        cls._opcodes[subclass._opcode] = subclass
 
     @classmethod
     def from_frame(cls, frame):
-        if cls == _StandardDeviceCommand:
-            return
-        if len(frame) != 24:
-            return
         if frame[16:8] != 0x1fe:
-            return
-        if frame[7:0] != cls._opcode:
             return
 
         addr = address.from_frame(frame)
@@ -97,329 +114,332 @@ class _StandardDeviceCommand(_DeviceCommand):
         if addr is None:
             return
 
-        return cls(addr)
+        cc = cls._opcodes.get(frame[7:0])
+        if not cc:
+            return UnknownDeviceCommand(frame)
+
+        return cc(addr)
 
     def __str__(self):
         return "%s(%s)" % (self.__class__.__name__, self.destination)
 
 
 class IdentifyDevice(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _sendtwice = True
+    appctrl = True
+    inputdev = True
+    sendtwice = True
     _opcode = 0x00
 
 
 class ResetPowerCycleSeen(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _sendtwice = True
+    appctrl = True
+    inputdev = True
+    sendtwice = True
     _opcode = 0x01
 
 
 class Reset(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _sendtwice = True
+    appctrl = True
+    inputdev = True
+    sendtwice = True
     _opcode = 0x10
 
 
 class ResetMemoryBank(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _uses_dtr0 = True
-    _sendtwice = True
+    appctrl = True
+    inputdev = True
+    uses_dtr0 = True
+    sendtwice = True
     _opcode = 0x11
 
 
 class SetShortAddress(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _uses_dtr0 = True
-    _sendtwice = True
+    appctrl = True
+    inputdev = True
+    uses_dtr0 = True
+    sendtwice = True
     _opcode = 0x14
 
 
 class EnableWriteMemory(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _sendtwice = True
+    appctrl = True
+    inputdev = True
+    sendtwice = True
     _opcode = 0x15
 
 
 class EnableApplicationController(_StandardDeviceCommand):
-    _appctrl = True
-    _sendtwice = True
+    appctrl = True
+    sendtwice = True
     _opcode = 0x16
 
 
 class DisableApplicationController(_StandardDeviceCommand):
-    _appctrl = True
-    _sendtwice = True
+    appctrl = True
+    sendtwice = True
     _opcode = 0x17
 
 
 class SetOperatingMode(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _uses_dtr0 = True
-    _sendtwice = True
+    appctrl = True
+    inputdev = True
+    uses_dtr0 = True
+    sendtwice = True
     _opcode = 0x18
 
 
 class AddToDeviceGroupsZeroToFifteen(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _uses_dtr1 = True
-    _uses_dtr2 = True
-    _sendtwice = True
+    appctrl = True
+    inputdev = True
+    uses_dtr1 = True
+    uses_dtr2 = True
+    sendtwice = True
     _opcode = 0x19
 
 
 class AddToDeviceGroupsSixteenToThirtyOne(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _uses_dtr1 = True
-    _uses_dtr2 = True
-    _sendtwice = True
+    appctrl = True
+    inputdev = True
+    uses_dtr1 = True
+    uses_dtr2 = True
+    sendtwice = True
     _opcode = 0x1a
 
 
 class RemoveFromDeviceGroupsZeroToFifteen(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _uses_dtr1 = True
-    _uses_dtr2 = True
-    _sendtwice = True
+    appctrl = True
+    inputdev = True
+    uses_dtr1 = True
+    uses_dtr2 = True
+    sendtwice = True
     _opcode = 0x1b
 
 
 class RemoveFromDeviceGroupsSixteenToThirtyOne(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _uses_dtr1 = True
-    _uses_dtr2 = True
-    _sendtwice = True
+    appctrl = True
+    inputdev = True
+    uses_dtr1 = True
+    uses_dtr2 = True
+    sendtwice = True
     _opcode = 0x1c
 
 
 class StartQuiescentMode(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _sendtwice = True
+    appctrl = True
+    inputdev = True
+    sendtwice = True
     _opcode = 0x1d
 
 
 class StopQuiescentMode(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _sendtwice = True
+    appctrl = True
+    inputdev = True
+    sendtwice = True
     _opcode = 0x1e
 
 
 class EnablePowerCycleNotification(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _sendtwice = True
+    appctrl = True
+    inputdev = True
+    sendtwice = True
     _opcode = 0x1f
 
 
 class DisablePowerCycleNotification(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _sendtwice = True
+    appctrl = True
+    inputdev = True
+    sendtwice = True
     _opcode = 0x20
 
 
 class SavePersistentVariables(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _sendtwice = True
+    appctrl = True
+    inputdev = True
+    sendtwice = True
     _opcode = 0x21
 
 
 class QueryDeviceStatus(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _response = command.Response
+    appctrl = True
+    inputdev = True
+    response = command.Response
     _opcode = 0x30
 
 
 class QueryApplicationControllerError(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _response = command.Response
+    appctrl = True
+    inputdev = True
+    response = command.Response
     _opcode = 0x31
 
 
 class QueryInputDeviceError(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _response = command.Response
+    appctrl = True
+    inputdev = True
+    response = command.Response
     _opcode = 0x32
 
 
 class QueryMissingShortAddress(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _response = command.Response
+    appctrl = True
+    inputdev = True
+    response = command.Response
     _opcode = 0x33
 
 
 class QueryVersionNumber(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _response = command.Response
+    appctrl = True
+    inputdev = True
+    response = command.Response
     _opcode = 0x34
 
 
 class QueryNumberOfInstances(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _response = command.Response
+    appctrl = True
+    inputdev = True
+    response = command.Response
     _opcode = 0x35
 
 
 class QueryContentDTR0(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _uses_dtr0 = True
-    _response = command.Response
+    appctrl = True
+    inputdev = True
+    uses_dtr0 = True
+    response = command.Response
     _opcode = 0x36
 
 
 class QueryContentDTR1(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _uses_dtr1 = True
-    _response = command.Response
+    appctrl = True
+    inputdev = True
+    uses_dtr1 = True
+    response = command.Response
     _opcode = 0x37
 
 
 class QueryContentDTR2(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _uses_dtr2 = True
-    _response = command.Response
+    appctrl = True
+    inputdev = True
+    uses_dtr2 = True
+    response = command.Response
     _opcode = 0x38
 
 
 class QueryRandomAddressH(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _response = command.Response
+    appctrl = True
+    inputdev = True
+    response = command.Response
     _opcode = 0x39
 
 
 class QueryRandomAddressM(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _response = command.Response
+    appctrl = True
+    inputdev = True
+    response = command.Response
     _opcode = 0x3a
 
 
 class QueryRandomAddressL(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _response = command.Response
+    appctrl = True
+    inputdev = True
+    response = command.Response
     _opcode = 0x3b
 
 
 class ReadMemoryLocation(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _uses_dtr0 = True
-    _uses_dtr1 = True
-    _response = command.Response
+    appctrl = True
+    inputdev = True
+    uses_dtr0 = True
+    uses_dtr1 = True
+    response = command.Response
     _opcode = 0x3c
 
 
 class QueryApplicationControlEnabled(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _response = command.Response
+    appctrl = True
+    inputdev = True
+    response = command.Response
     _opcode = 0x3d
 
 
 class QueryOperatingMode(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _response = command.Response
+    appctrl = True
+    inputdev = True
+    response = command.Response
     _opcode = 0x3e
 
 
 class QueryManufacturerSpecificMode(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _response = command.Response
+    appctrl = True
+    inputdev = True
+    response = command.Response
     _opcode = 0x3f
 
 
 class QueryQuiescentMode(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _response = command.Response
+    appctrl = True
+    inputdev = True
+    response = command.Response
     _opcode = 0x40
 
 
 class QueryDeviceGroupsZeroToSeven(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _response = command.Response
+    appctrl = True
+    inputdev = True
+    response = command.Response
     _opcode = 0x41
 
 
 class QueryDeviceGroupsEightToFifteen(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _response = command.Response
+    appctrl = True
+    inputdev = True
+    response = command.Response
     _opcode = 0x42
 
 
 class QueryDeviceGroupsSixteenToTwentyThree(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _response = command.Response
+    appctrl = True
+    inputdev = True
+    response = command.Response
     _opcode = 0x43
 
 
 class QueryDeviceGroupsTwentyFourToThirtyOne(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _response = command.Response
+    appctrl = True
+    inputdev = True
+    response = command.Response
     _opcode = 0x44
 
 
 class QueryPowerCycleNotification(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _response = command.Response
+    appctrl = True
+    inputdev = True
+    response = command.Response
     _opcode = 0x45
 
 
 class QueryDeviceCapabilities(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _response = command.Response
+    appctrl = True
+    inputdev = True
+    response = command.Response
     _opcode = 0x46
 
 
 class QueryExtendedVersionNumber(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _uses_dtr0 = True
-    _response = command.Response
+    appctrl = True
+    inputdev = True
+    uses_dtr0 = True
+    response = command.Response
     _opcode = 0x47
 
 
 class QueryResetState(_StandardDeviceCommand):
-    _appctrl = True
-    _inputdev = True
-    _response = command.Response
+    appctrl = True
+    inputdev = True
+    response = command.Response
     _opcode = 0x48
 
 
-@python_2_unicode_compatible
 class _StandardInstanceCommand(_DeviceCommand):
     """A standard command addressed to a control device instance."""
     _opcode = None
@@ -437,26 +457,29 @@ class _StandardInstanceCommand(_DeviceCommand):
         self.destination.add_to_frame(f)
         self.instance.add_to_frame(f)
 
-        _DeviceCommand.__init__(self, f)
+        super().__init__(f)
+
+    _opcodes = {}
+
+    @classmethod
+    def _register_subclass(cls, subclass):
+        cls._opcodes[subclass._opcode] = subclass
 
     @classmethod
     def from_frame(cls, frame):
-        if cls == _StandardDeviceCommand:
-            return
-        if len(frame) != 24:
-            return
         if not frame[16]:
             return
-        if frame[7:0] != cls._opcode:
-            return
-
         addr = address.from_frame(frame)
         instance = address.instance_from_frame(frame)
 
         if addr is None or instance is None:
             return
 
-        return cls(addr, instance)
+        cc = cls._opcodes.get(frame[7:0])
+        if not cc:
+            return UnknownDeviceCommand(frame)
+
+        return cc(addr, instance)
 
     def __str__(self):
         return "{}({}, {})".format(
@@ -464,163 +487,169 @@ class _StandardInstanceCommand(_DeviceCommand):
 
 
 class SetEventPriority(_StandardInstanceCommand):
-    _inputdev = True
-    _uses_dtr0 = True
-    _sendtwice = True
+    inputdev = True
+    uses_dtr0 = True
+    sendtwice = True
     _opcode = 0x61
 
 
 class EnableInstance(_StandardInstanceCommand):
-    _inputdev = True
-    _sendtwice = True
+    inputdev = True
+    sendtwice = True
     _opcode = 0x62
 
 
 class DisableInstance(_StandardInstanceCommand):
-    _inputdev = True
-    _sendtwice = True
+    inputdev = True
+    sendtwice = True
     _opcode = 0x63
 
 
 class SetPrimaryInstanceGroup(_StandardInstanceCommand):
-    _inputdev = True
-    _uses_dtr0 = True
-    _sendtwice = True
+    inputdev = True
+    uses_dtr0 = True
+    sendtwice = True
     _opcode = 0x64
 
 
 class SetInstanceGroup1(_StandardInstanceCommand):
-    _inputdev = True
-    _uses_dtr0 = True
-    _sendtwice = True
+    inputdev = True
+    uses_dtr0 = True
+    sendtwice = True
     _opcode = 0x65
 
 
 class SetInstanceGroup2(_StandardInstanceCommand):
-    _inputdev = True
-    _uses_dtr0 = True
-    _sendtwice = True
+    inputdev = True
+    uses_dtr0 = True
+    sendtwice = True
     _opcode = 0x66
 
 
 class SetEventScheme(_StandardInstanceCommand):
-    _inputdev = True
-    _uses_dtr0 = True
-    _sendtwice = True
+    inputdev = True
+    uses_dtr0 = True
+    sendtwice = True
     _opcode = 0x67
 
 
 class SetEventFilter(_StandardInstanceCommand):
-    _inputdev = True
-    _uses_dtr0 = True
-    _uses_dtr1 = True
-    _uses_dtr2 = True
-    _sendtwice = True
+    inputdev = True
+    uses_dtr0 = True
+    uses_dtr1 = True
+    uses_dtr2 = True
+    sendtwice = True
     _opcode = 0x68
 
 
 class QueryInstanceType(_StandardInstanceCommand):
-    _inputdev = True
-    _response = command.Response
+    inputdev = True
+    response = command.Response
     _opcode = 0x80
 
 
 class QueryResolution(_StandardInstanceCommand):
-    _inputdev = True
-    _response = command.Response
+    inputdev = True
+    response = command.Response
     _opcode = 0x81
 
 
 class QueryInstanceError(_StandardInstanceCommand):
-    _inputdev = True
-    _response = command.Response
+    inputdev = True
+    response = command.Response
     _opcode = 0x82
 
 
 class QueryInstanceStatus(_StandardInstanceCommand):
-    _inputdev = True
-    _response = command.Response
+    inputdev = True
+    response = command.Response
     _opcode = 0x83
 
 
 class QueryEventPriority(_StandardInstanceCommand):
-    _inputdev = True
-    _response = command.Response
+    inputdev = True
+    response = command.Response
     _opcode = 0x84
 
 
 class QueryInstanceEnabled(_StandardInstanceCommand):
-    _inputdev = True
-    _response = command.Response
+    inputdev = True
+    response = command.Response
     _opcode = 0x86
 
 
 class QueryPrimaryInstanceGroup(_StandardInstanceCommand):
-    _inputdev = True
-    _response = command.Response
+    inputdev = True
+    response = command.Response
     _opcode = 0x88
 
 
 class QueryInstanceGroup1(_StandardInstanceCommand):
-    _inputdev = True
-    _response = command.Response
+    inputdev = True
+    response = command.Response
     _opcode = 0x89
 
 
 class QueryInstanceGroup2(_StandardInstanceCommand):
-    _inputdev = True
-    _response = command.Response
+    inputdev = True
+    response = command.Response
     _opcode = 0x8a
 
 
 class QueryEventScheme(_StandardInstanceCommand):
-    _inputdev = True
-    _response = command.Response
+    inputdev = True
+    response = command.Response
     _opcode = 0x8b
 
 
 class QueryInputValue(_StandardInstanceCommand):
-    _inputdev = True
-    _response = command.Response
+    inputdev = True
+    response = command.Response
     _opcode = 0x8c
 
 
 class QueryInputValueLatch(_StandardInstanceCommand):
-    _inputdev = True
-    _response = command.Response
+    inputdev = True
+    response = command.Response
     _opcode = 0x8d
 
 
 class QueryFeatureType(_StandardInstanceCommand):
-    _inputdev = True
-    _response = command.Response
+    inputdev = True
+    response = command.Response
     _opcode = 0x8e
 
 
 class QueryNextFeatureType(_StandardInstanceCommand):
-    _inputdev = True
-    _response = command.Response
+    inputdev = True
+    response = command.Response
     _opcode = 0x8f
 
 
 class QueryEventFilterZeroToSeven(_StandardInstanceCommand):
-    _inputdev = True
-    _response = command.Response
+    inputdev = True
+    response = command.Response
     _opcode = 0x90
+
+
 QueryEventFilterL = QueryEventFilterZeroToSeven
 
 
 class QueryEventFilterEightToFifteen(_StandardInstanceCommand):
-    _inputdev = True
-    _response = command.Response
+    inputdev = True
+    response = command.Response
     _opcode = 0x91
+
+
 QueryEventFilterM = QueryEventFilterEightToFifteen
 
 
 class QueryEventFilterSixteenToTwentyThree(_StandardInstanceCommand):
-    _inputdev = True
-    _response = command.Response
+    inputdev = True
+    response = command.Response
     _opcode = 0x92
+
+
 QueryEventFilterH = QueryEventFilterSixteenToTwentyThree
 
 
@@ -628,7 +657,7 @@ QueryEventFilterH = QueryEventFilterSixteenToTwentyThree
 # Commands from Table 22 start here
 ###############################################################################
 
-@python_2_unicode_compatible
+
 class _SpecialDeviceCommand(_DeviceCommand):
     _addr = None
     _instance = None
@@ -637,15 +666,13 @@ class _SpecialDeviceCommand(_DeviceCommand):
     def __init__(self):
         if self._addr is None or self._instance is None:
             raise NotImplementedError
-        _DeviceCommand.__init__(
-            self, frame.ForwardFrame(24, (
+        super().__init__(
+            frame.ForwardFrame(24, (
                 self._addr, self._instance, self._opcode)))
 
     @classmethod
     def from_frame(cls, frame):
         if cls == _SpecialDeviceCommand:
-            return
-        if len(frame) != 24:
             return
         if frame[23:16] == cls._addr and frame[15:8] == cls._instance \
            and frame[7:0] == 0x00:
@@ -655,7 +682,6 @@ class _SpecialDeviceCommand(_DeviceCommand):
         return "{}()".format(self.__class__.__name__)
 
 
-@python_2_unicode_compatible
 class _SpecialDeviceCommandOneParam(_SpecialDeviceCommand):
     def __init__(self, param):
         if not isinstance(param, int):
@@ -663,13 +689,11 @@ class _SpecialDeviceCommandOneParam(_SpecialDeviceCommand):
         if param < 0 or param > 255:
             raise ValueError("parameter must be in the range 0..255")
         self._opcode = param
-        _SpecialDeviceCommand.__init__(self)
+        super().__init__()
 
     @classmethod
     def from_frame(cls, frame):
         if cls == _SpecialDeviceCommandOneParam:
-            return
-        if len(frame) != 24:
             return
         if frame[23:16] == cls._addr and frame[15:8] == cls._instance:
             return cls(frame[7:0])
@@ -678,7 +702,6 @@ class _SpecialDeviceCommandOneParam(_SpecialDeviceCommand):
         return "{}({:02x})".format(self.__class__.__name__, self._opcode)
 
 
-@python_2_unicode_compatible
 class _SpecialDeviceCommandTwoParam(_SpecialDeviceCommand):
     def __init__(self, a, b):
         if not isinstance(a, int) or not isinstance(b, int):
@@ -687,13 +710,11 @@ class _SpecialDeviceCommandTwoParam(_SpecialDeviceCommand):
             raise ValueError("parameters must be in the range 0..255")
         self._instance = a
         self._opcode = b
-        _SpecialDeviceCommand.__init__(self)
+        super().__init__()
 
     @classmethod
     def from_frame(cls, frame):
         if cls == _SpecialDeviceCommandTwoParam:
-            return
-        if len(frame) != 24:
             return
         if frame[23:16] == cls._addr:
             return cls(frame[15:8], frame[7:0])
@@ -711,19 +732,19 @@ class Terminate(_SpecialDeviceCommand):
 class Initialise(_SpecialDeviceCommandOneParam):
     _addr = 0xc1
     _instance = 0x01
-    _sendtwice = True
+    sendtwice = True
 
 
 class Randomise(_SpecialDeviceCommand):
     _addr = 0xc1
     _instance = 0x02
-    _sendtwice = True
+    sendtwice = True
 
 
 class Compare(_SpecialDeviceCommand):
     _addr = 0xc1
     _instance = 0x03
-    _response = command.Response
+    response = command.Response
 
 
 class Withdraw(_SpecialDeviceCommand):
@@ -754,72 +775,70 @@ class ProgramShortAddress(_SpecialDeviceCommandOneParam):
 class VerifyShortAddress(_SpecialDeviceCommandOneParam):
     _addr = 0xc1
     _instance = 0x09
-    _response = command.Response
+    response = command.Response
 
 
 class QueryShortAddress(_SpecialDeviceCommand):
     _addr = 0xc1
     _instance = 0x0a
-    _response = command.Response
+    response = command.Response
 
 
 class WriteMemoryLocation(_SpecialDeviceCommandOneParam):
     _addr = 0xc1
     _instance = 0x20
-    _uses_dtr0 = True
-    _uses_dtr1 = True
-    _response = command.Response
+    uses_dtr0 = True
+    uses_dtr1 = True
+    response = command.Response
 
 
 class WriteMemoryLocationNoReply(_SpecialDeviceCommandOneParam):
     _addr = 0xc1
     _instance = 0x21
-    _uses_dtr0 = True
-    _uses_dtr1 = True
+    uses_dtr0 = True
+    uses_dtr1 = True
 
 
 class DTR0(_SpecialDeviceCommandOneParam):
     _addr = 0xc1
     _instance = 0x30
-    _uses_dtr0 = True
+    uses_dtr0 = True
 
 
 class DTR1(_SpecialDeviceCommandOneParam):
     _addr = 0xc1
     _instance = 0x31
-    _uses_dtr1 = True
+    uses_dtr1 = True
 
 
 class DTR2(_SpecialDeviceCommandOneParam):
     _addr = 0xc1
     _instance = 0x32
-    _uses_dtr2 = True
+    uses_dtr2 = True
 
 
 class SendTestframe(_SpecialDeviceCommandOneParam):
     _addr = 0xc1
     _instance = 0x33
-    _uses_dtr0 = True
-    _uses_dtr1 = True
-    _uses_dtr2 = True
+    uses_dtr0 = True
+    uses_dtr1 = True
+    uses_dtr2 = True
 
 
 class DirectWriteMemory(_SpecialDeviceCommandTwoParam):
     _addr = 0xc5
-    _uses_dtr0 = True
-    _uses_dtr1 = True
-    _response = command.Response
+    uses_dtr0 = True
+    uses_dtr1 = True
+    response = command.Response
 
 
 class DTR1DTR0(_SpecialDeviceCommandTwoParam):
     _addr = 0xc7
-    _uses_dtr0 = True
-    _uses_dtr1 = True
+    uses_dtr0 = True
+    uses_dtr1 = True
 
 
 class DTR2DTR1(_SpecialDeviceCommandTwoParam):
     _addr = 0xc9
-    _uses_dtr1 = True
-    _uses_dtr2 = True
-
-
+    uses_dtr1 = True
+    uses_dtr2 = True

@@ -1,23 +1,11 @@
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-from dali.compat import python_2_unicode_compatible
 import struct
-import sys
-
-
-if sys.version_info < (3,):
-    _integer_types = (int, long)
-else:
-    _integer_types = (int,)
-
 
 _bad_init_data = TypeError(
-    "data must be a sequence of integers all in the range 0..255 or an integer")
+    "data must be a sequence of integers all in the range 0..255 "
+    "or an integer")
 
 
-@python_2_unicode_compatible
-class Frame(object):
+class Frame:
     """A DALI frame.
 
     A Frame consists of one start bit, n data bits, and one stop
@@ -40,7 +28,7 @@ class Frame(object):
             raise ValueError(
                 "Frames must contain at least 1 data bit")
         self._bits = bits
-        if isinstance(data, _integer_types):
+        if isinstance(data, int):
             self._data = data
         else:
             d = 0
@@ -70,13 +58,13 @@ class Frame(object):
     def __eq__(self, other):
         try:
             return self._bits == other._bits and self._data == other._data
-        except:
+        except Exception:
             return False
 
     def __ne__(self, other):
         try:
             return self._bits != other._bits or self._data != other._data
-        except:
+        except Exception:
             return True
 
     def _readslice(self, key):
@@ -133,7 +121,7 @@ class Frame(object):
         """
         if isinstance(key, slice):
             hi, lo = self._readslice(key)
-            if not isinstance(value, _integer_types):
+            if not isinstance(value, int):
                 raise TypeError("value must be an integer")
             if value.bit_length() > (hi + 1 - lo):
                 raise ValueError("value will not fit in supplied slice")
@@ -164,7 +152,7 @@ class Frame(object):
         try:
             return Frame(self._bits + other._bits,
                          self._data << other._bits | other._data)
-        except:
+        except Exception:
             raise TypeError("Frame can only be added to another Frame")
 
     @property
@@ -201,6 +189,21 @@ class Frame(object):
         """
         s = self.as_byte_sequence
         return struct.pack("B" * len(s), *s)
+
+    def pack_len(self, l):
+        """The contents of the frame represented as a fixed length byte string.
+
+        The least significant bit of the frame is aligned to the end
+        of the byte string.  The start of the byte string is padded with zeroes.
+
+        If the frame will not fit in the byte string, raises ValueError.
+        """
+        s = self.as_byte_sequence
+        if len(s) > l:
+            raise ValueError("Frame length {} will not fit in {} bytes".format(
+                len(self), l))
+        s = [0] * (l - len(s)) + s
+        return struct.pack("B" * l, *s)
 
     def __str__(self):
         return "{}({},{})".format(self.__class__.__name__, len(self),
@@ -240,7 +243,10 @@ class BackwardFrame(Frame):
     """
 
     def __init__(self, data):
-        Frame.__init__(self, 8, data)
+        super().__init__(8, data)
+
+    def __str__(self):
+        return "{}({})".format(self.__class__.__name__, self._data)
 
 
 class BackwardFrameError(BackwardFrame):
@@ -253,5 +259,5 @@ class BackwardFrameError(BackwardFrame):
     """
 
     def __init__(self, data):
-        BackwardFrame.__init__(self, data)
+        super().__init__(data)
         self._error = True

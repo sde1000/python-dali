@@ -7,24 +7,42 @@ Where a command name is or contains an abbreviation, for example DAPC
 or DTR0, the abbreviation has been kept in capitals.
 """
 
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
 from dali import command
 from dali import address
 from dali import frame
-from dali.compat import python_2_unicode_compatible
 
 
 class _GearCommand(command.Command):
     _framesize = 16
+
+    _gearcommands = []
+
+    @classmethod
+    def _register_subclass(cls, subclass):
+        cls._gearcommands.append(subclass)
+
+    @classmethod
+    def from_frame(cls, f, devicetype=0):
+        for gc in cls._gearcommands:
+            r = gc.from_frame(f, devicetype=devicetype)
+            if r:
+                return r
+        return UnknownGearCommand(f)
+
+
+class UnknownGearCommand(_GearCommand):
+    """An unknown command addressed to control gear.
+    """
+    @classmethod
+    def from_frame(cls, f, devicetype=0):
+        return
 
 
 ###############################################################################
 # Commands from Table 15 start here
 ###############################################################################
 
-@python_2_unicode_compatible
+
 class _StandardCommand(_GearCommand):
     """A standard command as defined in Table 15 of IEC 62386-102
 
@@ -73,35 +91,43 @@ class _StandardCommand(_GearCommand):
         f = frame.ForwardFrame(16, 0x100 | self._cmdval | param)
         self.destination.add_to_frame(f)
 
-        _GearCommand.__init__(self, f)
+        super().__init__(f)
+
+    # (devicetype, opcode) -> commandclass
+    _opcodes = {}
 
     @classmethod
-    def from_frame(cls, frame):
-        if cls == _StandardCommand:
+    def _register_subclass(cls, subclass):
+        if subclass.__name__[0] == '_':
             return
-        if len(frame) != 16:
-            return
+        if subclass._hasparam:
+            for x in range(0, 0x10):
+                cls._opcodes[(subclass.devicetype, subclass._cmdval + x)] = subclass
+        else:
+            cls._opcodes[(subclass.devicetype, subclass._cmdval)] = subclass
+
+    @classmethod
+    def from_frame(cls, frame, devicetype=0):
         if not frame[8]:
             # It's a direct arc power control command
             return
-        b = frame[7:0]
-
-        if cls._hasparam:
-            if b & 0xf0 != cls._cmdval:
-                return
-        else:
-            if b != cls._cmdval:
-                return
 
         addr = address.from_frame(frame)
 
         if addr is None:
+            # It's probably a _SpecialCommand
             return
 
-        if cls._hasparam:
-            return cls(addr, b & 0x0f)
+        opcode = frame[7:0]
 
-        return cls(addr)
+        cc = cls._opcodes.get((devicetype, opcode))
+        if not cc:
+            return UnknownGearCommand(frame)
+
+        if cc._hasparam:
+            return cc(addr, opcode & 0x0f)
+
+        return cc(addr)
 
     def __str__(self):
         if self._hasparam:
@@ -113,7 +139,6 @@ class _StandardCommand(_GearCommand):
         return "%s(%s)" % (self.__class__.__name__, self.destination)
 
 
-@python_2_unicode_compatible
 class DAPC(_GearCommand):
     """Direct Arc Power Control
 
@@ -146,12 +171,10 @@ class DAPC(_GearCommand):
 
         f = frame.ForwardFrame(16, power)
         self.destination.add_to_frame(f)
-        _GearCommand.__init__(self, f)
+        super().__init__(f)
 
     @classmethod
-    def from_frame(cls, f):
-        if len(f) != 16:
-            return
+    def from_frame(cls, f, devicetype=0):
         if f[8]:
             return
         addr = address.from_frame(f)
@@ -285,6 +308,26 @@ class GoToLastActiveLevel(_StandardCommand):
     _cmdval = 0x0a
 
 
+class ContinuousUp(_StandardCommand):
+    """Dim up using the set fade rate.
+
+    targetLevel shall be set to maxLevel and a fade shall be started
+    using the set fade rate. The fade shall stop when maxLevel is
+    reached.
+    """
+    _cmdval = 0x0b
+
+
+class ContinuousDown(_StandardCommand):
+    """Dim down using the set fade rate.
+
+    targetLevel shall be set to minLevel and a fade shall be started
+    using the set fade rate. The fade shall stop when minLevel is
+    reached.
+    """
+    _cmdval = 0x0c
+
+
 class GoToScene(_StandardCommand):
     """Set the actual arc power level to the value stored for the scene
     using the actual fade time.
@@ -309,7 +352,7 @@ class Reset(_StandardCommand):
     this command.
     """
     _cmdval = 0x20
-    _sendtwice = True
+    sendtwice = True
 
 
 class StoreActualLevelInDTR0(_StandardCommand):
@@ -317,8 +360,8 @@ class StoreActualLevelInDTR0(_StandardCommand):
     current light intensity.
     """
     _cmdval = 0x21
-    _uses_dtr0 = True
-    _sendtwice = True
+    uses_dtr0 = True
+    sendtwice = True
 
 
 class SavePersistentVariables(_StandardCommand):
@@ -330,7 +373,7 @@ class SavePersistentVariables(_StandardCommand):
     recommended to be used typically after commissioning.
     """
     _cmdval = 0x22
-    _sendtwice = True
+    sendtwice = True
 
 
 class SetOperatingMode(_StandardCommand):
@@ -340,8 +383,8 @@ class SetOperatingMode(_StandardCommand):
     command shall be ignored.
     """
     _cmdval = 0x23
-    _uses_dtr0 = True
-    _sendtwice = True
+    uses_dtr0 = True
+    sendtwice = True
 
 
 class ResetMemoryBank(_StandardCommand):
@@ -357,8 +400,8 @@ class ResetMemoryBank(_StandardCommand):
     commands for up to 10s.
     """
     _cmdval = 0x24
-    _uses_dtr0 = True
-    _sendtwice = True
+    uses_dtr0 = True
+    sendtwice = True
 
 
 class IdentifyDevice(_StandardCommand):
@@ -374,14 +417,14 @@ class IdentifyDevice(_StandardCommand):
     IdentifyDevice.
     """
     _cmdval = 0x25
-    _sendtwice = True
+    sendtwice = True
 
 
 class SetMaxLevel(_StandardCommand):
     """Save the value in DTR0 as the new "MAX LEVEL"."""
     _cmdval = 0x2a
-    _uses_dtr0 = True
-    _sendtwice = True
+    uses_dtr0 = True
+    sendtwice = True
 
 
 class SetMinLevel(_StandardCommand):
@@ -390,22 +433,22 @@ class SetMinLevel(_StandardCommand):
     "PHYSICAL MIN LEVEL" as the new "MIN LEVEL".
     """
     _cmdval = 0x2b
-    _uses_dtr0 = True
-    _sendtwice = True
+    uses_dtr0 = True
+    sendtwice = True
 
 
 class SetSystemFailureLevel(_StandardCommand):
     """Save the value in DTR0 as the new "SYSTEM FAILURE LEVEL"."""
     _cmdval = 0x2c
-    _uses_dtr0 = True
-    _sendtwice = True
+    uses_dtr0 = True
+    sendtwice = True
 
 
 class SetPowerOnLevel(_StandardCommand):
     """Save the value in DTR0 as the new "POWER ON LEVEL"."""
     _cmdval = 0x2d
-    _uses_dtr0 = True
-    _sendtwice = True
+    uses_dtr0 = True
+    sendtwice = True
 
 
 class SetFadeTime(_StandardCommand):
@@ -427,8 +470,8 @@ class SetFadeTime(_StandardCommand):
     process, the running fade process is not affected.
     """
     _cmdval = 0x2e
-    _uses_dtr0 = True
-    _sendtwice = True
+    uses_dtr0 = True
+    sendtwice = True
 
 
 class SetFadeRate(_StandardCommand):
@@ -444,8 +487,8 @@ class SetFadeRate(_StandardCommand):
     process, the running fade process is not affected.
     """
     _cmdval = 0x2f
-    _uses_dtr0 = True
-    _sendtwice = True
+    uses_dtr0 = True
+    sendtwice = True
 
 
 class SetExtendedFadeTime(_StandardCommand):
@@ -461,8 +504,8 @@ class SetExtendedFadeTime(_StandardCommand):
     running fade process is not affected.
     """
     _cmdval = 0x30
-    _uses_dtr0 = True
-    _sendtwice = True
+    uses_dtr0 = True
+    sendtwice = True
 
 
 class SetScene(_StandardCommand):
@@ -471,8 +514,8 @@ class SetScene(_StandardCommand):
     """
     _cmdval = 0x40
     _hasparam = True
-    _uses_dtr0 = True
-    _sendtwice = True
+    uses_dtr0 = True
+    sendtwice = True
 
 
 class RemoveFromScene(_StandardCommand):
@@ -482,21 +525,21 @@ class RemoveFromScene(_StandardCommand):
     """
     _cmdval = 0x50
     _hasparam = True
-    _sendtwice = True
+    sendtwice = True
 
 
 class AddToGroup(_StandardCommand):
     """Add the ballast to the specified group."""
     _cmdval = 0x60
     _hasparam = True
-    _sendtwice = True
+    sendtwice = True
 
 
 class RemoveFromGroup(_StandardCommand):
     """Remove the ballast from the specified group."""
     _cmdval = 0x70
     _hasparam = True
-    _sendtwice = True
+    sendtwice = True
 
 
 class SetShortAddress(_StandardCommand):
@@ -507,8 +550,8 @@ class SetShortAddress(_StandardCommand):
     - 255 (i.e. 11111111) to remove the short address
     """
     _cmdval = 0x80
-    _uses_dtr0 = True
-    _sendtwice = True
+    uses_dtr0 = True
+    sendtwice = True
 
 
 class EnableWriteMemory(_StandardCommand):
@@ -521,7 +564,7 @@ class EnableWriteMemory(_StandardCommand):
     banks will set writeEnableState to DISABLED.
     """
     _cmdval = 0x81
-    _sendtwice = True
+    sendtwice = True
 
 
 class QueryStatusResponse(command.BitmapResponse):
@@ -553,25 +596,25 @@ class QueryStatus(_StandardCommand):
       been received since the last power-on
     """
     _cmdval = 0x90
-    _response = QueryStatusResponse
+    response = QueryStatusResponse
 
 
 class QueryControlGearPresent(_StandardCommand):
     """Ask if there is a ballast that is able to communicate."""
     _cmdval = 0x91
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
 
 
 class QueryLampFailure(_StandardCommand):
     """Ask if there is a lamp problem."""
     _cmdval = 0x92
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
 
 
 class QueryLampPowerOn(_StandardCommand):
     """Ask if there is a lamp operating."""
     _cmdval = 0x93
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
 
 
 class QueryLimitError(_StandardCommand):
@@ -580,13 +623,13 @@ class QueryLimitError(_StandardCommand):
     of 0 is always "OFF" and is not an error.)
     """
     _cmdval = 0x94
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
 
 
 class QueryResetState(_StandardCommand):
     """Ask if the ballast is in "RESET STATE"."""
     _cmdval = 0x95
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
 
 
 class QueryMissingShortAddress(_StandardCommand):
@@ -594,7 +637,7 @@ class QueryMissingShortAddress(_StandardCommand):
     that the ballast has no short address.
     """
     _cmdval = 0x96
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
 
 
 class QueryVersionNumber(_StandardCommand):
@@ -606,17 +649,16 @@ class QueryVersionNumber(_StandardCommand):
     The answer shall be the content of memory bank 0 location 0x16.
     """
     _cmdval = 0x97
-    _response = command.Response
+    response = command.NumericResponse
 
 
 class QueryContentDTR0(_StandardCommand):
     """Return the contents of DTR0."""
     _cmdval = 0x98
-    _uses_dtr0 = True
-    _response = command.Response
+    uses_dtr0 = True
+    response = command.NumericResponse
 
 
-@python_2_unicode_compatible
 class QueryDeviceTypeResponse(command.Response):
     _types = {0: "fluorescent lamp",
               1: "emergency lighting",
@@ -624,7 +666,9 @@ class QueryDeviceTypeResponse(command.Response):
               3: "low voltage halogen lamp",
               4: "incandescent lamp dimmer",
               5: "dc-controlled dimmer",
-              6: "LED lamp"}
+              6: "LED lamp",
+              254: "none / end",
+              255: "multiple"}
 
     def __str__(self):
         if self.value and self.value.as_integer in self._types:
@@ -660,13 +704,13 @@ class QueryDeviceType(_StandardCommand):
     response will be MASK (0xff).
     """
     _cmdval = 0x99
-    _response = QueryDeviceTypeResponse
+    response = QueryDeviceTypeResponse
 
 
 class QueryPhysicalMinimum(_StandardCommand):
     """Return the physical minimum level for this device."""
     _cmdval = 0x9a
-    _response = command.Response
+    response = command.NumericResponseMask
 
 
 class QueryPowerFailure(_StandardCommand):
@@ -674,27 +718,27 @@ class QueryPowerFailure(_StandardCommand):
     control command since the last power-on.
     """
     _cmdval = 0x9b
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
 
 
 class QueryContentDTR1(_StandardCommand):
     """Return the contents of DTR1."""
     _cmdval = 0x9c
-    _uses_dtr1 = True
-    _response = command.Response
+    uses_dtr1 = True
+    response = command.NumericResponse
 
 
 class QueryContentDTR2(_StandardCommand):
     """Return the contents of DTR2."""
     _cmdval = 0x9d
-    _uses_dtr2 = True
-    _response = command.Response
+    uses_dtr2 = True
+    response = command.NumericResponse
 
 
 class QueryOperatingMode(_StandardCommand):
     """Query Operating Mode"""
     _cmdval = 0x9e
-    _response = command.Response
+    response = command.NumericResponse
 
 
 class QueryLightSourceType(_StandardCommand):
@@ -726,10 +770,10 @@ class QueryLightSourceType(_StandardCommand):
     three then DTR2 shall be MASK.
     """
     _cmdval = 0x9f
-    _uses_dtr0 = True
-    _uses_dtr1 = True
-    _uses_dtr2 = True
-    _response = command.Response
+    uses_dtr0 = True
+    uses_dtr1 = True
+    uses_dtr2 = True
+    response = command.NumericResponseMask
 
 
 class QueryActualLevel(_StandardCommand):
@@ -737,35 +781,34 @@ class QueryActualLevel(_StandardCommand):
     lamp error occurs the answer will be 0xff ("MASK").
     """
     _cmdval = 0xa0
-    _response = command.Response
+    response = command.NumericResponseMask
 
 
 class QueryMaxLevel(_StandardCommand):
     """Return "MAX LEVEL"."""
     _cmdval = 0xa1
-    _response = command.Response
+    response = command.NumericResponseMask
 
 
 class QueryMinLevel(_StandardCommand):
     """Return "MIN LEVEL"."""
     _cmdval = 0xa2
-    _response = command.Response
+    response = command.NumericResponseMask
 
 
 class QueryPowerOnLevel(_StandardCommand):
     """Return "POWER ON LEVEL"."""
     _cmdval = 0xa3
-    _response = command.Response
+    response = command.NumericResponseMask
 
 
 class QuerySystemFailureLevel(_StandardCommand):
     """Return "SYSTEM FAILURE LEVEL"."""
     _cmdval = 0xa4
-    _response = command.Response
+    response = command.NumericResponseMask
 
 
-@python_2_unicode_compatible
-class QueryFadeTimeAndRateResponse(command.Response):
+class QueryFadeTimeAndRateResponse(command.NumericResponse):
     @property
     def fade_time(self):
         if self._value:
@@ -791,7 +834,7 @@ class QueryFadeTimeFadeRate(_StandardCommand):
     is in the lower four bits of the response.
     """
     _cmdval = 0xa5
-    _response = QueryFadeTimeAndRateResponse
+    response = QueryFadeTimeAndRateResponse
 
 
 class QueryManufacturerSpecificMode(_StandardCommand):
@@ -801,7 +844,7 @@ class QueryManufacturerSpecificMode(_StandardCommand):
     0x80..0xff and NO otherwise.
     """
     _cmdval = 0xa6
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
 
 
 class QueryNextDeviceType(_StandardCommand):
@@ -824,7 +867,7 @@ class QueryNextDeviceType(_StandardCommand):
     QueryDeviceType,QueryNextDeviceType,... as a transaction.
     """
     _cmdval = 0xa7
-    _response = command.Response
+    response = QueryDeviceTypeResponse
 
 
 class QueryExtendedFadeTime(_StandardCommand):
@@ -834,7 +877,7 @@ class QueryExtendedFadeTime(_StandardCommand):
     3:0 are extendedFadeTimeBase.
     """
     _cmdval = 0xa8
-    _response = command.Response
+    response = command.Response
 
 
 class QueryControlGearFailure(_StandardCommand):
@@ -844,7 +887,7 @@ class QueryControlGearFailure(_StandardCommand):
     otherwise.
     """
     _cmdval = 0xaa
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
 
 
 class QuerySceneLevel(_StandardCommand):
@@ -853,7 +896,7 @@ class QuerySceneLevel(_StandardCommand):
     """
     _cmdval = 0xb0
     _hasparam = True
-    _response = command.Response
+    response = command.NumericResponseMask
 
 
 class QueryGroupsZeroToSeven(_StandardCommand):
@@ -861,7 +904,7 @@ class QueryGroupsZeroToSeven(_StandardCommand):
     least-significant bit of the response.
     """
     _cmdval = 0xc0
-    _response = command.Response
+    response = command.Response
 
 
 class QueryGroupsEightToFifteen(_StandardCommand):
@@ -869,25 +912,25 @@ class QueryGroupsEightToFifteen(_StandardCommand):
     least-significant bit of the response.
     """
     _cmdval = 0xc1
-    _response = command.Response
+    response = command.Response
 
 
 class QueryRandomAddressH(_StandardCommand):
     """Return the 8 high bits of the random address."""
     _cmdval = 0xc2
-    _response = command.Response
+    response = command.Response
 
 
 class QueryRandomAddressM(_StandardCommand):
     """Return the 8 mid bits of the random address."""
     _cmdval = 0xc3
-    _response = command.Response
+    response = command.Response
 
 
 class QueryRandomAddressL(_StandardCommand):
     """Return the 8 low bits of the random address."""
     _cmdval = 0xc4
-    _response = command.Response
+    response = command.Response
 
 
 class ReadMemoryLocation(_StandardCommand):
@@ -901,34 +944,47 @@ class ReadMemoryLocation(_StandardCommand):
     below 0xff, then DTR0 is incremented by 1.
     """
     _cmdval = 0xc5
-    _uses_dtr0 = True
-    _uses_dtr1 = True
-    _response = command.Response
+    uses_dtr0 = True
+    uses_dtr1 = True
+    response = command.Response
 
 
-class QueryExtendedVersionNumber(_StandardCommand):
+class QueryExtendedVersionNumberMixin:
     """Query Extended Version Number
 
     This command must be preceded by an appropriate EnableDeviceType
     command; if it is not then it will be ignored.  Returns the
     version number of Part 2xx of IEC 62386 for the corresponding
     device type as an 8-bit number.
+
+    Device type implementations must provide their own implementation
+    of QueryExtendedVersionNumber using this mixin.
     """
     _cmdval = 0xff
-    _response = command.Response
+    response = command.NumericResponse
+
+
+class QueryExtendedVersionNumber(QueryExtendedVersionNumberMixin,
+                                 _StandardCommand):
+    """Query Extended Version Number
+
+    For device type 0, this command is ignored.
+    """
+    pass
 
 
 ###############################################################################
 # Commands from Table 16 start here
 ###############################################################################
 
-@python_2_unicode_compatible
+
 class _SpecialCommand(_GearCommand):
     """A special command as defined in Table 16 of IEC 62386-102.
 
     Special commands are broadcast and are received by all devices.
     """
     _hasparam = False
+    _cmdval = None
 
     def __init__(self, *args):
         if self._hasparam:
@@ -941,7 +997,6 @@ class _SpecialCommand(_GearCommand):
                 raise ValueError("param must be an int")
             if param < 0 or param > 255:
                 raise ValueError("param must be in range 0..255")
-            self.param = param
         else:
             if len(args) != 0:
                 raise TypeError(
@@ -949,23 +1004,32 @@ class _SpecialCommand(_GearCommand):
                         self.__class__.__name__, len(args) + 1))
             param = 0
         self.param = param
+        super().__init__(frame.ForwardFrame(16, (self._cmdval, self.param)))
+
+    # dict of frame[15:8] to cls
+    _opcodes = {}
 
     @classmethod
-    def from_frame(cls, frame):
-        if cls == _SpecialCommand:
+    def _register_subclass(cls, subclass):
+        if subclass.__name__[0] == '_':
             return
-        if len(frame) != 16:
-            return
-        if frame[15:8] == cls._cmdval:
+        cls._opcodes[subclass._cmdval] = subclass
+
+    @classmethod
+    def from_frame(cls, frame, devicetype=0):
+        opcode = frame[15:8]
+        if opcode == cls._cmdval:
             if cls._hasparam:
                 return cls(frame[7:0])
+            elif frame[7:0] == 0:
+                return cls()
             else:
-                if frame[7:0] == 0:
-                    return cls()
+                return UnknownGearCommand(frame)
 
-    @property
-    def frame(self):
-        return frame.ForwardFrame(16, (self._cmdval, self.param))
+        cc = cls._opcodes.get(opcode)
+        if not cc:
+            return UnknownGearCommand(frame)
+        return cc.from_frame(frame, devicetype=devicetype)
 
     def __str__(self):
         if self._hasparam:
@@ -973,9 +1037,9 @@ class _SpecialCommand(_GearCommand):
         return "{}()".format(self.__class__.__name__)
 
 
-@python_2_unicode_compatible
 class _ShortAddrSpecialCommand(_SpecialCommand):
     """A special command that has a short address as its parameter."""
+    _hasparam = True
 
     def __init__(self, address):
         if address == "MASK":
@@ -986,17 +1050,12 @@ class _ShortAddrSpecialCommand(_SpecialCommand):
             if address < 0 or address > 63:
                 raise ValueError("address must be in the range 0..63")
         self.address = address
-
-    @property
-    def frame(self):
         data = 0xff if self.address == "MASK" else ((self.address << 1) | 1)
-        return frame.ForwardFrame(16, (self._cmdval, data))
+        super().__init__(data)
 
     @classmethod
-    def from_frame(cls, frame):
+    def from_frame(cls, frame, devicetype=0):
         if cls == _ShortAddrSpecialCommand:
-            return
-        if len(frame) != 16:
             return
         if frame[15:8] == cls._cmdval:
             if frame[7:0] == 0xff:
@@ -1017,11 +1076,10 @@ class DTR0(_SpecialCommand):
     """This is a broadcast command to set the value of the DTR0 register."""
     _cmdval = 0xa3
     _hasparam = True
-    _uses_dtr0 = True
+    uses_dtr0 = True
 
 
-@python_2_unicode_compatible
-class Initialise(command.Command):
+class Initialise(_SpecialCommand):
     """This command shall start or re-trigger a timer for 15 minutes; the
     addressing commands shall only be processed within this period.
     All other commands shall still be processed during this period.
@@ -1039,7 +1097,8 @@ class Initialise(command.Command):
       ballasts with the address supplied shall react
     """
     _cmdval = 0xa5
-    _sendtwice = True
+    _hasparam = True
+    sendtwice = True
 
     def __init__(self, broadcast=False, address=None):
         if broadcast and address is not None:
@@ -1051,21 +1110,16 @@ class Initialise(command.Command):
                 raise ValueError("address must be in the range 0..63")
         self.broadcast = broadcast
         self.address = address
-
-    @property
-    def frame(self):
         if self.broadcast:
             b = 0
         elif self.address is None:
             b = 0xff
         else:
             b = (self.address << 1) | 1
-        return frame.ForwardFrame(16, (self._cmdval, b))
+        super().__init__(b)
 
     @classmethod
-    def from_frame(cls, f):
-        if len(f) != 16:
-            return
+    def from_frame(cls, f, devicetype=0):
         if f[15:8] == cls._cmdval:
             if f[7:0] == 0:
                 return cls(broadcast=True)
@@ -1085,7 +1139,7 @@ class Randomise(_SpecialCommand):
     random address shall be available within a time period of 100ms.
     """
     _cmdval = 0xa7
-    _sendtwice = True
+    sendtwice = True
 
 
 class Compare(_SpecialCommand):
@@ -1096,7 +1150,7 @@ class Compare(_SpecialCommand):
     shall generate a query "YES".
     """
     _cmdval = 0xa9
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
 
 
 class Withdraw(_SpecialCommand):
@@ -1123,6 +1177,7 @@ class SearchaddrH(_SpecialCommand):
     _cmdval = 0xb1
     _hasparam = True
 
+
 SetSearchAddrH = SearchaddrH
 
 
@@ -1131,6 +1186,7 @@ class SearchaddrM(_SpecialCommand):
     _cmdval = 0xb3
     _hasparam = True
 
+
 SetSearchAddrM = SearchaddrM
 
 
@@ -1138,6 +1194,7 @@ class SearchaddrL(_SpecialCommand):
     """Set the low 8 bits of the search address."""
     _cmdval = 0xb5
     _hasparam = True
+
 
 SetSearchAddrL = SearchaddrL
 
@@ -1163,7 +1220,7 @@ class VerifyShortAddress(_ShortAddrSpecialCommand):
     address is equal to its own short address.
     """
     _cmdval = 0xb9
-    _response = command.YesNoResponse
+    response = command.YesNoResponse
 
 
 # XXX response class for QueryShortAddress here?
@@ -1176,7 +1233,7 @@ class QueryShortAddress(_SpecialCommand):
     address stored.
     """
     _cmdval = 0xbb
-    _response = command.Response
+    response = command.NumericResponseMask
 
 
 class EnableDeviceType(_SpecialCommand):
@@ -1192,14 +1249,14 @@ class DTR1(_SpecialCommand):
     """This is a broadcast command to set the value of the DTR1 register."""
     _cmdval = 0xc3
     _hasparam = True
-    _uses_dtr1 = True
+    uses_dtr1 = True
 
 
 class DTR2(_SpecialCommand):
     """This is a broadcast command to set the value of the DTR2 register."""
     _cmdval = 0xc5
     _hasparam = True
-    _uses_dtr2 = True
+    uses_dtr2 = True
 
 
 class WriteMemoryLocation(_SpecialCommand):
@@ -1220,9 +1277,9 @@ class WriteMemoryLocation(_SpecialCommand):
     """
     _cmdval = 0xc7
     _hasparam = True
-    _uses_dtr0 = True
-    _uses_dtr1 = True
-    _response = command.Response
+    uses_dtr0 = True
+    uses_dtr1 = True
+    response = command.Response
 
 
 class WriteMemoryLocationNoReply(_SpecialCommand):
@@ -1233,5 +1290,5 @@ class WriteMemoryLocationNoReply(_SpecialCommand):
     """
     _cmdval = 0xc9
     _hasparam = True
-    _uses_dtr0 = True
-    _uses_dtr1 = True
+    uses_dtr0 = True
+    uses_dtr1 = True

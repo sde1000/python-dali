@@ -1,3 +1,106 @@
+python-dali (0.7.1) unstable; urgency=low
+
+  * New release 0.7.1
+
+  * orphan imports
+
+ -- Stephen Early <steve@assorted.org.uk>  Wed, 02 Sep 2020 15:14:17 +0100
+
+python-dali (0.7) unstable; urgency=low
+
+  * New release 0.7
+
+  * Add PyPI upload instructions to make-release script
+
+  * Add long_description_content_type to setup.py
+
+  * Add sequences module to README
+
+  * Add command sequences for reading and setting group membership
+
+  * Don't override Command.frame property in _SpecialCommand and subclasses
+
+  * Rename CommandTracker to _CommandTracker
+
+  * Update Travis config to use bionic instead of xenial
+
+  * Speed up command.from_frame()
+
+  * Change order of tests in test_queryextendedversionnumber
+
+  * Remove obsolete/non-functional "commands" method from CommandTracker
+
+  * Update packaging
+
+  * Command sequences
+
+  * Explicitly note that Python 3.6 is required
+
+  * New DALI commands Continuous Up and Continuous Down as in IEC 62386-103 Edition 1.1 2018-09
+
+  * New hasseb driver
+
+  * Rename Command._sendtwice to Command.sendtwice and associated changes
+
+  * Rename Command._response to Command.response
+
+  * Rename Command._uses_dtr{0,1,2} to Command.uses_dtr{0,1,2}
+
+  * Rename Command._inputdev to Command.inputdev
+
+  * Rename Command._appctrl to Command.appctrl
+
+  * Finish removing python2 compatibility code
+
+  * Implement QueryExtendedVersionNumber for all device types
+
+  * Rename _devicetype to devicetype
+
+  * Update packaging to remove support for python 2.7
+
+  * Merge pull request #59 from mhemeryck/unipi
+
+  * README: added myself to list of contributors
+
+  * Adapt setup script for dependencies
+
+  * Refactor API and add unit testing
+
+  * Remove CI for python 2.7
+
+  * unipi driver cleanup
+
+  * Raw copy of unipi code
+
+  * Support clients that fail early if unable to open device file
+
+  * Add example script using the async hid drivers for addressing
+
+  * Update README
+
+  * asyncio-based drivers for USB devices that present as HID
+
+  * Update Travis config
+
+  * Import submodules in dali/gear/__init__.py
+
+  * Update some commands to have NumericResponse or NumericResponseMask
+
+  * Response changes: raw_value property and NumericResponse
+
+  * Frame improvements: pack_len and string for BackwardFrames
+
+  * Already adopted :)
+
+ -- Stephen Early <steve@assorted.org.uk>  Mon, 10 Aug 2020 12:59:49 +0100
+
+python-dali (0.6) unstable; urgency=low
+
+  * Python 3 fix in async Tridonic driver
+  * Updated Hasseb driver
+
+ -- Stephen Early <steve@assorted.org.uk>  Sun, 11 Nov 2018 17:48:00 +0000
+
 python-dali (0.5) unstable; urgency=low
 
   * Move tests to dedicated package.

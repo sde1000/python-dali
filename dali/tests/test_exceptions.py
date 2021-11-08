@@ -1,23 +1,4 @@
-from __future__ import absolute_import
-from __future__ import unicode_literals
 import unittest
-import sys
-import os
-
-
-try:
-    import dali
-except ImportError:
-    # Realign paths, and try import again
-    # Since pyCharm's unittest runner fails on relative imports
-    path = os.path
-    PACKAGE_PARENT = '../..'
-    SCRIPT_DIR = path.dirname(
-        path.realpath(path.join(os.getcwd(), path.expanduser(__file__)))
-    )
-    sys.path.append(path.normpath(path.join(SCRIPT_DIR, PACKAGE_PARENT)))
-
-
 from dali import exceptions
 
 
@@ -49,34 +30,10 @@ class TestExceptions(unittest.TestCase):
             exceptions.ResponseError(),
             exceptions.CommandError
         )
-        # bus
-        self.assertIsInstance(
-            exceptions.BusError(),
-            exceptions.DALIError
-        )
-        self.assertIsInstance(
-            exceptions.BadDevice(),
-            exceptions.BusError
-        )
-        self.assertIsInstance(
-            exceptions.DeviceAlreadyBound(),
-            exceptions.BusError
-        )
-        self.assertIsInstance(
-            exceptions.DuplicateDevice(),
-            exceptions.BusError
-        )
-        self.assertIsInstance(
-            exceptions.NoFreeAddress(),
-            exceptions.BusError
-        )
-        self.assertIsInstance(
-            exceptions.NotConnected(),
-            exceptions.BusError
-        )
+        # sequences
         self.assertIsInstance(
             exceptions.ProgramShortAddressFailure(0),
-            exceptions.BusError
+            exceptions.DALIError
         )
         # driver
         self.assertIsInstance(
