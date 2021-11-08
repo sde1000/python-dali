@@ -230,9 +230,6 @@ class SyncTridonicDALIUSBDriver(TridonicDALIUSBDriver, SyncDALIDriver):
         # frames are passed between request and response from DALI side.
         # though this may not happen at all due to DALI USB implementation
         # details.
-        #
-        # XXX: check specs if this has to do with frames which should be sent
-        #      twice
         for i in range(2):
             frame = self.extract(self.backend.read(timeout=timeout))
             if isinstance(frame, BackwardFrame):
