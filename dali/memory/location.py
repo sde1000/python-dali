@@ -58,7 +58,7 @@ class MemoryBank:
         self.LastAddress = LastAddress
 
         if has_lock or has_latch:
-            class LockByte(MemoryValue):
+            class LockByte(NumericValue):
                 bank = self
                 lock = has_lock
                 latch = has_latch
@@ -154,7 +154,7 @@ class MemoryBank:
         """
         if self.has_lock:
             r = yield from self.LockByte.read(addr)
-            return r[0] != 0x55
+            return r != 0x55
         else:
             return False
 
