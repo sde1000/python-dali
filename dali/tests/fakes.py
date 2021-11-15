@@ -10,23 +10,84 @@ import random
 
 _yes = 0xff
 
-# Valid bank 0 ROM contents compatible with IEC 62386-102
-memory_bank_0 = [
-    0x7f, None, 0x01,  # Memory bank 1 is last accessible
-    0x01, 0x1f, 0x71, 0xf7, 0x6b, 0xb1,  # GTIN 1234567654321
-    0x01, 0x00,  # Firmware version 1.0
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,  # Serial number 1
-    0x02, 0x01,  # Hardware version 2.1
-    0x08, 0x08, 0xff,  # Parts 101 and 102 version 2.0, part 103 not implemented
-    0x00,  # 0 logical control device units
-    0x01,  # 1 logical control gear unit
-    0x00,  # This is control gear unit index 0
-]
 
-memory_bank_1 = [
-    0x77, None, 0xff,  # Implemented up to and including address 0x77
-    # All the rest of the memory bank is initialised to default values
-]
+class FakeMemoryBank:
+    """A memory bank used for testing
+
+    Subclass this for each different memory bank you need to
+    implement. An instance will be created by each fake Gear instance
+    that the memory bank is passed to.
+    """
+    bank = None
+    initial_contents = None
+    unlock_value = 0x55
+
+    def __init__(self):
+        self.contents = list(self.bank.factory_default_contents())
+        if self.initial_contents is not None:
+            self.set_memory_data(self.initial_contents)
+
+    def set_memory_data(self, new_contents):
+        # Update memory bank using new_contents. Locations with
+        # new_contents 'None' are not changed.
+        for address, value in enumerate(new_contents):
+            if value is not None:
+                self.contents[address] = value
+
+    def read(self, address):
+        if address > self.contents[0]:
+            return
+        try:
+            return self.contents[address]
+        except IndexError:
+            # return nothing when trying to read non-existent
+            # memory location
+            return
+
+    def write(self, address, value):
+        # "If the selected memory bank location is not
+        # implemented, or above the last accessible memory
+        # location, or locked, or not writeable, the answer [...]
+        # shall be NO and no memory location shall be written to."
+        location = self.bank.locations[address].memory_location
+        if not location:
+            return  # not implemented
+        if address > self.contents[0]:
+            return  # above the last accessible memory location
+        if location.type_ == MemoryType.NVM_RW_L \
+           and self.contents[2] != self.unlock_value:
+            return  # locked
+        if location.type_ not in (
+                MemoryType.RAM_RW, MemoryType.NVM_RW,
+                MemoryType.NVM_RW_L, MemoryType.NVM_RW_P):
+            return  # not writeable
+        self.contents[address] = value
+        return value
+
+
+# Valid bank 0 ROM contents compatible with IEC 62386-102
+class FakeBank0(FakeMemoryBank):
+    bank = info.BANK_0
+    initial_contents = [
+        0x7f, None, 0x01,  # Memory bank 1 is last accessible
+        0x01, 0x1f, 0x71, 0xf7, 0x6b, 0xb1,  # GTIN 1234567654321
+        0x01, 0x00,  # Firmware version 1.0
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,  # Serial number 1
+        0x02, 0x01,  # Hardware version 2.1
+        0x08, 0x08,  # Parts 101 and 102 version 2.0
+        0xff,  # Part 103 not implemented
+        0x00,  # 0 logical control device units
+        0x01,  # 1 logical control gear unit
+        0x00,  # This is control gear unit index 0
+    ]
+
+
+class FakeBank1(FakeMemoryBank):
+    bank = oem.BANK_1
+    initial_contents = [
+        0x77, None, 0xff,  # Implemented up to and including address 0x77
+        # All the rest of the memory bank is initialised to default values
+    ]
 
 
 class Gear:
@@ -38,9 +99,7 @@ class Gear:
     """
     def __init__(self, shortaddr=None, groups=set(),
                  devicetypes=[], random_preload=[],
-                 memory_banks={info.BANK_0: memory_bank_0,
-                               oem.BANK_1: memory_bank_1},
-                 bank_unlock_value=0x55):
+                 memory_banks=(FakeBank0, FakeBank1)):
         self.shortaddr = shortaddr
         self.scenes = [255] * 16
         self.groups = set(groups)
@@ -55,23 +114,13 @@ class Gear:
         self.dtr0 = 0
         self.dtr1 = 0
         self.dtr2 = 0
-        self.memory_banks = {bank.address: bank for bank in memory_banks.keys()}
-        self.memory_contents = {
-            bank.address: list(bank.factory_default_contents())
-            for bank in memory_banks.keys()
-        }
-        for bank, contents in memory_banks.items():
-            self.set_memory_data(bank.address, contents)
-        self.bank_unlock_value = bank_unlock_value
+        self.memory_banks = {}
+        for fake_bank in memory_banks:
+            bank_number = fake_bank.bank.address
+            if bank_number in memory_banks:
+                raise Exception(f"Duplicate memory bank {bank_number}")
+            self.memory_banks[bank_number] = fake_bank()
         self.enableWriteMemory = False
-
-    def set_memory_data(self, bank, new_contents):
-        # Update memory bank using new_contents. Locations with
-        # new_contents 'None' are not changed.
-        mc = self.memory_contents[bank]
-        for address, value in enumerate(new_contents):
-            if value is not None:
-                mc[address] = value
 
     def _next_random_address(self):
         if self.random_preload:
@@ -222,13 +271,7 @@ class Gear:
             if not bank:
                 return
             try:
-                memory_value = self.memory_contents[self.dtr1][self.dtr0]
-            except (KeyError, AttributeError):
-                # return nothing when trying to read non-existent
-                # memory location
-                pass
-            else:
-                return memory_value
+                return bank.read(self.dtr0)
             finally:
                 # increment DTR0 but limit to 0xFF, even if the memory
                 # location is not implemented
@@ -242,25 +285,9 @@ class Gear:
             if not self.enableWriteMemory or not bank:
                 return
             try:
-                # "If the selected memory bank location is not
-                # implemented, or above the last accessible memory
-                # location, or locked, or not writeable, the answer [...]
-                # shall be NO and no memory location shall be written to."
-                location = bank.locations[self.dtr0].memory_location
-                if not location:
-                    return  # not implemented
-                if self.dtr0 > self.memory_contents[bank.address][0]:
-                    return  # above the last accessible memory location
-                if location.type_ == MemoryType.NVM_RW_L \
-                   and self.memory_contents[bank.address][2] != self.bank_unlock_value:
-                    return  # locked
-                if location.type_ not in (
-                        MemoryType.RAM_RW, MemoryType.NVM_RW,
-                        MemoryType.NVM_RW_L, MemoryType.NVM_RW_P):
-                    return  # not writeable
-                self.memory_contents[bank.address][self.dtr0] = cmd.param
+                r = bank.write(self.dtr0, cmd.param)
                 if isinstance(cmd, general.WriteMemoryLocation):
-                    return cmd.param
+                    return r
             finally:
                 self.dtr0 = min(self.dtr0 + 1, 255)
 
