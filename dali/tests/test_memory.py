@@ -421,6 +421,14 @@ class TestMemory(unittest.TestCase):
         self._test_value(oem.LuminaireColor, "Octarine")
         self._test_value(oem.LuminaireIdentification, "Wizard's Staff")
 
+    def test_invalid_oem_strings(self):
+        # Write an invalid ASCII string to the luminaire colour
+        self.bus.run_sequence(
+            oem.LuminaireIdentification.write_raw(
+                0, [0x88, 0x3f, 0x00], allow_short_write=True))
+        self.assertEqual(self.bus.run_sequence(
+            oem.LuminaireIdentification.read(0)), FlagValue.Invalid)
+
     def test_info(self):
         # Default bank 0 contents from fakes.py
         self._test_value(info.GTIN, 1234567654321)

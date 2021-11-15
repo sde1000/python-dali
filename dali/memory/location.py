@@ -559,15 +559,18 @@ class FixedScaleNumericValue(NumericValue):
 
 
 class StringValue(MemoryValue):
+    """An ASCII string, possibly NULL terminated
+
+    Valid ASCII characters are in the range 1..0x7f. If values outside
+    this range are encountered while reading from the memory location,
+    FlagValue.Invalid will be returned.
+    """
     @classmethod
     def raw_to_value(cls, raw):
-        result = ''
-        for value in raw:
-            if value == 0:
-                break  # string is Null terminated
-            else:
-                result += chr(value)
-        return result
+        try:
+            return raw.split(b'\x00')[0].decode('ascii')
+        except UnicodeDecodeError:
+            return FlagValue.Invalid
 
     @classmethod
     def value_to_raw(cls, value):
@@ -575,7 +578,7 @@ class StringValue(MemoryValue):
         if len(raw) > len(cls.locations):
             raise ValueError("String is too long to write to location")
         if len(raw) < len(cls.locations):
-            raw = raw + b'\0'
+            raw = raw + b'\x00'
         return raw
 
     @classmethod
