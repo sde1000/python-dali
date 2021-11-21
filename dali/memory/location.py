@@ -80,7 +80,7 @@ class MemoryBank:
     def has_latch(self):
         return self.LockByte and self.LockByte.latch
 
-    def add_memory_value(self, memory_value):
+    def _add_memory_value(self, memory_value):
         self.values.append(memory_value)
         for location in memory_value.locations:
             if self.locations[location.address]:
@@ -230,7 +230,7 @@ class _RegisterMemoryValue(type):
             # Shorthand: locations can be a single MemoryLoction instance
             if isinstance(cls.locations, MemoryLocation):
                 cls.locations = (cls.locations, )
-            cls.bank.add_memory_value(cls)
+            cls.bank._add_memory_value(cls)
 
             # Some types of value may need to adjust the number of
             # bytes for 'mas' or 'tmask'
