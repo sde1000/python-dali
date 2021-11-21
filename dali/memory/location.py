@@ -97,13 +97,26 @@ class MemoryBank:
         la = yield from self.LastAddress.read(addr)
         return la
 
-    def read_all(self, addr):
+    def read_all(self, addr, use_latch=True):
+        """Read all available memory values from this memory bank.
+
+        If the memory bank has a latch, the latch is set during the
+        read so that the memory values represent a snapshot in
+        time. If you don't want this behaviour, pass use_latch=False.
+        """
         last_address = yield from self.LastAddress.read(addr)
+        # Reading the last address also sets DTR1 appropriately
+        dtr0 = 1
+        if use_latch and self.has_latch:
+            yield EnableWriteMemory(addr)
+            yield DTR0(2)
+            yield WriteMemoryLocationNoReply(0xaa)
+            dtr0 = 3
         # Bank 0 has a useful value at address 0x02; all other banks
         # use this for the lock/latch byte
         start_address = 0x02 if self.address == 0 else 0x03
-        # don't need to set DTR1, as we just did that in last_address()
-        yield DTR0(start_address)
+        if dtr0 != start_address:
+            yield DTR0(start_address)
         raw_data = [None] * start_address
         for loc in range(start_address, last_address + 1):
             r = yield ReadMemoryLocation(addr)
@@ -115,6 +128,9 @@ class MemoryBank:
                 raw_data.append(r.raw_value.as_integer)
             else:
                 raw_data.append(None)
+        if use_latch and self.has_latch:
+            yield DTR0(2)
+            yield WriteMemoryLocationNoReply(0xff)
         result = {}
         for memory_value in self.values:
             try:

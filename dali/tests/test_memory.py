@@ -191,6 +191,35 @@ class InvalidBank202(fakes.FakeMemoryBank):
     ]
 
 
+class LatchTestBank203(fakes.FakeMemoryBank):
+    """This version of Bank 203 returns different values when latched
+    """
+    bank = energy.BANK_203
+    initial_contents = [
+        0x0f, None, 0xff,
+        0x01,  # Version 1
+        0xff,  # Scale to 10^-1 (0.1)
+        0x00, 0x00, 0x00, 0x00, 0x03, 0xe8,  # 100Wh
+        0xfe,  # Scale to 10^-2 (0.01)
+        0x00, 0x00, 0x03, 0xe8,  # 10W
+    ]
+    latched_contents = [
+        0x0f, None, 0xff,
+        0x01,  # Version 1
+        0xff,  # Scale to 10^-1 (0.1)
+        0x00, 0x00, 0x00, 0x00, 0x05, 0xdc,  # 150Wh
+        0xfe,  # Scale to 10^-2 (0.01)
+        0x00, 0x00, 0x05, 0xdc,  # 15W
+    ]
+
+    def read(self, address):
+        if self.contents[2] != 0xaa:
+            return super().read(address)
+        if address > self.contents[0]:
+            return
+        return self.latched_contents[address]
+
+
 class InvalidBank207(fakes.FakeMemoryBank):
     bank = maintenance.BANK_207
     initial_contents = [
@@ -241,7 +270,8 @@ class TestMemory(unittest.TestCase):
                 fakes.FakeBank0, FakeBank1, FakeBank202, FakeBank203,
                 FakeBank204, FakeBank205, FakeBank206, FakeBank207)),
             fakes.Gear(1, memory_banks=(
-                fakes.FakeBank0, InvalidBank1, InvalidBank202, InvalidBank207)),
+                fakes.FakeBank0, InvalidBank1, InvalidBank202,
+                LatchTestBank203, InvalidBank207)),
             fakes.Gear(2, memory_banks=(
                 fakes.FakeBank0, BrokenBank1)),
         ])
@@ -320,6 +350,23 @@ class TestMemory(unittest.TestCase):
             info.DeviceUnitCount: 0,
             info.GearUnitCount: 1,
             info.UnitIndex: 0,
+        }
+        self.assertEqual(values, expected)
+
+    def test_memorybank_read_all_latch(self):
+        values = self.bus.run_sequence(energy.BANK_203.read_all(
+            1, use_latch=False))
+        expected = {
+            energy.ApparentBankVersion: 1,
+            energy.ApparentEnergy: Decimal("100"),
+            energy.ApparentPower: Decimal("10"),
+        }
+        self.assertEqual(values, expected)
+        values = self.bus.run_sequence(energy.BANK_203.read_all(1))
+        expected = {
+            energy.ApparentBankVersion: 1,
+            energy.ApparentEnergy: Decimal("150"),
+            energy.ApparentPower: Decimal("15"),
         }
         self.assertEqual(values, expected)
 
