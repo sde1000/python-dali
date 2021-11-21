@@ -21,6 +21,7 @@ class FakeMemoryBank:
     bank = None
     initial_contents = None
     unlock_value = 0x55
+    nobble_dtr0_update = False
 
     def __init__(self):
         self.contents = list(self.bank.factory_default_contents())
@@ -275,7 +276,8 @@ class Gear:
             finally:
                 # increment DTR0 but limit to 0xFF, even if the memory
                 # location is not implemented
-                self.dtr0 = min(self.dtr0 + 1, 255)
+                if not bank.nobble_dtr0_update:
+                    self.dtr0 = min(self.dtr0 + 1, 255)
         elif isinstance(cmd, general.WriteMemoryLocation) \
              or isinstance(cmd, general.WriteMemoryLocationNoReply):  # noqa
             bank = self.memory_banks.get(self.dtr1)
@@ -289,7 +291,8 @@ class Gear:
                 if isinstance(cmd, general.WriteMemoryLocation):
                     return r
             finally:
-                self.dtr0 = min(self.dtr0 + 1, 255)
+                if not bank.nobble_dtr0_update:
+                    self.dtr0 = min(self.dtr0 + 1, 255)
 
 
 class Bus:

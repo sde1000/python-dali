@@ -1,7 +1,9 @@
 from enum import Enum, auto
 from collections import namedtuple
 
-from dali.exceptions import ResponseError
+from dali.exceptions import ResponseError, LatchingNotSupported, \
+    MemoryLocationNotImplemented, MemoryValueNotWriteable, \
+    MemoryLocationNotWriteable, MemoryWriteFailure
 from dali.gear.general import ReadMemoryLocation, DTR0, DTR1, \
     EnableWriteMemory, WriteMemoryLocation, WriteMemoryLocationNoReply, \
     QueryContentDTR0
@@ -17,28 +19,18 @@ class MemoryType(Enum):
     NVM_RW_P = auto()  # NVM-RW (protectable — vendor-specific mechanism)
 
 
-class MemoryLocationNotImplemented(Exception):
+# These two exceptions are declared here rather than in dali.exceptions
+# because they are configuration errors and will only be raised if
+# a memory bank and its values are declared incorrectly.
+class MemoryLocationOverlap(Exception):
     pass
 
 
-class MemoryWriteError(Exception):
-    pass
-
-
-class MemoryLocationNotWriteable(MemoryWriteError):
+class LockingNotSupported(Exception):
     pass
 
 
 class MemoryBank:
-    class MemoryLocationOverlap(Exception):
-        pass
-
-    class LockingNotSupported(Exception):
-        pass
-
-    class LatchingNotSupported(Exception):
-        pass
-
     MemoryBankEntry = namedtuple(
         'MemoryBankEntry', ['memory_location', 'memory_value'])
 
@@ -150,7 +142,7 @@ class MemoryBank:
         if self.has_latch:
             yield from self.LockByte.write(addr, 0xaa, ignore_feedback=True)
         else:
-            raise self.LatchingNotSupported(
+            raise LatchingNotSupported(
                 f'Latching not supported for {str(self)}.')
 
     def unlatch(self, addr):
@@ -162,7 +154,7 @@ class MemoryBank:
         if self.has_latch:
             yield from self.LockByte.write(addr, 0xff, ignore_feedback=True)
         else:
-            raise self.LatchingNotSupported(
+            raise LatchingNotSupported(
                 f'Latching not supported for {str(self)}.')
 
     def is_locked(self, addr):
@@ -437,7 +429,7 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
             if location.type_ not in (
                     MemoryType.RAM_RW, MemoryType.NVM_RW,
                     MemoryType.NVM_RW_L, MemoryType.NVM_RW_P):
-                raise MemoryLocationNotWriteable(
+                raise MemoryValueNotWriteable(
                     f"{str(cls)} is not a writeable MemoryValue")
             # Memory of type NVM_RW_P may be write (or read!)
             # protected, but there is no standard way of unprotecting
@@ -492,7 +484,7 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
                     f'Framing error in response from bus unit at address '
                     f'"{str(addr)}" while checking DTR0 after write')
             if r.raw_value.as_integer != dtr0:
-                raise MemoryWriteError(
+                raise MemoryWriteFailure(
                     f'Incorrect value in response from bus unit at address '
                     f'"{str(addr)}" while checking DTR0 after writing memory '
                     f'bank {cls.bank.address}. '

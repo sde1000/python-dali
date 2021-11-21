@@ -2,11 +2,10 @@ import unittest
 
 from dali.tests import fakes
 from dali.memory import info, diagnostics, energy, maintenance, oem
-from dali.memory.location import MemoryBank, NumericValue, \
-    MemoryLocationNotWriteable, \
-    MemoryLocationNotImplemented, FlagValue
+from dali.memory.location import MemoryBank, NumericValue, FlagValue
 from dali.command import Command, Response
-from dali.exceptions import ResponseError
+from dali.exceptions import ResponseError, MemoryLocationNotImplemented, \
+    MemoryValueNotWriteable, MemoryLocationNotWriteable, MemoryWriteFailure
 from dali.frame import BackwardFrame
 from dali.gear.general import DTR0, DTR1, ReadMemoryLocation
 from decimal import Decimal
@@ -244,6 +243,36 @@ class BrokenBank1(fakes.FakeMemoryBank):
         return 0xaa
 
 
+class BrokenBank206(fakes.FakeMemoryBank):
+    """This version of Bank 206 has a weird problem with updating DTR0
+
+    DTR0 is not incremented on read or write.
+    """
+    bank = diagnostics.BANK_206
+    nobble_dtr0_update = True
+    initial_contents = [
+        0x20, None, 0xff,
+        0x01,  # Version 1
+        0x00, 0x01, 0x2c,  # Light source start counter resettable 300
+        0x00, 0x01, 0xf4,  # Light source start counter 500
+        0x00, 0x00, 0x03, 0xe8,  # Light source on time resettable 1000
+        0x00, 0x00, 0x0b, 0xb8,  # Light source on time 3000
+        0x02, 0x58,  # Light source voltage 60.0V
+        0x02, 0xbc,  # Light source current 700mA
+        0,  # Light source overall failure condition False
+        12,  # Light source overall failure condition counter 12
+        0,  # Light source short circuit False
+        15,  # Light source short circuit counter 15
+        0,  # Light source open circuit False
+        23,  # Light source open circuit counter 23
+        1,  # Light source thermal derating True
+        45,  # Light source thermal derating counter 45
+        0,  # Light source thermal shutdown False
+        67,  # Light source thermal shutdown counter 67
+        160,  # Light source temperature 100°C
+    ]
+
+
 class TestMemoryBank(unittest.TestCase):
     def test_repr_memorybank(self):
         self.assertEqual(
@@ -273,7 +302,7 @@ class TestMemory(unittest.TestCase):
                 fakes.FakeBank0, InvalidBank1, InvalidBank202,
                 LatchTestBank203, InvalidBank207)),
             fakes.Gear(2, memory_banks=(
-                fakes.FakeBank0, BrokenBank1)),
+                fakes.FakeBank0, BrokenBank1, BrokenBank206)),
         ])
 
     def _test_value(self, memory_value, expected, addr=0):
@@ -496,7 +525,7 @@ class TestMemory(unittest.TestCase):
         self._test_value(oem.ManufacturerGTIN, 123123123)
         # Try to write a new gear GTIN and ensure we fail
         self.assertRaises(
-            MemoryLocationNotWriteable, self.bus.run_sequence,
+            MemoryValueNotWriteable, self.bus.run_sequence,
             info.GTIN.write(0, 123123123))
         # Write a new luminaire identification and read it back
         test_string = "A wizard's staff has a knob on the end"
@@ -528,6 +557,12 @@ class TestMemory(unittest.TestCase):
         self.assertRaises(
             ResponseError, self.bus.run_sequence,
             oem.ManufacturerGTIN.write(2, 123123123))
+
+        # The unit at address 2 fails to update DTR0 when writing to
+        # memory bank 206
+        self.assertRaises(
+            MemoryWriteFailure, self.bus.run_sequence,
+            diagnostics.LightSourceStartCounterResettable.write(2, 300))
 
 
 if __name__ == '__main__':
