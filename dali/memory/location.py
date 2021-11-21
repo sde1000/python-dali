@@ -66,11 +66,11 @@ class MemoryBank:
 
     @property
     def has_lock(self):
-        return self.LockByte and self.LockByte.lock
+        return bool(self.LockByte and self.LockByte.lock)
 
     @property
     def has_latch(self):
-        return self.LockByte and self.LockByte.latch
+        return bool(self.LockByte and self.LockByte.latch)
 
     def _add_memory_value(self, memory_value):
         self.values.append(memory_value)

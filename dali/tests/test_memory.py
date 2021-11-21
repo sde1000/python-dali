@@ -279,6 +279,16 @@ class TestMemoryBank(unittest.TestCase):
             repr(MemoryBank(3, 45)),
             "MemoryBank(address=3, has_lock=False, has_latch=False)")
 
+    def test_has_lock(self):
+        self.assertEqual(MemoryBank(3, 45).has_lock, False)
+        self.assertEqual(MemoryBank(3, 45, has_latch=True).has_lock, False)
+        self.assertEqual(MemoryBank(3, 45, has_lock=True).has_lock, True)
+
+    def test_has_latch(self):
+        self.assertEqual(MemoryBank(3, 45).has_latch, False)
+        self.assertEqual(MemoryBank(3, 45, has_lock=True).has_latch, False)
+        self.assertEqual(MemoryBank(3, 45, has_latch=True).has_latch, True)
+
 
 class TestLocations(unittest.TestCase):
     def test_str_memoryvalue(self):
