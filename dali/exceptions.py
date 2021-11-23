@@ -111,7 +111,6 @@ class MemoryWriteFailure(MemoryWriteError):
 
 
 class DriverError(DALIError):
-
     """Base Exception for driver related errors."""
 
 
