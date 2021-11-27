@@ -28,6 +28,14 @@ fairly expensive to obtain.  The library is designed to be extensible;
 adding support for the other parts ought to be easy and
 self-contained.
 
+The ``dali.memory`` module supports the extended memory bank
+specifications created and maintained by the `Digital Illumination
+Interface Alliance`_:
+
+- DiiA DALI Part 251 — Memory Bank 1 Extension
+- DiiA DALI Part 252 — Energy Reporting
+- DiiA DALI Part 253 — Diagnostics & Maintenance
+
 Python versions supported
 -------------------------
 
@@ -124,3 +132,4 @@ License and GNU General Public License along with this program.  If
 not, see `this link`_.
 
 .. _this link: https://www.gnu.org/licenses/
+.. _Digital Illumination Interface Alliance: https://www.dali-alliance.org/dali/data.html

@@ -1,29 +1,39 @@
 Changes
 =======
 
-Unreleased
-----------
+Frame exception updates
+-----------------------
 
 The exceptions raised by ``dali.frame.Frame()`` and the
-``Frame.pack_len()`` method are changing. Currently, if you pass an
-invalid sequence to initialise a ``Frame`` a ``TypeError`` will be
-raised. In the next release this will change to ``ValueError``. If you
-pass an invalid length to ``pack_len()``, currently a ``ValueError``
-will be raised. In the next release this will change to
-``OverflowError``.
+``Frame.pack_len()`` method are changing. In release versions <= 0.8,
+if you pass an invalid sequence to initialise a ``Frame`` a
+``TypeError`` will be raised. In release 0.9 this will change to
+``ValueError``. If you pass an invalid length to ``pack_len()``,
+currently a ``ValueError`` will be raised. In release 0.9 this will
+change to ``OverflowError``.
 
-To obtain the new behaviour now, pass ``new_exceptions=True`` to
-``Frame()`` and ``pack_len()``. In the next release, you will be able
-to continue to obtain the current behaviour by passing
-``new_exceptions=False``. In the release after that, passing any value
-for ``new_exceptions`` will issue a warning and in the release after
-*that*, the ``new_exceptions`` keyword argument will be removed.
+To obtain the new behaviour when using release 0.8, pass
+``new_exceptions=True`` to ``Frame()`` and ``pack_len()``. In release
+0.9, you will be able to continue to obtain the current behaviour by
+passing ``new_exceptions=False``. In the release after that
+(provisionally "0.10"), passing any value for ``new_exceptions`` will
+issue a warning and in the release after *that*, the
+``new_exceptions`` keyword argument will be removed.
 
 The new behaviour makes the library more consistent with the
 exceptions raised by the native ``int.from_bytes()`` and
 ``int.to_bytes()`` methods.
 
-- Frame exception updates; see above
+0.8 (in preparation)
+--------------------
+
+- Memory bank subsystem: command sequences to access and interpret the
+  contents of memory banks [ferdinandkeil, sde1000]
+
+- Frame exception updates; see above. The new behaviour can be
+  accessed in this release by passing ``new_exceptions=True`` when
+  calling the ``Frame()`` constructor and the ``Frame.pack_len()``
+  method.
 
 - Driver updates [jbaptperez, awahlig, rousveiga, rnixx]
 
