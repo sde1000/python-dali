@@ -35,6 +35,31 @@ class TestExceptions(unittest.TestCase):
             exceptions.ProgramShortAddressFailure(0),
             exceptions.DALIError
         )
+        # memory
+        self.assertIsInstance(
+            exceptions.MemoryError(),
+            exceptions.DALIError
+        )
+        self.assertIsInstance(
+            exceptions.MemoryLocationNotImplemented(),
+            exceptions.MemoryError
+        )
+        self.assertIsInstance(
+            exceptions.MemoryWriteError(),
+            exceptions.MemoryError
+        )
+        self.assertIsInstance(
+            exceptions.MemoryValueNotWriteable(),
+            exceptions.MemoryWriteError
+        )
+        self.assertIsInstance(
+            exceptions.MemoryLocationNotWriteable(),
+            exceptions.MemoryWriteError
+        )
+        self.assertIsInstance(
+            exceptions.MemoryWriteFailure(),
+            exceptions.MemoryWriteError
+        )
         # driver
         self.assertIsInstance(
             exceptions.DriverError(),
