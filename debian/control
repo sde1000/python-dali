@@ -3,7 +3,7 @@ Section: python
 X-Python3-Version: >= 3.6
 Priority: optional
 Maintainer: Stephen Early <steve@assorted.org.uk>
-Build-Depends: debhelper (>= 9), dh-python, python3-all, python3-setuptools
+Build-Depends: debhelper (>= 11), debhelper-compat (= 12), dh-python, python3-all, python3-setuptools
 Standards-Version: 3.7.2
 
 Package: python3-dali
