@@ -36,8 +36,8 @@ exceptions raised by the native ``int.from_bytes()`` and
   ``new_exceptions=False`` when calling the ``Frame()`` constructor
   and the ``Frame.pack_len()`` method.
 
-0.8 (in preparation)
---------------------
+0.8 (2021-12-02)
+----------------
 
 - Memory bank subsystem: command sequences to access and interpret the
   contents of memory banks [ferdinandkeil, sde1000]
