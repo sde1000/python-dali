@@ -17,7 +17,7 @@ class TestFrame(unittest.TestCase):
 
     def test_frame_init_data(self):
         """frames can be initialised with integer or iterable data"""
-        # In release 0.8, Frame defaults to new_exceptions=False
+        # In release 0.9, Frame defaults to new_exceptions=True
         with self.assertWarns(DeprecationWarning):
             self.assertEqual(
                 frame.Frame(16, 0xffff),
@@ -34,21 +34,19 @@ class TestFrame(unittest.TestCase):
             self.assertRaises(TypeError, frame.Frame, 24, (0x100, 0xff),
                               new_exceptions=False)
 
-        # In release 0.9, Frame will default to new_exceptions=True
         self.assertEqual(
             frame.Frame(16, 0xffff),
-            frame.Frame(16, (0xff, 0xff), new_exceptions=True)
+            frame.Frame(16, (0xff, 0xff))
         )
         self.assertNotEqual(
             frame.Frame(16, 0xffff),
-            frame.Frame(16, (0xff, 0xfe), new_exceptions=True)
+            frame.Frame(16, (0xff, 0xfe))
         )
         self.assertEqual(
             frame.Frame(16, 0xffff),
-            frame.Frame(16, (0, 0, 0xff, 0xff), new_exceptions=True)
+            frame.Frame(16, (0, 0, 0xff, 0xff))
         )
-        self.assertRaises(ValueError, frame.Frame, 24, (0x100, 0xff),
-                          new_exceptions=True)
+        self.assertRaises(ValueError, frame.Frame, 24, (0x100, 0xff))
 
         # In release 0.10 (or whatever we decide to call it), passing
         # any value for new_exceptions will cause a warning, and in
@@ -66,7 +64,7 @@ class TestFrame(unittest.TestCase):
         """frames return correct values when read using index"""
         # Frame will be 0001 0010 0011 0100 0101 0110
         # Index:        3210 9876 5432 1098 7654 3210
-        f = frame.Frame(24, (0x12, 0x34, 0x56), new_exceptions=True)
+        f = frame.Frame(24, (0x12, 0x34, 0x56))
         self.assertEqual(f[0], False)
         self.assertEqual(f[1], True)
         self.assertEqual(f[20], True)
@@ -143,8 +141,7 @@ class TestFrame(unittest.TestCase):
     def test_as_byte_sequence(self):
         """constructing frames from byte sequence works as expected"""
         f = frame.Frame(29, 0x12345678)
-        self.assertEqual(frame.Frame(29, f.as_byte_sequence,
-                                     new_exceptions=True), f)
+        self.assertEqual(frame.Frame(29, f.as_byte_sequence), f)
 
     def test_pack(self):
         """frame packing return expected byte strings"""
@@ -155,7 +152,7 @@ class TestFrame(unittest.TestCase):
 
     def test_pack_len(self):
         """frame packing with length returns expected byte strings"""
-        # In release 0.8, pack_len defaults to new_exceptions=False
+        # In release 0.9, pack_len defaults to new_exceptions=True
         with self.assertWarns(DeprecationWarning):
             f = frame.Frame(28, 0x2345678)
             self.assertRaises(ValueError, lambda: f.pack_len(
@@ -172,21 +169,14 @@ class TestFrame(unittest.TestCase):
             self.assertEqual(f.pack_len(4, new_exceptions=False),
                              b'\x00\x00\xaa\x55')
 
-        # In release 0.9, pack_len will default to new_exceptions=True
         f = frame.Frame(28, 0x2345678)
-        self.assertRaises(OverflowError, lambda: f.pack_len(
-            3, new_exceptions=True))
-        self.assertEqual(f.pack_len(4, new_exceptions=True),
-                         b'\x02\x34\x56\x78')
-        self.assertEqual(f.pack_len(5, new_exceptions=True),
-                         b'\x00\x02\x34\x56\x78')
+        self.assertRaises(OverflowError, lambda: f.pack_len(3))
+        self.assertEqual(f.pack_len(4), b'\x02\x34\x56\x78')
+        self.assertEqual(f.pack_len(5), b'\x00\x02\x34\x56\x78')
         f = frame.Frame(16, 0xaa55)
-        self.assertRaises(OverflowError, lambda: f.pack_len(
-            0, new_exceptions=True))
-        self.assertEqual(f.pack_len(2, new_exceptions=True),
-                         b'\xaa\x55')
-        self.assertEqual(f.pack_len(4, new_exceptions=True),
-                         b'\x00\x00\xaa\x55')
+        self.assertRaises(OverflowError, lambda: f.pack_len(0))
+        self.assertEqual(f.pack_len(2), b'\xaa\x55')
+        self.assertEqual(f.pack_len(4), b'\x00\x00\xaa\x55')
 
         # In release 0.10 (or whatever we decide to call it), passing
         # any value for new_exceptions will cause a warning, and in

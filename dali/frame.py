@@ -10,7 +10,7 @@ class Frame:
     Instances of this object are mutable.
     """
 
-    def __init__(self, bits, data=0, new_exceptions=False):
+    def __init__(self, bits, data=0, new_exceptions=True):
         """Initialise a Frame with the supplied number of data bits.
 
         :parameter bits: the number of data bits in the Frame
@@ -32,9 +32,9 @@ class Frame:
             else:
                 warnings.warn("Frame() will raise ValueError in the future "
                               "when an invalid initialisation sequence is "
-                              "passed, instead of TypeError. Pass "
-                              "new_exceptions=True to Frame() to use "
-                              "the new behaviour now.",
+                              "passed, instead of TypeError. Passing "
+                              "new_exceptions=False to Frame() will not be "
+                              "possible in the next release.",
                               DeprecationWarning, stacklevel=2)
                 try:
                     self._data = int.from_bytes(data, 'big')
@@ -186,7 +186,7 @@ class Frame:
             (len(self) // 8) + (1 if len(self) % 8 else 0),
             'big')
 
-    def pack_len(self, l, new_exceptions=False):
+    def pack_len(self, l, new_exceptions=True):
         """The contents of the frame represented as a fixed length byte string.
 
         The least significant bit of the frame is aligned to the end
@@ -200,8 +200,8 @@ class Frame:
             return self._data.to_bytes(l, 'big')
         warnings.warn("Frame.pack_len() will raise OverflowError in the "
                       "future when an invalid length is passed, instead of "
-                      "ValueError. Pass new_exceptions=True to use "
-                      "the new behaviour now.",
+                      "ValueError. Passing new_exceptions=False will not be "
+                      "possible in the next release.",
                       DeprecationWarning, stacklevel=2)
         try:
             return self._data.to_bytes(l, 'big')
