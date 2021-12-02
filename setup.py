@@ -21,6 +21,7 @@ setup(
         'dali.device',
         'dali.driver',
         'dali.gear',
+        'dali.memory',
         'dali.tests',
     ],
     extras_require={
