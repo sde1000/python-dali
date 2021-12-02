@@ -31,6 +31,11 @@ exceptions raised by the native ``int.from_bytes()`` and
   ``Command._response`` have been removed. (They were deprecated in
   release 0.7.)
 
+- Frame exception updates; see above. The new behaviour is now the
+  default, and the old behaviour can be accessed by passing
+  ``new_exceptions=False`` when calling the ``Frame()`` constructor
+  and the ``Frame.pack_len()`` method.
+
 0.8 (in preparation)
 --------------------
 
