@@ -193,7 +193,7 @@ class Command(metaclass=_CommandTracker):
 
     # devicetype used to be called "_devicetype".  This property is
     # here for compatibility with older code that relied on this.  It
-    # will be removed in a future release.
+    # will be removed in release 0.9
     @property
     def _devicetype(self):
         warnings.warn("'_devicetype' has been renamed to 'devicetype'",
@@ -250,7 +250,7 @@ class Command(metaclass=_CommandTracker):
         take effect?)
 
         Use of this property is deprecated: access the "sendtwice"
-        attribute directly.
+        attribute directly. This property will be removed in release 0.9.
         """
         warnings.warn("Access 'sendtwice' directly instead of using 'is_config'",
                       DeprecationWarning, stacklevel=2)
@@ -266,7 +266,8 @@ class Command(metaclass=_CommandTracker):
         """If this command returns a result, use this class for the response.
 
         This property is provided for compatibility with old code.
-        Access the "response" attribute directly.
+        Access the "response" attribute directly. This property will
+        be removed in release 0.9.
         """
         warnings.warn("Access 'response' directly instead of using '_response'",
                       DeprecationWarning, stacklevel=2)

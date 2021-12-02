@@ -24,6 +24,13 @@ The new behaviour makes the library more consistent with the
 exceptions raised by the native ``int.from_bytes()`` and
 ``int.to_bytes()`` methods.
 
+0.9 (planned)
+-------------
+
+- ``Command._devicetype``, ``Command.is_config`` and
+  ``Command._response`` have been removed. (They were deprecated in
+  release 0.7.)
+
 0.8 (in preparation)
 --------------------
 
