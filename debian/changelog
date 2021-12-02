@@ -1,3 +1,15 @@
+python-dali (0.8) unstable; urgency=low
+
+  * New release 0.8
+
+  * Memory bank feature
+
+  * Frame exception updates
+
+  * Driver updates
+
+ -- Stephen Early <steve@assorted.org.uk>  Thu, 02 Dec 2021 18:00:06 +0000
+
 python-dali (0.7.1) unstable; urgency=low
 
   * New release 0.7.1
