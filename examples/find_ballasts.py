@@ -8,7 +8,7 @@ from dali.gear.general import SetSearchAddrL
 from dali.gear.general import SetSearchAddrM
 from dali.gear.general import Terminate
 from dali.gear.general import Withdraw
-from dali.interface import DaliServer
+from dali.driver.daliserver import DaliServer
 import sys
 import time
 
