@@ -15,9 +15,7 @@ import dali.gear.general as gear
 
 import time
 
-import hidapi
-
-hidapi.hid_init()
+import hid
 
 HASSEB_USB_VENDOR = 0x04cc
 HASSEB_USB_PRODUCT = 0x0802
@@ -82,7 +80,11 @@ class HassebDALIUSBDriver(DALIDriver):
 
     def __init__(self, path=None):
         try:
-            self.device = hidapi.hid_open(HASSEB_USB_VENDOR, HASSEB_USB_PRODUCT, None) if not bool(path) else hidapi.hid_open_path(path)
+            self.device = hid.device()
+            if path:
+                self.device.open_path(path)
+            else:
+                self.device.open(HASSEB_USB_VENDOR, HASSEB_USB_PRODUCT)
             self.device_found = 1
         except:
             self.device_found = None
@@ -125,7 +127,7 @@ class HassebDALIUSBDriver(DALIDriver):
         else:
             expect_reply = 0
         transmitter_settling_time = 0
-        if command.is_config:
+        if command.sendtwice:
             send_twice = 10 # 10 ms delay between messages
         else:
             send_twice = 0
@@ -178,16 +180,16 @@ class HassebDALIUSBDriver(DALIDriver):
         if command.response is not None:
             self._pending = command
             self._response_message = None
-            hidapi.hid_write(self.device, data)
+            self.device.write(data)
             self.wait_for_response()
             return command.response(self.extract(self._response_message))
         else:
             self._pending = None
-            hidapi.hid_write(self.device, data)
+            self.device.write(data)
             return
 
     def receive(self):
-        data = hidapi.hid_read(self.device, 10)
+        data = self.device.read(10)
         frame = self.extract(data)
         if isinstance(frame, HassebDALIUSBNoDataAvailable):
             return
@@ -206,16 +208,16 @@ class HassebDALIUSBDriver(DALIDriver):
             self.sn = 1
         data = struct.pack('BBBBBBBBBB', 0xAA, HASSEB_READ_FIRMWARE_VERSION,
                             self.sn, 0, 0, 0, 0, 0, 0, 0)
-        hidapi.hid_write(self.device, data)
-        data = hidapi.hid_read(self.device, 10)
+        self.device.write(data)
+        data = self.device.read(10)
         for i in range(0,100):
             if len(data)==10:
                 if data[1] != HASSEB_READ_FIRMWARE_VERSION:
-                    data = hidapi.hid_read(self.device, 10)
+                    data = self.device.read(10)
                 else:
                     return f"{data[3]}.{data[4]}"
             else:
-                data = hidapi.hid_read(self.device, 10)
+                data = self.device.read(10)
         return f"VERSION_ERROR"
 
     def enableSniffing(self):
@@ -224,7 +226,7 @@ class HassebDALIUSBDriver(DALIDriver):
             self.sn = 1
         data = struct.pack('BBBBBBBBBB', 0xAA, HASSEB_CONFIGURE_DEVICE,
                             self.sn, 0x01, 0, 0, 0, 0, 0, 0)
-        hidapi.hid_write(self.device, data)
+        self.device.write(data)
 
     def disableSniffing(self):
         self.sn = self.sn + 1
@@ -232,7 +234,7 @@ class HassebDALIUSBDriver(DALIDriver):
             self.sn = 1
         data = struct.pack('BBBBBBBBBB', 0xAA, HASSEB_CONFIGURE_DEVICE,
                             self.sn, 0, 0, 0, 0, 0, 0, 0)
-        hidapi.hid_write(self.device, data)
+        self.device.write(data)
 
 
 class AsyncHassebDALIUSBDriver(HassebDALIUSBDriver, AsyncDALIDriver):
@@ -280,7 +282,7 @@ def SyncHassebDALIUSBDriverFactory():
 
     hasseb_dali_drivers = []
 
-    hasseb_hid_devices = hidapi.hid_enumerate(HASSEB_USB_VENDOR, HASSEB_USB_PRODUCT)
+    hasseb_hid_devices = hid.enumerate(HASSEB_USB_VENDOR, HASSEB_USB_PRODUCT)
     for hasseb_hid_device in hasseb_hid_devices:
         logging.getLogger("SyncHassebDALIUSBDriverFactory").debug("device found, path is {}".format(hasseb_hid_device.path))
         hasseb_dali_drivers.append(SyncHassebDALIUSBDriver(hasseb_hid_device.path))
