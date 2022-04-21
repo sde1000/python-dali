@@ -115,7 +115,7 @@ Contributors
 Copyright
 ---------
 
-python-dali is Copyright (C) 2013–2021 Stephen Early <steve@assorted.org.uk>
+python-dali is Copyright (C) 2013–2022 Stephen Early <steve@assorted.org.uk>
 and other contributors.
 
 It is distributed under the terms of the GNU Lesser General Public

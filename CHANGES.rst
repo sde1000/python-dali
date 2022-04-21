@@ -7,25 +7,33 @@ Frame exception updates
 The exceptions raised by ``dali.frame.Frame()`` and the
 ``Frame.pack_len()`` method are changing. In release versions <= 0.8,
 if you pass an invalid sequence to initialise a ``Frame`` a
-``TypeError`` will be raised. In release 0.9 this will change to
+``TypeError`` will be raised. In release 0.9 this changed to
 ``ValueError``. If you pass an invalid length to ``pack_len()``,
-currently a ``ValueError`` will be raised. In release 0.9 this will
-change to ``OverflowError``.
+currently a ``ValueError`` will be raised. In release 0.9 this changed
+to ``OverflowError``.
 
 To obtain the new behaviour when using release 0.8, pass
 ``new_exceptions=True`` to ``Frame()`` and ``pack_len()``. In release
-0.9, you will be able to continue to obtain the current behaviour by
-passing ``new_exceptions=False``. In the release after that
-(provisionally "0.10"), passing any value for ``new_exceptions`` will
-issue a warning and in the release after *that*, the
-``new_exceptions`` keyword argument will be removed.
+0.9, you can to continue to obtain the old behaviour by passing
+``new_exceptions=False``. In the release after that (provisionally
+"0.10"), passing any value for ``new_exceptions`` will issue a warning
+and in the release after *that*, the ``new_exceptions`` keyword
+argument will be removed.
 
 The new behaviour makes the library more consistent with the
 exceptions raised by the native ``int.from_bytes()`` and
 ``int.to_bytes()`` methods.
 
-0.9 (planned)
--------------
+0.10 (planned)
+--------------
+
+- Frame exception updates; see above. The old behaviour is no longer
+  available and passing ``new_exceptions`` when calling the
+  ``Frame()`` constructor or the ``Frame.pack_len()`` method will
+  issue a warning.
+
+0.9 (2022-04-21)
+----------------
 
 - ``Command._devicetype``, ``Command.is_config`` and
   ``Command._response`` have been removed. (They were deprecated in
@@ -35,6 +43,9 @@ exceptions raised by the native ``int.from_bytes()`` and
   default, and the old behaviour can be accessed by passing
   ``new_exceptions=False`` when calling the ``Frame()`` constructor
   and the ``Frame.pack_len()`` method.
+
+- Updated the Hasseb driver to use a more generally available HID
+  library [dgomes]
 
 0.8 (2021-12-02)
 ----------------
