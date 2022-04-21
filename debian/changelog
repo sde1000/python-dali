@@ -1,3 +1,19 @@
+python-dali (0.9) unstable; urgency=low
+
+  * New release 0.9
+
+  * Update CHANGES and README for release 0.9
+
+  * update to https://github.com/trezor/cython-hidapi/
+
+  * Remove deprecated properties from dali.command.Command
+
+  * In dali.frame, new_exceptions now defaults to True
+
+  * Update find_ballasts.py
+
+ -- Stephen Early <steve@assorted.org.uk>  Thu, 21 Apr 2022 09:06:46 +0100
+
 python-dali (0.8) unstable; urgency=low
 
   * New release 0.8

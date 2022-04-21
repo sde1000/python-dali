@@ -9,7 +9,7 @@ def readme():
 
 setup(
     name='python-dali',
-    version='0.8',
+    version='0.9',
     description='Interface to DALI lighting systems',
     long_description=readme(),
     long_description_content_type='text/x-rst',
