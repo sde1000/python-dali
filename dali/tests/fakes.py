@@ -102,6 +102,9 @@ class Gear:
                  devicetypes=[], random_preload=[],
                  memory_banks=(FakeBank0, FakeBank1)):
         self.shortaddr = shortaddr
+        self.level = 0
+        self.level_max = 254
+        self.level_min = 1
         self.scenes = [255] * 16
         self.groups = set(groups)
         self.devicetypes = devicetypes
@@ -115,6 +118,7 @@ class Gear:
         self.dtr0 = 0
         self.dtr1 = 0
         self.dtr2 = 0
+        self.physical_minimum = 1
         self.memory_banks = {}
         for fake_bank in memory_banks:
             bank_number = fake_bank.bank.address
@@ -167,6 +171,52 @@ class Gear:
             self.groups.add(cmd.param)
         elif isinstance(cmd, general.RemoveFromGroup):
             self.groups.discard(cmd.param)
+        elif isinstance(cmd, general.DAPC):
+            if cmd.power == 255:
+                return
+            elif cmd.power == 0:
+                self.level = 0
+            elif cmd.power > self.level_max:
+                self.level = self.level_max
+            elif cmd.power < self.level_min:
+                self.level = self.level_min
+            else:
+                self.level = cmd.power
+        elif isinstance(cmd, general.RecallMaxLevel):
+            self.level = self.level_max
+        elif isinstance(cmd, general.RecallMinLevel):
+            self.level = self.level_min
+        elif isinstance(cmd, general.Off):
+            self.level = 0
+        elif isinstance(cmd, general.QueryActualLevel):
+            return self.level
+        elif isinstance(cmd, general.SetMaxLevel):
+            if self.level_min >= self.dtr0:
+                self.level_max = self.level_min
+            elif self.dtr0 == 255:
+                self.level_max = 254
+            else:
+                self.level_max = self.dtr0
+            # Ensure output level is no more than the new maximum
+            if self.level > self.level_max:
+                self.level = self.level_max
+        elif isinstance(cmd, general.SetMinLevel):
+            if self.dtr0 <= 1:
+                self.level_min = 1
+            if (self.dtr0 >= self.level_max) or (self.dtr0 == 255):
+                self.level_min = self.level_max
+            else:
+                self.level_min = self.dtr0
+            # Ensure output level is either zero or no less than the new minimum
+            if self.level > 0:
+                if self.level < self.level_min:
+                    self.level = self.level_min
+        elif isinstance(cmd, general.QueryMaxLevel):
+            return self.level_max
+        elif isinstance(cmd, general.QueryMinLevel):
+            return self.level_min
+        elif isinstance(cmd, general.QueryPhysicalMinimum):
+            return self.physical_minimum
         elif isinstance(cmd, general.SetShortAddress):
             if self.dtr0 == 0xff:
                 self.shortaddr = None
@@ -188,6 +238,11 @@ class Gear:
                 self.dt_gap = 0
                 self.dt_queue = list(self.devicetypes)
                 return 0xff
+        elif isinstance(cmd, general.QueryVersionNumber):
+            try:
+                return self.memory_banks[0].contents[0x16]
+            except (IndexError, AttributeError):
+                return 8  # Corresponds to Part 102 Version 2.0
         elif isinstance(cmd, general.QueryContentDTR1):
             return self.dtr1
         elif isinstance(cmd, general.QueryContentDTR2):
@@ -202,6 +257,17 @@ class Gear:
                 return 254
         elif isinstance(cmd, general.QuerySceneLevel):
             return self.scenes[cmd.param]
+        elif isinstance(cmd, general.GoToScene):
+            scene_level = self.scenes[cmd.param]
+            if scene_level == 255:
+                # Don't change level if scene is MASK
+                return
+            elif scene_level > self.level_max:
+                self.level = self.level_max
+            elif scene_level < self.level_min:
+                self.level = self.level_min
+            else:
+                self.level = scene_level
         elif isinstance(cmd, general.QueryGroupsZeroToSeven):
             r = frame.Frame(8)
             for i in range(0, 8):
