@@ -83,7 +83,7 @@ def SetEventSchemes(
 
 def DiscoverInstanceTypes(
     address_count: int = 63,
-) -> Generator[command.Command, command.Response, None,]:
+) -> Generator[command.Command, command.Response, None]:
     """
     A generator sequence to scan a DALI bus for control device instances, and query
     their types. This information is added to the `device_instance_map`, for use in

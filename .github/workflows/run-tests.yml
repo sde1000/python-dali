@@ -23,7 +23,7 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: Lint with flake8
         run: |
-          flake8 dali --exclude=driver --count --ignore=E741,F403,F405 --show-source --statistics --max-line-length=127
+          flake8 dali --exclude=driver --count --ignore=E741,F403,F405,W503 --show-source --statistics --max-line-length=127
           # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
           #flake8 dali --exclude=driver --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
       - name: Test with pytest
