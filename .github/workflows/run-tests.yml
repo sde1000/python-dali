@@ -21,6 +21,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install flake8 pytest
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - name: Install dependencies (Python 3.6)
+        if: ${{ matrix.python-version == '3.6' }}
+        run: |
+          pip install dataclasses
       - name: Lint with flake8
         run: |
           flake8 dali --exclude=driver --count --ignore=E741,F403,F405,W503 --show-source --statistics --max-line-length=127
