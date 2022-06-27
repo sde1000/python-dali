@@ -351,35 +351,35 @@ class QueryDeviceStatus(_StandardDeviceCommand):
 class QueryApplicationControllerError(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    response = command.Response
+    response = command.NumericResponseMask
     _opcode = 0x31
 
 
 class QueryInputDeviceError(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    response = command.Response
+    response = command.NumericResponseMask
     _opcode = 0x32
 
 
 class QueryMissingShortAddress(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    response = command.Response
+    response = command.YesNoResponse
     _opcode = 0x33
 
 
 class QueryVersionNumber(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    response = command.Response
+    response = command.NumericResponse
     _opcode = 0x34
 
 
 class QueryNumberOfInstances(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    response = command.Response
+    response = command.NumericResponse
     _opcode = 0x35
 
 
@@ -387,7 +387,7 @@ class QueryContentDTR0(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
     uses_dtr0 = True
-    response = command.Response
+    response = command.NumericResponse
     _opcode = 0x36
 
 
@@ -395,7 +395,7 @@ class QueryContentDTR1(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
     uses_dtr1 = True
-    response = command.Response
+    response = command.NumericResponse
     _opcode = 0x37
 
 
@@ -403,28 +403,28 @@ class QueryContentDTR2(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
     uses_dtr2 = True
-    response = command.Response
+    response = command.NumericResponse
     _opcode = 0x38
 
 
 class QueryRandomAddressH(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    response = command.Response
+    response = command.NumericResponse
     _opcode = 0x39
 
 
 class QueryRandomAddressM(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    response = command.Response
+    response = command.NumericResponse
     _opcode = 0x3a
 
 
 class QueryRandomAddressL(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    response = command.Response
+    response = command.NumericResponse
     _opcode = 0x3b
 
 
@@ -433,14 +433,14 @@ class ReadMemoryLocation(_StandardDeviceCommand):
     inputdev = True
     uses_dtr0 = True
     uses_dtr1 = True
-    response = command.Response
+    response = command.NumericResponse
     _opcode = 0x3c
 
 
 class QueryApplicationControlEnabled(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    response = command.Response
+    response = command.YesNoResponse
     _opcode = 0x3d
 
 
@@ -454,14 +454,14 @@ class QueryOperatingMode(_StandardDeviceCommand):
 class QueryManufacturerSpecificMode(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    response = command.Response
+    response = command.YesNoResponse
     _opcode = 0x3f
 
 
 class QueryQuiescentMode(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    response = command.Response
+    response = command.YesNoResponse
     _opcode = 0x40
 
 
@@ -496,7 +496,7 @@ class QueryDeviceGroupsTwentyFourToThirtyOne(_StandardDeviceCommand):
 class QueryPowerCycleNotification(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    response = command.Response
+    response = command.YesNoResponse
     _opcode = 0x45
 
 
@@ -511,14 +511,14 @@ class QueryExtendedVersionNumber(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
     uses_dtr0 = True
-    response = command.Response
+    response = command.NumericResponse
     _opcode = 0x47
 
 
 class QueryResetState(_StandardDeviceCommand):
     appctrl = True
     inputdev = True
-    response = command.Response
+    response = command.YesNoResponse
     _opcode = 0x48
 
 
@@ -629,7 +629,7 @@ class SetEventFilter(_StandardInstanceCommand):
 
 class QueryInstanceType(_StandardInstanceCommand):
     inputdev = True
-    response = command.Response
+    response = command.NumericResponse
     _opcode = 0x80
 
 
@@ -659,7 +659,7 @@ class QueryEventPriority(_StandardInstanceCommand):
 
 class QueryInstanceEnabled(_StandardInstanceCommand):
     inputdev = True
-    response = command.Response
+    response = command.YesNoResponse
     _opcode = 0x86
 
 
