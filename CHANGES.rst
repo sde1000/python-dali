@@ -27,6 +27,8 @@ exceptions raised by the native ``int.from_bytes()`` and
 0.10 (planned)
 --------------
 
+- Python 3.6 is no longer supported.
+
 - Frame exception updates; see above. The old behaviour is no longer
   available and passing ``new_exceptions`` when calling the
   ``Frame()`` constructor or the ``Frame.pack_len()`` method will
