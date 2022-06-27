@@ -10,13 +10,19 @@ class Frame:
     Instances of this object are mutable.
     """
 
-    def __init__(self, bits, data=0, new_exceptions=True):
+    def __init__(self, bits, data=0, new_exceptions=None):
         """Initialise a Frame with the supplied number of data bits.
 
         :parameter bits: the number of data bits in the Frame
         :parameter data: initial data for the Frame as an integer or
         an iterable sequence of integers
         """
+        if new_exceptions is not None:
+            warnings.warn(
+                "new_exceptions=True is now the only behaviour available "
+                "for Frame(); you should remove the new_exceptions "
+                "keyword argument. See CHANGES.rst for more information.",
+                DeprecationWarning, stacklevel=2)
         if not isinstance(bits, int):
             raise TypeError(
                 "Number of bits must be an integer")
@@ -27,21 +33,7 @@ class Frame:
         if isinstance(data, int):
             self._data = data
         else:
-            if new_exceptions:
-                self._data = int.from_bytes(data, 'big')
-            else:
-                warnings.warn("Frame() will raise ValueError in the future "
-                              "when an invalid initialisation sequence is "
-                              "passed, instead of TypeError. Passing "
-                              "new_exceptions=False to Frame() will not be "
-                              "possible in the next release.",
-                              DeprecationWarning, stacklevel=2)
-                try:
-                    self._data = int.from_bytes(data, 'big')
-                except ValueError:
-                    raise TypeError(
-                        "data must be a sequence of integers all in the "
-                        "range 0..255 or an integer")
+            self._data = int.from_bytes(data, 'big')
         if self._data < 0:
             raise ValueError(
                 "Initial data must not be negative")
@@ -186,7 +178,7 @@ class Frame:
             (len(self) // 8) + (1 if len(self) % 8 else 0),
             'big')
 
-    def pack_len(self, l, new_exceptions=True):
+    def pack_len(self, l, new_exceptions=None):
         """The contents of the frame represented as a fixed length byte string.
 
         The least significant bit of the frame is aligned to the end
@@ -196,18 +188,13 @@ class Frame:
         ValueError (with new_exceptions=False) or OverflowError (with
         new_exceptions=True).
         """
-        if new_exceptions:
-            return self._data.to_bytes(l, 'big')
-        warnings.warn("Frame.pack_len() will raise OverflowError in the "
-                      "future when an invalid length is passed, instead of "
-                      "ValueError. Passing new_exceptions=False will not be "
-                      "possible in the next release.",
-                      DeprecationWarning, stacklevel=2)
-        try:
-            return self._data.to_bytes(l, 'big')
-        except OverflowError:
-            raise ValueError(
-                f"Frame length {len(self)} will not fit in {l} bytes")
+        if new_exceptions is not None:
+            warnings.warn(
+                "new_exceptions=True is now the only behaviour available "
+                "for pack_len; you should remove the new_exceptions "
+                "keyword argument. See CHANGES.rst for more information.",
+                DeprecationWarning, stacklevel=2)
+        return self._data.to_bytes(l, 'big')
 
     def __str__(self):
         return "{}({},{})".format(self.__class__.__name__, len(self),
