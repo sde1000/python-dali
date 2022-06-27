@@ -69,10 +69,8 @@ device.device_instance_map.add_type(
 ```
 
 There is also a sequence which will scan the DALI bus and learn the types of all
-enabled instances, `SequenceDiscoverInstanceTypes()`.
+enabled instances, `DiscoverInstanceTypes()`.
 """
-from __future__ import annotations
-
 import types
 from enum import Enum
 from typing import Dict, Optional, Type, Union
@@ -969,7 +967,7 @@ class UnknownEvent(_DeviceCommand):
 
 
 class _EventTypeMappingDeviceInstance:
-    def __init__(self, initial: Optional[Dict[(int, int), int]] = None):
+    def __init__(self, initial = None):
         """
         NOTE: DO NOT create a new instance of this class, use the one already in the
         `dali.general`, i.e. use `general.device_instance_map.add_type()`, or use the
@@ -1222,7 +1220,7 @@ class _Event(_DeviceCommand):
         cls._instance_types[subclass._instance_type] = subclass
 
     @classmethod
-    def from_event_data(cls, event_data: int) -> Type[_Event]:
+    def from_event_data(cls, event_data: int) -> Type["_Event"]:
         """
         Takes a given set of event data, and returns a class which is intended to
         contain that data. For some event types this might just be a mapping, i.e.
@@ -1352,7 +1350,7 @@ class AmbiguousInstanceType(_Event):
         )
 
     @classmethod
-    def from_event_data(cls, event_data: int) -> Type[_Event]:
+    def from_event_data(cls, event_data: int) -> Type["_Event"]:
         return cls
 
     def _set_event_data(self, set_data: Optional[int], set_frame: frame.Frame):

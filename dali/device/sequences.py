@@ -1,8 +1,6 @@
 """
 Sequence for simplifying certain interactions with 24-bit DALI devices
 """
-from __future__ import annotations
-
 from typing import Generator, Iterable, Optional
 
 from dali import address, command, sequences

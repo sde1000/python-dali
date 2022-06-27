@@ -1,8 +1,6 @@
 """
 Commands, responses and events from IEC 62386 part 301: "Input devices — Push buttons"
 """
-from __future__ import annotations
-
 from typing import Dict, Type
 
 from dali import command
