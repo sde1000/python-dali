@@ -967,7 +967,7 @@ class UnknownEvent(_DeviceCommand):
 
 
 class _EventTypeMappingDeviceInstance:
-    def __init__(self, initial = None):
+    def __init__(self, initial=None):
         """
         NOTE: DO NOT create a new instance of this class, use the one already in the
         `dali.general`, i.e. use `general.device_instance_map.add_type()`, or use the
