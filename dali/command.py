@@ -191,7 +191,10 @@ class Command(metaclass=_CommandTracker):
     devicetype = 0
 
     def __init__(self, f):
-        assert isinstance(f, frame.ForwardFrame)
+        if not isinstance(f, frame.ForwardFrame):
+            raise TypeError(
+                f"{self.__class__.__name__} expected a ForwardFrame, not a {type(f)}"
+            )
         self._data = f
 
     _framesizes = {}
