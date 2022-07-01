@@ -73,6 +73,8 @@ Library structure
 
     - ``hid`` - asyncio-based drivers for Tridonic DALI USB and hasseb DALI Master
 
+    - ``serial`` - asyncio-based driver for Lunatone LUBA RS232 interfaces
+
   - ``exceptions`` - DALI related exceptions
 
   - ``frame`` - Forward and backward frames; stable
