@@ -30,11 +30,12 @@ _bad_frame_length = IncompatibleFrame("Unsupported frame size")
 # Address bytes
 ###############################################################################
 
+
 class AddressTracker(type):
     """Metaclass keeping track of all the types of Address we understand."""
 
     def __init__(cls, name, bases, attrs):
-        if not hasattr(cls, '_addrtypes'):
+        if not hasattr(cls, "_addrtypes"):
             cls._addrtypes = []
         else:
             cls._addrtypes.append(cls)
@@ -42,6 +43,8 @@ class AddressTracker(type):
 
 class Address(metaclass=AddressTracker):
     """An address for one or more ballasts."""
+
+    required_frame_size = None
 
     @classmethod
     def from_frame(cls, f):
@@ -64,68 +67,161 @@ class Address(metaclass=AddressTracker):
         return "<no address>"
 
 
-class Broadcast(Address):
-    """All control gear or devices connected to the network."""
+class GearAddress(Address):
+    """Base class for control gear addresses"""
+
+    required_frame_size = 16
+
+
+class DeviceAddress(Address):
+    """Base class for control device addresses"""
+
+    required_frame_size = 24
+
+
+class GearBroadcast(GearAddress):
+    """All control gear connected to the network"""
 
     @classmethod
     def from_frame(cls, f):
         if len(f) == 16:
-            if f[15:9] == 0x7f:
-                return cls()
-        elif len(f) == 24:
-            if f[16] and f[23:17] == 0x7f:
+            if f[15:9] == 0x7F:
                 return cls()
 
     def add_to_frame(self, f):
         if len(f) == 16:
-            f[15:9] = 0x7f
-        elif len(f) == 24:
-            f[23:17] = 0x7f
+            f[15:9] = 0x7F
         else:
             raise _bad_frame_length
 
     def __eq__(self, other):
-        return isinstance(other, Broadcast)
+        return isinstance(other, GearBroadcast)
 
     def __str__(self):
-        return "<broadcast>"
+        return "<broadcast (control gear)>"
 
 
-class BroadcastUnaddressed(Address):
-    """All unaddressed control gear or devices
+# Broadcast alias provided for legacy purposes, new code should avoid ambiguity by using
+# either GearBroadcast or DeviceBroadcast
+Broadcast = GearBroadcast
 
-    All control gear or devices in the system that have no short
-    address assigned.
+
+class DeviceBroadcast(DeviceAddress):
+    """All control devices connected to the network"""
+
+    @classmethod
+    def from_frame(cls, f):
+        if len(f) == 24:
+            if f[16] and f[23:17] == 0x7F:
+                return cls()
+
+    def add_to_frame(self, f):
+        if len(f) == 24:
+            f[23:17] = 0x7F
+        else:
+            raise _bad_frame_length
+
+    def __eq__(self, other):
+        return isinstance(other, DeviceBroadcast)
+
+    def __str__(self):
+        return "<broadcast (control device)>"
+
+
+class GearBroadcastUnaddressed(GearAddress):
+    """All unaddressed control gear
+
+    All control gear in the system that have no short address assigned.
     """
 
     @classmethod
     def from_frame(cls, f):
         if len(f) == 16:
-            if f[15:9] == 0x7e:
-                return cls()
-        elif len(f) == 24:
-            if f[16] and f[23:17] == 0x7e:
+            if f[15:9] == 0x7E:
                 return cls()
 
     def add_to_frame(self, f):
         if len(f) == 16:
-            f[15:9] = 0x7e
-        elif len(f) == 24:
-            f[23:17] = 0x7e
+            f[15:9] = 0x7E
         else:
             raise _bad_frame_length
 
     def __eq__(self, other):
-        return isinstance(other, BroadcastUnaddressed)
+        return isinstance(other, GearBroadcastUnaddressed)
 
     def __str__(self):
-        return "<broadcast unaddressed>"
+        return "<broadcast unaddressed (control gear)>"
 
 
-class Group(Address):
-    """All control gear or devices that are members of the specified group."""
+# BroadcastUnaddressed alias provided for legacy purposes, new code should avoid
+# ambiguity by using either GearBroadcastUnaddressed or DeviceBroadcastUnaddressed
+BroadcastUnaddressed = GearBroadcastUnaddressed
 
-    def __init__(self, group):
+
+class DeviceBroadcastUnaddressed(DeviceAddress):
+    """All unaddressed control devices
+
+    All control devices in the system that have no short address assigned.
+    """
+
+    @classmethod
+    def from_frame(cls, f):
+        if len(f) == 24:
+            if f[16] and f[23:17] == 0x7E:
+                return cls()
+
+    def add_to_frame(self, f):
+        if len(f) == 24:
+            f[23:17] = 0x7E
+        else:
+            raise _bad_frame_length
+
+    def __eq__(self, other):
+        return isinstance(other, DeviceBroadcastUnaddressed)
+
+    def __str__(self):
+        return "<broadcast unaddressed (control device)>"
+
+
+class GearGroup(GearAddress):
+    """All control gear that are members of the specified group"""
+
+    def __init__(self, group: int):
+        if not isinstance(group, int):
+            raise ValueError("group must be an integer")
+        if group < 0 or group > 15:
+            raise ValueError("group must be in the range 0..15")
+        self.group = group
+
+    @classmethod
+    def from_frame(cls, f):
+        if len(f) == 16:
+            if f[15:13] == 0x4:
+                return cls(f[12:9])
+
+    def add_to_frame(self, f):
+        if len(f) == 16:
+            f[15:13] = 0x4
+            f[12:9] = self.group
+        else:
+            raise _bad_frame_length
+
+    def __eq__(self, other):
+        return isinstance(other, GearGroup) and other.group == self.group
+
+    def __str__(self):
+        return f"<group (control gear) {self.group}>"
+
+
+# Group alias provided for legacy purposes, new code should avoid ambiguity by using
+# either GearGroup or DeviceGroup
+Group = GearGroup
+
+
+class DeviceGroup(DeviceAddress):
+    """All control devices that are members of the specified group"""
+
+    def __init__(self, group: int):
         if not isinstance(group, int):
             raise ValueError("group must be an integer")
         if group < 0 or group > 31:
@@ -134,35 +230,27 @@ class Group(Address):
 
     @classmethod
     def from_frame(cls, f):
-        if len(f) == 16:
-            if f[15:13] == 0x4:
-                return cls(f[12:9])
-        elif len(f) == 24:
+        if len(f) == 24:
             if f[16] and f[23:22] == 0x2:
                 return cls(f[21:17])
 
     def add_to_frame(self, f):
-        if len(f) == 16:
-            if self.group > 15:
-                raise IncompatibleFrame(
-                    "Groups 16..31 are not supported in 16-bit forward frames")
-            f[15:13] = 0x4
-            f[12:9] = self.group
-        elif len(f) == 24:
+        if len(f) == 24:
             f[23:22] = 0x2
             f[21:17] = self.group
         else:
             raise _bad_frame_length
 
     def __eq__(self, other):
-        return isinstance(other, Group) and other.group == self.group
+        return isinstance(other, DeviceGroup) and other.group == self.group
 
     def __str__(self):
-        return "<group %d>" % self.group
+        return f"<group (control device) {self.group}>"
 
 
-class Short(Address):
-    """The control gear or device that has this address.
+class GearShort(GearAddress):
+    """
+    The control gear that has this address.
 
     In a correctly configured DALI network, no more than one control
     gear will have a particular short address, and no more than one
@@ -184,25 +272,63 @@ class Short(Address):
         if len(f) == 16:
             if not f[15]:
                 return cls(f[14:9])
-        elif len(f) == 24:
-            if f[16] and not f[23]:
-                return cls(f[22:17])
 
     def add_to_frame(self, f):
         if len(f) == 16:
             f[15] = False
             f[14:9] = self.address
-        elif len(f) == 24:
+        else:
+            raise _bad_frame_length
+
+    def __eq__(self, other):
+        return isinstance(other, GearShort) and other.address == self.address
+
+    def __str__(self):
+        return f"<address (control gear) {self.address}>"
+
+
+# Short alias provided for legacy purposes, new code should avoid ambiguity by using
+# either GearShort or DeviceShort
+Short = GearShort
+
+
+class DeviceShort(DeviceAddress):
+    """
+    The control device that has this address.
+
+    In a correctly configured DALI network, no more than one control
+    gear will have a particular short address, and no more than one
+    control device will have a particular short address.  The short
+    address spaces for control gear and control devices are separate;
+    it is legal for a control gear and control device to share a short
+    address.
+    """
+
+    def __init__(self, address: int):
+        if not isinstance(address, int):
+            raise ValueError("address must be an integer")
+        if address < 0 or address > 63:
+            raise ValueError("address must be in the range 0..63")
+        self.address = address
+
+    @classmethod
+    def from_frame(cls, f):
+        if len(f) == 24:
+            if f[16] and not f[23]:
+                return cls(f[22:17])
+
+    def add_to_frame(self, f):
+        if len(f) == 24:
             f[23] = False
             f[22:17] = self.address
         else:
             raise _bad_frame_length
 
     def __eq__(self, other):
-        return isinstance(other, Short) and other.address == self.address
+        return isinstance(other, DeviceShort) and other.address == self.address
 
     def __str__(self):
-        return "<address %d>" % self.address
+        return f"<address (control device) {self.address}>"
 
 
 from_frame = Address.from_frame
@@ -211,6 +337,7 @@ from_frame = Address.from_frame
 ###############################################################################
 # Instance bytes
 ###############################################################################
+
 
 class Instance:
     def __init__(self):
@@ -286,7 +413,7 @@ class InstanceGroup(_AddressedInstance):
 
 
 class InstanceType(_AddressedInstance):
-    _flags = 0xc0
+    _flags = 0xC0
 
 
 class FeatureInstanceNumber(_AddressedInstance):
@@ -294,7 +421,7 @@ class FeatureInstanceNumber(_AddressedInstance):
 
 
 class FeatureInstanceGroup(_AddressedInstance):
-    _flags = 0xa0
+    _flags = 0xA0
 
 
 class FeatureInstanceType(_AddressedInstance):
@@ -302,19 +429,19 @@ class FeatureInstanceType(_AddressedInstance):
 
 
 class FeatureInstanceBroadcast(_UnaddressedInstance):
-    _val = 0xfd
+    _val = 0xFD
 
 
 class InstanceBroadcast(_UnaddressedInstance):
-    _val = 0xff
+    _val = 0xFF
 
 
 class FeatureDevice(_UnaddressedInstance):
-    _val = 0xfc
+    _val = 0xFC
 
 
 class Device(_UnaddressedInstance):
-    _val = 0xfe
+    _val = 0xFE
 
 
 def instance_from_frame(f):
@@ -335,12 +462,12 @@ def instance_from_frame(f):
         return FeatureInstanceGroup(p)
     elif flags == 3:
         return FeatureInstanceType(p)
-    elif b == 0xfd:
+    elif b == 0xFD:
         return FeatureInstanceBroadcast()
-    elif b == 0xff:
+    elif b == 0xFF:
         return InstanceBroadcast()
-    elif b == 0xfc:
+    elif b == 0xFC:
         return FeatureDevice()
-    elif b == 0xfe:
+    elif b == 0xFE:
         return Device()
     return ReservedInstance(b)

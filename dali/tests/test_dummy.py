@@ -144,22 +144,22 @@ def test_dummy_init_no_relay(tmp_path):
 @pytest.mark.asyncio
 async def test_dummy_write_1(dummy_driver):
     await dummy_driver.driver.connect()
-    await dummy_driver.driver.send(gear.general.DAPC(address.Short(1), 254))
-    assert "ArcPower(<address 1>,254)" in dummy_driver.log.read()
+    await dummy_driver.driver.send(gear.general.DAPC(address.GearShort(1), 254))
+    assert "ArcPower(<address (control gear) 1>,254)" in dummy_driver.log.read()
 
 
 @pytest.mark.asyncio
 async def test_dummy_write_2(dummy_driver):
     await dummy_driver.driver.connect()
-    await dummy_driver.driver.send(gear.general.DAPC(address.Broadcast(), 127))
-    assert "ArcPower(<broadcast>,127)" in dummy_driver.log.read()
+    await dummy_driver.driver.send(gear.general.DAPC(address.GearBroadcast(), 127))
+    assert "ArcPower(<broadcast (control gear)>,127)" in dummy_driver.log.read()
 
 
 @pytest.mark.asyncio
 async def test_dummy_write_3(dummy_driver):
     await dummy_driver.driver.connect()
-    await dummy_driver.driver.send(gear.general.GoToScene(address.Short(1), 11))
-    assert "GoToScene(<address 1>,11)" in dummy_driver.log.read()
+    await dummy_driver.driver.send(gear.general.GoToScene(address.GearShort(1), 11))
+    assert "GoToScene(<address (control gear) 1>,11)" in dummy_driver.log.read()
 
 
 @pytest.mark.asyncio
@@ -167,7 +167,7 @@ async def test_dummy_sequence_device_types(dummy_driver):
     await dummy_driver.driver.connect()
     # The default of dummy_driver has 12 addressed control gears
     for ad in range(11):
-        short = address.Short(ad)
+        short = address.GearShort(ad)
         dev_types = await dummy_driver.driver.run_sequence(QueryDeviceTypes(short))
         # LEDs, DT6, are created first by the dummy driver
         if ad in range(0, 5):
