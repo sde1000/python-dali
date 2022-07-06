@@ -1,5 +1,6 @@
 """Declaration of base types for dali commands and their responses."""
 
+from enum import IntEnum
 from dali import address
 from dali import frame
 from dali.exceptions import MissingResponse
@@ -156,6 +157,21 @@ class BitmapResponse(Response, metaclass=BitmapResponseBitDict):
         # XXX: be more explicit which exception to catch
         except Exception as e:
             return "{}".format(e)
+
+
+class EnumResponse(Response):
+    """
+    A response that consists of a number from a pre-defined enumerator
+    """
+
+    enumerator: IntEnum = None
+
+    @property
+    def value(self):
+        _value = super().value
+        if _value:
+            return self.enumerator(_value.as_integer)  # noqa
+        return _value
 
 
 class Command(metaclass=_CommandTracker):
