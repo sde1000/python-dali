@@ -219,6 +219,14 @@ class Instance:
     def add_to_frame(self, f):
         raise NotImplementedError
 
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            if hasattr(self, "_value") and hasattr(other, "_value"):
+                if self._value == other._value:
+                    return True
+
+        return False
+
 
 class ReservedInstance(Instance):
     """A reserved instance byte."""
