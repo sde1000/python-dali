@@ -1,14 +1,21 @@
 import unittest
+from decimal import Decimal
 
-from dali.tests import fakes
-from dali.memory import info, diagnostics, energy, maintenance, oem
-from dali.memory.location import MemoryBank, NumericValue, FlagValue
+from dali.address import DeviceShort, GearShort
 from dali.command import Command, Response
-from dali.exceptions import ResponseError, MemoryLocationNotImplemented, \
-    MemoryValueNotWriteable, MemoryLocationNotWriteable, MemoryWriteFailure
+from dali.exceptions import (
+    MemoryLocationNotImplemented,
+    MemoryLocationNotWriteable,
+    MemoryValueNotWriteable,
+    MemoryWriteFailure,
+    ResponseError,
+)
 from dali.frame import BackwardFrame
 from dali.gear.general import DTR0, DTR1, ReadMemoryLocation
-from decimal import Decimal
+from dali.memory import diagnostics, energy, info, maintenance, oem
+from dali.memory.location import FlagValue, MemoryBank, NumericValue
+from dali.tests import fakes
+
 
 # Test data: valid initial contents of memory banks
 
@@ -305,14 +312,15 @@ class TestMemory(unittest.TestCase):
         # 1 and 2 have some oddities which we use to test special
         # value handling and write errors
         self.bus = fakes.Bus([
-            fakes.Gear(0, memory_banks=(
+            fakes.Gear(GearShort(0), memory_banks=(
                 fakes.FakeBank0, FakeBank1, FakeBank202, FakeBank203,
                 FakeBank204, FakeBank205, FakeBank206, FakeBank207)),
-            fakes.Gear(1, memory_banks=(
+            fakes.Gear(GearShort(1), memory_banks=(
                 fakes.FakeBank0, InvalidBank1, InvalidBank202,
                 LatchTestBank203, InvalidBank207)),
-            fakes.Gear(2, memory_banks=(
+            fakes.Gear(GearShort(2), memory_banks=(
                 fakes.FakeBank0, BrokenBank1, BrokenBank206)),
+            fakes.Device(DeviceShort(0), memory_banks=(fakes.FakeBank0, FakeBank1)),
         ])
 
     def _test_value(self, memory_value, expected, addr=0):
@@ -375,6 +383,25 @@ class TestMemory(unittest.TestCase):
 
     def test_memorybank_read_all(self):
         values = self.bus.run_sequence(info.BANK_0.read_all(0))
+        # We can't rely on LastMemoryBank being unchanged, so remove it
+        # from the results
+        del values[info.LastMemoryBank]
+        expected = {
+            info.GTIN: 1234567654321,
+            info.FirmwareVersion: "1.0",
+            info.IdentificationNumber: 1,
+            info.HardwareVersion: "2.1",
+            info.Part101Version: "2.0",
+            info.Part102Version: "2.0",
+            info.Part103Version: "not implemented",
+            info.DeviceUnitCount: 0,
+            info.GearUnitCount: 1,
+            info.UnitIndex: 0,
+        }
+        self.assertEqual(values, expected)
+
+    def test_memorybank_device_read_all(self):
+        values = self.bus.run_sequence(info.BANK_0.read_all(DeviceShort(0)))
         # We can't rely on LastMemoryBank being unchanged, so remove it
         # from the results
         del values[info.LastMemoryBank]

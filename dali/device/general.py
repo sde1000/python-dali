@@ -757,6 +757,10 @@ class _SpecialDeviceCommandOneParam(_SpecialDeviceCommand):
         if frame[23:16] == cls._addr and frame[15:8] == cls._instance:
             return cls(frame[7:0])
 
+    @property
+    def param(self) -> int:
+        return self._opcode
+
     def __str__(self):
         return "{}({:02x})".format(self.__class__.__name__, self._opcode)
 
@@ -777,6 +781,14 @@ class _SpecialDeviceCommandTwoParam(_SpecialDeviceCommand):
             return
         if frame[23:16] == cls._addr:
             return cls(frame[15:8], frame[7:0])
+
+    @property
+    def param_1(self) -> int:
+        return self._instance
+
+    @property
+    def param_2(self) -> int:
+        return self._opcode
 
     def __str__(self):
         return "{}({:02x}, {:02x})".format(

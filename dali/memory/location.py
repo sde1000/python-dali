@@ -1,12 +1,88 @@
-from enum import Enum, auto
-from collections import namedtuple
+from __future__ import annotations
 
-from dali.exceptions import ResponseError, LatchingNotSupported, \
-    MemoryLocationNotImplemented, MemoryValueNotWriteable, \
-    MemoryLocationNotWriteable, MemoryWriteFailure
-from dali.gear.general import ReadMemoryLocation, DTR0, DTR1, \
-    EnableWriteMemory, WriteMemoryLocation, WriteMemoryLocationNoReply, \
-    QueryContentDTR0
+from collections import namedtuple
+from enum import Enum, auto
+
+from dali import device, gear
+from dali.address import Address, DeviceAddress, DeviceShort, GearAddress, GearShort
+from dali.exceptions import (
+    LatchingNotSupported,
+    MemoryLocationNotImplemented,
+    MemoryLocationNotWriteable,
+    MemoryValueNotWriteable,
+    MemoryWriteFailure,
+    ResponseError,
+)
+
+
+def _DTR0(addr: Address, value: int):
+    """Returns either a Gear or Device version of DTR0"""
+    if isinstance(addr, GearAddress):
+        return gear.general.DTR0(value)
+    elif isinstance(addr, DeviceAddress):
+        return device.general.DTR0(value)
+    else:
+        raise TypeError(f"Invalid addr: {addr}, expected GearAddress or DeviceAddress")
+
+
+def _DTR1(addr: Address, value: int):
+    """Returns either a Gear or Device version of DTR1"""
+    if isinstance(addr, GearAddress):
+        return gear.general.DTR1(value)
+    elif isinstance(addr, DeviceAddress):
+        return device.general.DTR1(value)
+    else:
+        raise TypeError(f"Invalid addr: {addr}, expected GearAddress or DeviceAddress")
+
+
+def _EnableWriteMemory(addr: Address):
+    """Returns either a Gear or Device version of EnableWriteMemory"""
+    if isinstance(addr, GearAddress):
+        return gear.general.EnableWriteMemory(addr)
+    elif isinstance(addr, DeviceAddress):
+        return device.general.EnableWriteMemory(addr)
+    else:
+        raise TypeError(f"Invalid addr: {addr}, expected GearAddress or DeviceAddress")
+
+
+def _ReadMemoryLocation(addr: GearShort | DeviceShort):
+    """Returns either a Gear or Device version of ReadMemoryLocation"""
+    if isinstance(addr, GearAddress):
+        return gear.general.ReadMemoryLocation(addr)
+    elif isinstance(addr, DeviceAddress):
+        return device.general.ReadMemoryLocation(addr)
+    else:
+        raise TypeError(f"Invalid addr: {addr}, expected GearAddress or DeviceAddress")
+
+
+def _WriteMemoryLocation(addr: Address, value: int):
+    """Returns either a Gear or Device version of WriteMemoryLocation"""
+    if isinstance(addr, GearAddress):
+        return gear.general.WriteMemoryLocation(value)
+    elif isinstance(addr, DeviceAddress):
+        return device.general.WriteMemoryLocation(value)
+    else:
+        raise TypeError(f"Invalid addr: {addr}, expected GearAddress or DeviceAddress")
+
+
+def _WriteMemoryLocationNoReply(addr: Address, value: int):
+    """Returns either a Gear or Device version of WriteMemoryLocationNoReply"""
+    if isinstance(addr, GearAddress):
+        return gear.general.WriteMemoryLocationNoReply(value)
+    elif isinstance(addr, DeviceAddress):
+        return device.general.WriteMemoryLocationNoReply(value)
+    else:
+        raise TypeError(f"Invalid addr: {addr}, expected GearAddress or DeviceAddress")
+
+
+def _QueryContentDTR0(addr: Address):
+    """Returns either a Gear or Device version of QueryContentDTR0"""
+    if isinstance(addr, GearAddress):
+        return gear.general.QueryContentDTR0(addr)
+    elif isinstance(addr, DeviceAddress):
+        return device.general.QueryContentDTR0(addr)
+    else:
+        raise TypeError(f"Invalid addr: {addr}, expected GearAddress or DeviceAddress")
 
 
 class MemoryType(Enum):
@@ -76,10 +152,10 @@ class MemoryBank:
         self.values.append(memory_value)
         for location in memory_value.locations:
             if self.locations[location.address]:
-                raise self.MemoryLocationOverlap(
+                raise MemoryLocationOverlap(
                     f'Overlapping MemoryLocation at address {location.address}')
             if location.type_ == MemoryType.NVM_RW_L and not self.has_lock:
-                raise self.LockingNotSupported()
+                raise LockingNotSupported()
             self.locations[location.address] = self.MemoryBankEntry(
                 location, memory_value)
 
@@ -89,40 +165,46 @@ class MemoryBank:
         la = yield from self.LastAddress.read(addr)
         return la
 
-    def read_all(self, addr, use_latch=True):
+    def read_all(self, addr: Address, use_latch: bool = True):
         """Read all available memory values from this memory bank.
 
         If the memory bank has a latch, the latch is set during the
         read so that the memory values represent a snapshot in
         time. If you don't want this behaviour, pass use_latch=False.
         """
+        if isinstance(addr, int):
+            # Assume 16-bit DALI, if not explicit
+            addr = GearShort(addr)
+        elif not isinstance(addr, (GearShort, DeviceShort)):
+            raise TypeError(f"Invalid addr: {addr}, expected GearShort or DeviceShort")
         last_address = yield from self.LastAddress.read(addr)
         # Reading the last address also sets DTR1 appropriately
         dtr0 = 1
         if use_latch and self.has_latch:
-            yield EnableWriteMemory(addr)
-            yield DTR0(2)
-            yield WriteMemoryLocationNoReply(0xaa)
+            yield _EnableWriteMemory(addr)
+            yield _DTR0(addr, 2)
+            yield _WriteMemoryLocationNoReply(addr, 0xAA)
             dtr0 = 3
         # Bank 0 has a useful value at address 0x02; all other banks
         # use this for the lock/latch byte
         start_address = 0x02 if self.address == 0 else 0x03
         if dtr0 != start_address:
-            yield DTR0(start_address)
+            yield _DTR0(addr, start_address)
         raw_data = [None] * start_address
         for loc in range(start_address, last_address + 1):
-            r = yield ReadMemoryLocation(addr)
+            r = yield _ReadMemoryLocation(addr)
             if r.raw_value is not None:
                 if r.raw_value.error:
                     raise ResponseError(
                         f"Framing error while reading memory bank "
-                        f"{self.address} location {loc}")
+                        f"{self.address} location {loc}"
+                    )
                 raw_data.append(r.raw_value.as_integer)
             else:
                 raw_data.append(None)
         if use_latch and self.has_latch:
-            yield DTR0(2)
-            yield WriteMemoryLocationNoReply(0xff)
+            yield _DTR0(addr, 2)
+            yield _WriteMemoryLocationNoReply(addr, 0xFF)
         result = {}
         for memory_value in self.values:
             try:
@@ -335,7 +417,7 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
             return FlagValue.Invalid
 
     @classmethod
-    def read_raw(cls, addr):
+    def read_raw(cls, addr: Address):
         """Read the value from the bus unit without interpretation
 
         Raises MemoryLocationNotImplemented if the device does
@@ -343,16 +425,21 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
 
         Returns a bytes() object with the same length as cls.locations
         """
+        if isinstance(addr, int):
+            # Assume 16-bit DALI, if not explicit
+            addr = GearShort(addr)
+        elif not isinstance(addr, (GearShort, DeviceShort)):
+            raise TypeError(f"Invalid addr: {addr}, expected GearShort or DeviceShort")
         result = []
         dtr0 = None
-        yield DTR1(cls.bank.address)
+        yield _DTR1(addr, cls.bank.address)
         for location in cls.locations:
             # select correct memory location
             if location.address != dtr0:
                 dtr0 = location.address
-                yield DTR0(location.address)
+                yield _DTR0(addr, location.address)
             # read back value of the memory location
-            r = yield ReadMemoryLocation(addr)
+            r = yield _ReadMemoryLocation(addr)
             # increase DTR0 to reflect the internal state of the driver
             dtr0 = min(dtr0 + 1, 255)
             if r.raw_value is None:
@@ -395,8 +482,14 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
         return cls.check_raw(raw) or cls.raw_to_value(raw)
 
     @classmethod
-    def write_raw(cls, addr, raw, allow_short_write=False,
-                  force_unlock=False, ignore_feedback=False):
+    def write_raw(
+        cls,
+        addr: Address,
+        raw,
+        allow_short_write=False,
+        force_unlock=False,
+        ignore_feedback=False,
+    ):
         """Write a value to the bus unit without interpretation
 
         Raises MemoryLocationNotWriteable if the memory location is
@@ -417,6 +510,12 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
         ResponseError. These checks can be skipped by setting
         ignore_feedback=True.
         """
+        if isinstance(addr, int):
+            # Assume 16-bit DALI, if not explicit
+            addr = GearShort(addr)
+        elif not isinstance(addr, (GearShort, DeviceShort)):
+            raise TypeError(f"Invalid addr: {addr}, expected GearShort or DeviceShort")
+
         if allow_short_write:
             if len(raw) > len(cls.locations):
                 raise ValueError("Raw data too long")
@@ -427,10 +526,12 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
         # Check that all locations are writeable
         for location in cls.locations:
             if location.type_ not in (
-                    MemoryType.RAM_RW, MemoryType.NVM_RW,
-                    MemoryType.NVM_RW_L, MemoryType.NVM_RW_P):
-                raise MemoryValueNotWriteable(
-                    f"{str(cls)} is not a writeable MemoryValue")
+                MemoryType.RAM_RW,
+                MemoryType.NVM_RW,
+                MemoryType.NVM_RW_L,
+                MemoryType.NVM_RW_P,
+            ):
+                raise MemoryValueNotWriteable(f"{str(cls)} is not a writeable MemoryValue")
             # Memory of type NVM_RW_P may be write (or read!)
             # protected, but there is no standard way of unprotecting
             # it.
@@ -438,20 +539,20 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
                 unlock_required = True
 
         dtr0 = None
-        yield DTR1(cls.bank.address)
-        yield EnableWriteMemory(addr)
+        yield _DTR1(addr, cls.bank.address)
+        yield _EnableWriteMemory(addr)
         if unlock_required:
-            yield DTR0(2)
-            yield WriteMemoryLocationNoReply(0x55)
+            yield _DTR0(addr, 2)
+            yield _WriteMemoryLocationNoReply(addr, 0x55)
             dtr0 = 3
         for location, value in zip(cls.locations, raw):
             if location.address != dtr0:
-                yield DTR0(location.address)
+                yield _DTR0(addr, location.address)
                 dtr0 = location.address
             if ignore_feedback:
-                yield WriteMemoryLocationNoReply(value)
+                yield _WriteMemoryLocationNoReply(addr, value)
             else:
-                r = yield WriteMemoryLocation(value)
+                r = yield _WriteMemoryLocation(addr, value)
                 if r.raw_value is None:
                     raise MemoryLocationNotWriteable(
                         f'Bus unit at address "{str(addr)}" responded NO to '
@@ -474,7 +575,7 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
             # application controller checks the value of DTR0 to
             # verify it is at the expected location, with any mismatch
             # indicating an error while writing.
-            r = yield QueryContentDTR0(addr)
+            r = yield _QueryContentDTR0(addr)
             if r.raw_value is None:
                 raise ResponseError(
                     f'Bus unit at address "{str(addr)}" responded NO to '
@@ -490,8 +591,8 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
                     f'bank {cls.bank.address}. '
                     f'Expected: {dtr0}, received {r.raw_value.as_integer}')
         if unlock_required:
-            yield DTR0(2)
-            yield WriteMemoryLocationNoReply(0xff)
+            yield _DTR0(addr, 2)
+            yield _WriteMemoryLocationNoReply(addr, 0xff)
 
     @classmethod
     def write(cls, addr, value, **kwargs):
