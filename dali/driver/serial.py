@@ -27,6 +27,7 @@ from urllib.parse import ParseResult, urlparse, urlunparse
 
 import serial_asyncio
 
+import dali.gear
 from dali import command, frame, gear, sequences
 from dali.driver import trace_logging  # noqa: F401
 
@@ -270,6 +271,8 @@ class DriverLubaRs232(DriverSerialBase):
             self._queue_rx_raw_dali = asyncio.Queue()
             self._queue_rx_luba_cmd = asyncio.Queue()
             self._queue_tx_conf = asyncio.Queue()
+            self._prev_rx_enable_dt = 0
+            self._prev_tx_enable_dt = 0
             self._tx_lock = asyncio.Lock()
             self._rx_state = None
             self.rx_idle = asyncio.Event()
@@ -388,15 +391,21 @@ class DriverLubaRs232(DriverSerialBase):
                         self._queue_tx_conf.get(),
                         timeout=DriverLubaRs232.timeout_tx_confirm,
                     )
-                    if confirm.message.frame == tx.frame:
-                        _LOG.trace(
-                            f"LUBA device reports message '{tx}' sent, "
-                            f"with ID {confirm.tx_id}"
-                        )
+                    if hasattr(confirm.message, "frame"):
+                        if confirm.message.frame == tx.frame:
+                            _LOG.trace(
+                                f"LUBA device reports message '{tx}' sent, "
+                                f"with ID {confirm.tx_id}"
+                            )
+                        else:
+                            _LOG.error(
+                                "Expected LUBA device to confirm transmission of message "
+                                f"'{tx}', but got a confirmation for '{confirm.message}'"
+                            )
                     else:
-                        _LOG.error(
-                            "Expected LUBA device to confirm transmission of message "
-                            f"'{tx}', but got a confirmation for '{confirm.message}'"
+                        _LOG.warning(
+                            f"Unable to decode message id {confirm.tx_id}, but LUBA device "
+                            f"reports it was sent successfully"
                         )
                     confirm_count -= 1
             # Release the lock
@@ -607,11 +616,17 @@ class DriverLubaRs232(DriverSerialBase):
                 dbg_str = ""
                 try:
                     dali_command = command.Command.from_frame(
-                        frame.Frame(bits=8 * len(tx_dali), data=tx_dali)
+                        frame.Frame(bits=8 * len(tx_dali), data=tx_dali),
+                        devicetype=self._prev_tx_enable_dt,
                     )
                 except:
                     dali_command = None
-                    pass
+                # Store the last seen Device Type command, there will likely be a subsequent
+                # command that we transmit which relies on this for decoding
+                if isinstance(dali_command, dali.gear.general.EnableDeviceType):
+                    self._prev_tx_enable_dt = dali_command.param
+                else:
+                    self._prev_tx_enable_dt = 0
                 luba_tx_info = self.LubaMsgTxConf(tx_id=tx_id, message=dali_command)
                 _LOG.trace(
                     f"LUBA DALI frame {luba_tx_info.tx_id} "
@@ -636,12 +651,18 @@ class DriverLubaRs232(DriverSerialBase):
                     # into a Command object
                     dali_frame = frame.Frame(bits=8 * len(rx_dali), data=rx_dali)
                     try:
-                        dali_command = command.Command.from_frame(dali_frame)
+                        dali_command = command.Command.from_frame(
+                            dali_frame, devicetype=self._prev_rx_enable_dt
+                        )
                     except TypeError:
                         _LOG.error(
                             f"Failed to decode DALI command! Frame: {dali_frame}"
                         )
                         return
+                    if isinstance(dali_command, dali.gear.general.EnableDeviceType):
+                        self._prev_rx_enable_dt = dali_command.param
+                    else:
+                        self._prev_rx_enable_dt = 0
 
                     _LOG.debug(f"Adding DALI command to queue: {dali_command}")
                     self._queue_rx_dali.put_nowait(dali_command)
@@ -782,7 +803,7 @@ class DriverLubaRs232(DriverSerialBase):
             raise IOError("DALI driver cannot send, not connected")
 
         response = None
-        # "Send" each message, one at a time, and figure out what the dummy response should be
+
         if not in_transaction:
             await self.transaction_lock.acquire()
         try:
