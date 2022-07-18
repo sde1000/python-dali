@@ -221,7 +221,7 @@ class Command(metaclass=_CommandTracker):
         subs.append(subclass)
 
     @classmethod
-    def from_frame(cls, f, devicetype=0):
+    def from_frame(cls, f, devicetype=0, dev_inst_map=None):
         """Return a Command instance corresponding to the supplied frame.
 
         If the device type the command is intended for is known
@@ -230,6 +230,8 @@ class Command(metaclass=_CommandTracker):
 
         :parameter frame: a forward frame
         :parameter devicetype: type of device frame is intended for
+        :param dev_inst_map: An instance of DeviceInstanceTypeMapper to
+        assist with DALI events
 
         :returns: Return a Command instance corresponding to the
         frame.  Returns None if there is no match.
@@ -241,7 +243,7 @@ class Command(metaclass=_CommandTracker):
         subs = cls._framesizes.get(len(f), [])
 
         for c in subs:
-            r = c.from_frame(f, devicetype=devicetype)
+            r = c.from_frame(f, devicetype=devicetype, dev_inst_map=dev_inst_map)
             if r:
                 return r
 

@@ -78,8 +78,9 @@ async def listen_luba():
                     pass
 
     print("\nListening for DALI commands on the bus...\n")
+    rx_queue = driver.new_dali_rx_queue()
     while True:
-        cmd = await driver.wait_dali_rx()
+        cmd = await rx_queue.get()
         print(cmd)
 
 

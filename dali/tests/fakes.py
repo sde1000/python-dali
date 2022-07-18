@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+from dataclasses import dataclass
 from typing import Iterable, Optional, Type
 
 # Fake hardware for testing
@@ -395,7 +396,21 @@ class Device:
     backward frame.
     """
 
-    _instances = [1, 1, 1, 1]
+    @dataclass
+    class Instance:
+        inst_type: int
+        scheme: int
+        filter: int = 0
+        enabled: bool = True
+
+    # Creates 4 instances of pushbutton types, each set to Device/Instance mode
+    _instances = [
+        Instance(inst_type=1, scheme=2),
+        Instance(inst_type=1, scheme=2),
+        Instance(inst_type=1, scheme=2),
+        Instance(inst_type=1, scheme=2),
+    ]
+    # Refer to Table 15 of Part 103, status of all zero is "no error"
     _device_status = 0b00000000
 
     def __init__(
@@ -459,19 +474,29 @@ class Device:
         if not self.valid_address(cmd):
             return None
 
-        if hasattr(cmd, "destination"):
-            if isinstance(cmd.destination, address.InstanceNumber):
+        if hasattr(cmd, "instance"):
+            if isinstance(cmd.instance, address.InstanceNumber):
                 # Handle any instance-specific commands
                 # TODO: Support more than just instance number scheme
-                inst_num = cmd.destination.value
+                inst_num = cmd.instance.value
                 if inst_num > len(self._instances) - 1:
                     return None
 
                 if isinstance(cmd, device.general.QueryInstanceEnabled):
-                    # Assume all fake instances are always enabled
-                    return _yes
+                    if self._instances[inst_num].enabled:
+                        return _yes
+                    else:
+                        return None
                 elif isinstance(cmd, device.general.QueryInstanceType):
-                    return self._instances[inst_num]
+                    return self._instances[inst_num].inst_type
+                elif isinstance(cmd, device.general.QueryEventScheme):
+                    return self._instances[inst_num].scheme
+                elif isinstance(cmd, device.general.SetEventScheme):
+                    self._instances[inst_num].scheme = self.dtr0
+                elif isinstance(cmd, device.general.QueryEventFilterZeroToSeven):
+                    return self._instances[inst_num].filter
+                elif isinstance(cmd, device.general.SetEventFilter):
+                    self._instances[inst_num].filter = self.dtr0
 
         # Command is either addressed to the entire device, or is a broadcast
         if isinstance(cmd, device.general.DTR0):
@@ -544,8 +569,8 @@ class Bus:
     responds, its response is used.  If multiple devices respond, a
     BackwardFrameError is used to represent the bus collision.
     """
-    def __init__(self, gear):
-        self.gear = gear
+    def __init__(self, gear: list):
+        self.gear: list = gear
 
     def send(self, cmd):
         r = [x for x in (i.send(cmd) for i in self.gear) if x is not None]

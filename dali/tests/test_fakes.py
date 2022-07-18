@@ -1,8 +1,8 @@
 import unittest
 
 from dali.tests import fakes
-from dali import address, gear, device
-from dali.address import DeviceShort, GearShort
+from dali import address, command, gear, device
+from dali.address import DeviceShort, GearShort, InstanceNumber
 
 
 class TestFakeGear(unittest.TestCase):
@@ -183,6 +183,21 @@ class TestFakeDevice(unittest.TestCase):
             self.assertEqual(resp.value, 1)
             resp = self.bus.send(device.general.QueryContentDTR2(addr))
             self.assertEqual(resp.value, 254)
+
+    def test_fake_device_status(self):
+        for addr_int in range(3):
+            # Make sure QueryDeviceStatus works as expected
+            resp = self.bus.send(device.general.QueryDeviceStatus(DeviceShort(addr_int)))
+            self.assertIsInstance(resp, device.general.QueryDeviceStatusResponse)
+            # Make sure each device has four instances which respond as expected
+            for inst_num in range(4):
+                resp = self.bus.send(
+                    device.general.QueryInstanceEnabled(
+                        DeviceShort(addr_int), InstanceNumber(inst_num)
+                    )
+                )
+                self.assertIsInstance(resp, command.YesNoResponse)
+                self.assertTrue(resp.value)
 
 
 if __name__ == "__main__":

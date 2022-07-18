@@ -2,7 +2,6 @@ import unittest
 from dali import address
 from dali import command
 from dali import frame
-# from dali.device import general as generaldevice
 from dali.gear import general as generalgear
 
 
@@ -27,6 +26,12 @@ def _test_pattern():
         yield 24, (0xc1, c, 0x00), 0
     for c in (0xc5, 0xc7, 0xc9):
         yield 24, (c, 0x00, 0x00), 0
+    # Control devices, event messages for push buttons (part 301)
+    for e in (0, 1, 2, 5, 9, 11, 12, 14, 15):
+        yield 24, (0xc2, 0x04, e), 0
+    # Control devices, QueryEventFilter
+    for o in (0x90, 0x91, 0x92):
+        yield 24, (0x03, 0x00, o), 0
 
 
 class TestCommands(unittest.TestCase):
@@ -44,6 +49,9 @@ class TestCommands(unittest.TestCase):
                 frame.ForwardFrame(fs, d), devicetype=dt)
             seen[c.__class__] = True
         for cls in command.Command._commands:
+            if cls.__name__ == "UnknownEvent":
+                # UnknownEvent shouldn't come up, so don't expect to see it
+                continue
             self.assertTrue(
                 cls in seen,
                 'class {} not covered by tests'.format(cls.__name__)

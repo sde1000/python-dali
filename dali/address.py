@@ -101,8 +101,8 @@ class GearBroadcast(GearAddress):
         return "<broadcast (control gear)>"
 
 
-# Broadcast alias provided for legacy purposes, new code should avoid ambiguity by using
-# either GearBroadcast or DeviceBroadcast
+# Broadcast alias provided for legacy purposes, new code should avoid
+# ambiguity by using either GearBroadcast or DeviceBroadcast
 Broadcast = GearBroadcast
 
 
@@ -153,8 +153,9 @@ class GearBroadcastUnaddressed(GearAddress):
         return "<broadcast unaddressed (control gear)>"
 
 
-# BroadcastUnaddressed alias provided for legacy purposes, new code should avoid
-# ambiguity by using either GearBroadcastUnaddressed or DeviceBroadcastUnaddressed
+# BroadcastUnaddressed alias provided for legacy purposes, new code should
+# avoid ambiguity by using either GearBroadcastUnaddressed or
+# DeviceBroadcastUnaddressed
 BroadcastUnaddressed = GearBroadcastUnaddressed
 
 
@@ -213,8 +214,8 @@ class GearGroup(GearAddress):
         return f"<group (control gear) {self.group}>"
 
 
-# Group alias provided for legacy purposes, new code should avoid ambiguity by using
-# either GearGroup or DeviceGroup
+# Group alias provided for legacy purposes, new code should avoid ambiguity
+# by using either GearGroup or DeviceGroup
 Group = GearGroup
 
 
@@ -287,8 +288,8 @@ class GearShort(GearAddress):
         return f"<address (control gear) {self.address}>"
 
 
-# Short alias provided for legacy purposes, new code should avoid ambiguity by using
-# either GearShort or DeviceShort
+# Short alias provided for legacy purposes, new code should avoid ambiguity
+# by using either GearShort or DeviceShort
 Short = GearShort
 
 
@@ -342,6 +343,11 @@ from_frame = Address.from_frame
 class Instance:
     def __init__(self):
         raise NotImplementedError
+
+    @property
+    def value(self):
+        if hasattr(self, "_value"):
+            return self._value
 
     def add_to_frame(self, f):
         raise NotImplementedError

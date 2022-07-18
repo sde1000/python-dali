@@ -22,9 +22,11 @@ class _GearCommand(command.Command):
         cls._gearcommands.append(subclass)
 
     @classmethod
-    def from_frame(cls, f, devicetype=0):
+    def from_frame(cls, f, devicetype=0, dev_inst_map=None):
         for gc in cls._gearcommands:
-            r = gc.from_frame(f, devicetype=devicetype)
+            r = gc.from_frame(
+                f, devicetype=devicetype, dev_inst_map=dev_inst_map
+            )
             if r:
                 return r
         return UnknownGearCommand(f)
@@ -34,7 +36,7 @@ class UnknownGearCommand(_GearCommand):
     """An unknown command addressed to control gear.
     """
     @classmethod
-    def from_frame(cls, f, devicetype=0):
+    def from_frame(cls, f, devicetype=0, dev_inst_map=None):
         return
 
 
@@ -107,22 +109,22 @@ class _StandardCommand(_GearCommand):
             cls._opcodes[(subclass.devicetype, subclass._cmdval)] = subclass
 
     @classmethod
-    def from_frame(cls, frame, devicetype=0):
-        if not frame[8]:
+    def from_frame(cls, f, devicetype=0, dev_inst_map=None):
+        if not f[8]:
             # It's a direct arc power control command
             return
 
-        addr = address.from_frame(frame)
+        addr = address.from_frame(f)
 
         if addr is None:
             # It's probably a _SpecialCommand
             return
 
-        opcode = frame[7:0]
+        opcode = f[7:0]
 
         cc = cls._opcodes.get((devicetype, opcode))
         if not cc:
-            return UnknownGearCommand(frame)
+            return UnknownGearCommand(f)
 
         if cc._hasparam:
             return cc(addr, opcode & 0x0f)
@@ -174,7 +176,7 @@ class DAPC(_GearCommand):
         super().__init__(f)
 
     @classmethod
-    def from_frame(cls, f, devicetype=0):
+    def from_frame(cls, f, devicetype=0, dev_inst_map=None):
         if f[8]:
             return
         addr = address.from_frame(f)
@@ -1017,7 +1019,7 @@ class _SpecialCommand(_GearCommand):
         self.param = param
         super().__init__(frame.ForwardFrame(16, (self._cmdval, self.param)))
 
-    # dict of frame[15:8] to cls
+    # dict of f[15:8] to cls
     _opcodes = {}
 
     @classmethod
@@ -1027,20 +1029,20 @@ class _SpecialCommand(_GearCommand):
         cls._opcodes[subclass._cmdval] = subclass
 
     @classmethod
-    def from_frame(cls, frame, devicetype=0):
-        opcode = frame[15:8]
+    def from_frame(cls, f, devicetype=0, dev_inst_map=None):
+        opcode = f[15:8]
         if opcode == cls._cmdval:
             if cls._hasparam:
-                return cls(frame[7:0])
-            elif frame[7:0] == 0:
+                return cls(f[7:0])
+            elif f[7:0] == 0:
                 return cls()
             else:
-                return UnknownGearCommand(frame)
+                return UnknownGearCommand(f)
 
         cc = cls._opcodes.get(opcode)
         if not cc:
-            return UnknownGearCommand(frame)
-        return cc.from_frame(frame, devicetype=devicetype)
+            return UnknownGearCommand(f)
+        return cc.from_frame(f, devicetype=devicetype)
 
     def __str__(self):
         if self._hasparam:
@@ -1065,14 +1067,14 @@ class _ShortAddrSpecialCommand(_SpecialCommand):
         super().__init__(data)
 
     @classmethod
-    def from_frame(cls, frame, devicetype=0):
+    def from_frame(cls, f, devicetype=0, dev_inst_map=None):
         if cls == _ShortAddrSpecialCommand:
             return
-        if frame[15:8] == cls._cmdval:
-            if frame[7:0] == 0xff:
+        if f[15:8] == cls._cmdval:
+            if f[7:0] == 0xff:
                 return cls("MASK")
-            if frame[7] is False and frame[0] is True:
-                return cls(frame[6:1])
+            if f[7] is False and f[0] is True:
+                return cls(f[6:1])
 
     def __str__(self):
         return "{}({})".format(self.__class__.__name__, self.address)
@@ -1130,7 +1132,7 @@ class Initialise(_SpecialCommand):
         super().__init__(b)
 
     @classmethod
-    def from_frame(cls, f, devicetype=0):
+    def from_frame(cls, f, devicetype=0, dev_inst_map=None):
         if f[15:8] == cls._cmdval:
             if f[7:0] == 0:
                 return cls(broadcast=True)
