@@ -33,7 +33,8 @@ FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
 details.
 
 You should have received a copy of the GNU Lesser General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>. """
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+"""
 import asyncio
 import logging
 
@@ -48,7 +49,9 @@ from dali.device.general import (
 from dali.device.sequences import SetEventFilters, SetEventSchemes
 from dali.driver.serial import DriverLubaRs232
 from dali.exceptions import DALISequenceError
+from dali.gear.colour import QueryColourValueDTR
 from dali.gear.general import DAPC, QueryControlGearPresent
+from dali.gear.sequences import QueryDT8ColourValue, SetDT8ColourValueTc
 from dali.memory import info, location
 from dali.sequences import QueryDeviceTypes, QueryGroups
 
@@ -161,8 +164,6 @@ async def listen_luba():
     print("\nSending DAPC(254) to broadcast address")
     await driver.send(DAPC(GearBroadcast(), 254))
     await asyncio.sleep(1.5)
-    print("Sending DAPC(0) to broadcast address\n")
-    await driver.send(DAPC(GearBroadcast(), 0))
 
     for ad in range(64):
         short = GearShort(ad)
@@ -175,6 +176,20 @@ async def listen_luba():
                         QueryDeviceTypes(short), progress=print
                     )
                     print(f"  Device Types: {dts}")
+                    # Use some DT8 commands to play with colour temperature
+                    if 8 in dts:
+                        tc = await driver.run_sequence(
+                            QueryDT8ColourValue(
+                                address=short,
+                                query=QueryColourValueDTR.ColourTemperatureTC,
+                            )
+                        )
+                        print(f"  Tc for A{ad}: {tc}")
+                        tc += 50
+                        print(f"  Setting Tc for A{ad} to {tc} Mired")
+                        await driver.run_sequence(
+                            SetDT8ColourValueTc(address=short, tc_mired=tc)
+                        )
                 except DALISequenceError:
                     pass
                 try:
@@ -186,6 +201,10 @@ async def listen_luba():
                     )
                 except DALISequenceError:
                     pass
+
+    await asyncio.sleep(1.5)
+    print("\nSending DAPC(0) to broadcast address\n")
+    await driver.send(DAPC(GearBroadcast(), 0))
 
     # Listen and print out any intercepted DALI commands
     print("\nListening for DALI commands on the bus...\n")
