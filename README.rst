@@ -88,6 +88,8 @@ Library structure
 
   - ``gear`` - DALI control gear as defined in IEC 62386; stable
 
+    - ``colour`` - Commands from part 209 (Device Type 8)
+
     - ``emergency`` - Commands from part 202
 
     - ``general`` - Commands from part 102

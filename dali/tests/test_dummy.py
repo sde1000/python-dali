@@ -4,16 +4,18 @@ test_dummy.py - A pytest test suite for the 'dummy' serial driver class
 
 This file is part of python-dali.
 
-python-dali is free software: you can redistribute it and/or modify it under the terms of the GNU
-Lesser General Public License as published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
+python-dali is free software: you can redistribute it and/or modify it under
+the terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version.
 
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
-even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-Lesser General Public License for more details.
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+details.
 
-You should have received a copy of the GNU Lesser General Public License along with this program.
-If not, see <https://www.gnu.org/licenses/>.
+You should have received a copy of the GNU Lesser General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
 """
 import os.path
 from typing import NamedTuple
@@ -28,7 +30,8 @@ from dali.sequences import QueryDeviceTypes
 
 
 class DummyDriverFixtureParts(NamedTuple):
-    # The type hint for 'log' seems odd, but is correct - refer to this doc page
+    # The type hint for 'log' seems odd, but is correct - refer to this doc
+    # page:
     # https://docs.pytest.org/en/latest/reference/reference.html?highlight=tmpdir#tmpdir
     log: py._path.local.LocalPath
     uri: str
@@ -56,15 +59,16 @@ def make_dummy_driver(tmpdir):
 @pytest.fixture
 def dummy_driver(make_dummy_driver) -> DummyDriverFixtureParts:
     """
-    A test fixture that creates a basic instance of a test driver, using make_dummy_driver
+    A test fixture that creates a basic instance of a test driver,
+    using make_dummy_driver
     """
     return make_dummy_driver()
 
 
 def test_base_init_block():
     """
-    Makes sure that the DriverSerialBase class cannot be initialised as a standalone object. It
-    needs to be used as a subclass.
+    Makes sure that the DriverSerialBase class cannot be initialised as a
+    standalone object. It needs to be used as a subclass.
     """
     with pytest.raises(RuntimeError):
         DriverSerialBase(uri="")
@@ -151,14 +155,18 @@ async def test_dummy_write_1(dummy_driver):
 @pytest.mark.asyncio
 async def test_dummy_write_2(dummy_driver):
     await dummy_driver.driver.connect()
-    await dummy_driver.driver.send(gear.general.DAPC(address.GearBroadcast(), 127))
+    await dummy_driver.driver.send(
+        gear.general.DAPC(address.GearBroadcast(), 127)
+    )
     assert "ArcPower(<broadcast (control gear)>,127)" in dummy_driver.log.read()
 
 
 @pytest.mark.asyncio
 async def test_dummy_write_3(dummy_driver):
     await dummy_driver.driver.connect()
-    await dummy_driver.driver.send(gear.general.GoToScene(address.GearShort(1), 11))
+    await dummy_driver.driver.send(
+        gear.general.GoToScene(address.GearShort(1), 11)
+    )
     assert "GoToScene(<address (control gear) 1>,11)" in dummy_driver.log.read()
 
 
@@ -168,11 +176,13 @@ async def test_dummy_sequence_device_types(dummy_driver):
     # The default of dummy_driver has 12 addressed control gears
     for ad in range(11):
         short = address.GearShort(ad)
-        dev_types = await dummy_driver.driver.run_sequence(QueryDeviceTypes(short))
-        # LEDs, DT6, are created first by the dummy driver
+        dev_types = await dummy_driver.driver.run_sequence(
+            QueryDeviceTypes(short)
+        )
+        # Colour Temperature LEDs, DT8, are created first by the dummy driver
         if ad in range(0, 5):
             assert len(dev_types) == 1
-            assert dev_types[0] == 6
+            assert dev_types[0] == 8
         # Next is the custom Lunatone Jalousie cover, DT0
         elif ad in range(6, 9):
             assert len(dev_types) == 1

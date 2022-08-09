@@ -7,6 +7,7 @@ from typing import Iterable, Optional, Type
 # Fake hardware for testing
 from dali import address, device, frame, gear
 from dali.command import Command
+from dali.gear.colour import QueryColourValueDTR
 from dali.memory import info, oem
 from dali.memory.location import MemoryType
 from dali.sequences import progress
@@ -123,6 +124,11 @@ class Gear:
         self.dtr0 = 0
         self.dtr1 = 0
         self.dtr2 = 0
+        self.prev_cmd = None
+        self.temp_ct = 0
+        self.actual_ct = 0
+        self.ct_mired_min = 153
+        self.ct_mired_max = 370
         self.physical_minimum = 1
         self.memory_banks = {}
         for fake_bank in memory_banks:
@@ -157,6 +163,7 @@ class Gear:
             return cmd.destination.group in self.groups
 
     def send(self, cmd):
+        self.prev_cmd = cmd
         self.dt_gap += 1
         # Reset enableWriteMemory if command is not one of the memory
         # writing commands, even if the command is not addressed to us
@@ -367,6 +374,69 @@ class Gear:
             finally:
                 if not bank.nobble_dtr0_update:
                     self.dtr0 = min(self.dtr0 + 1, 255)
+        # Handle DT8 colour commands, device type decoding has already been
+        # handled
+        if isinstance(cmd, gear.colour._ColourCommand):
+            # Only handle if this Gear instance has been declared as a DT8 type
+            if 8 not in self.devicetypes:
+                return
+            if isinstance(cmd, gear.colour.QueryColourTypeFeatures):
+                return 0b00000010  # Bit 1 = Colour temperature Tc capable
+            elif isinstance(cmd, gear.colour.QueryColourValue):
+                if self.dtr0 == QueryColourValueDTR.TemporaryColourTemperature.value:
+                    tmp_ct = self.temp_ct.to_bytes(length=2, byteorder="little")
+                    self.dtr0 = tmp_ct[0]
+                    self.dtr1 = tmp_ct[1]
+                    return tmp_ct[1]
+                elif self.dtr0 == QueryColourValueDTR.ColourTemperatureTC.value:
+                    tmp_ct = self.actual_ct.to_bytes(length=2, byteorder="little")
+                    self.dtr0 = tmp_ct[0]
+                    self.dtr1 = tmp_ct[1]
+                    return tmp_ct[1]
+                elif self.dtr0 == QueryColourValueDTR.ReportColourTemperatureTc.value:
+                    tmp_ct = self.actual_ct.to_bytes(length=2, byteorder="little")
+                    self.dtr0 = tmp_ct[0]
+                    self.dtr1 = tmp_ct[1]
+                    return tmp_ct[1]
+                elif self.dtr0 == QueryColourValueDTR.ColourTemperatureTcCoolest.value:
+                    tmp_ct = self.ct_mired_min.to_bytes(length=2, byteorder="little")
+                    self.dtr0 = tmp_ct[0]
+                    self.dtr1 = tmp_ct[1]
+                    return tmp_ct[1]
+                elif (
+                    self.dtr0
+                    == QueryColourValueDTR.ColourTemperatureTcPhysicalCoolest.value
+                ):
+                    tmp_ct = self.ct_mired_min.to_bytes(length=2, byteorder="little")
+                    self.dtr0 = tmp_ct[0]
+                    self.dtr1 = tmp_ct[1]
+                    return tmp_ct[1]
+                elif self.dtr0 == QueryColourValueDTR.ColourTemperatureTcWarmest.value:
+                    tmp_ct = self.ct_mired_max.to_bytes(length=2, byteorder="little")
+                    self.dtr0 = tmp_ct[0]
+                    self.dtr1 = tmp_ct[1]
+                    return tmp_ct[1]
+                elif (
+                    self.dtr0
+                    == QueryColourValueDTR.ColourTemperatureTcPhysicalWarmest.value
+                ):
+                    tmp_ct = self.ct_mired_max.to_bytes(length=2, byteorder="little")
+                    self.dtr0 = tmp_ct[0]
+                    self.dtr1 = tmp_ct[1]
+                    return tmp_ct[1]
+            elif isinstance(cmd, gear.colour.SetTemporaryColourTemperature):
+                self.temp_ct = int.from_bytes((self.dtr0, self.dtr1), "little")
+            elif isinstance(cmd, gear.colour.Activate):
+                if self.temp_ct > self.ct_mired_max:
+                    self.actual_ct = self.ct_mired_max
+                elif self.temp_ct < self.ct_mired_min:
+                    self.actual_ct = self.ct_mired_min
+                else:
+                    self.actual_ct = self.temp_ct
+            elif isinstance(cmd, gear.colour.CopyReportToTemporary):
+                self.temp_ct = self.actual_ct
+            elif isinstance(cmd, gear.colour.QueryExtendedVersionNumber):
+                return 2
 
 
 # Valid bank 0 ROM contents compatible with IEC 62386-103

@@ -7,4 +7,5 @@ extensions and control gear specific features).
 import dali.gear.general
 import dali.gear.emergency
 import dali.gear.incandescent
+import dali.gear.colour
 import dali.gear.led  # noqa: F401

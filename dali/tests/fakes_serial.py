@@ -217,7 +217,7 @@ class DriverSerialDummy(DriverSerialBase):
             self._dummy_bus.gear.append(
                 dali_fakes.Gear(
                     new_ad,
-                    devicetypes=[6],
+                    devicetypes=[8],
                     memory_banks=(DriverSerialDummy.DummyBank0,),
                 )
             )
