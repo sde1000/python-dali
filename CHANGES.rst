@@ -34,6 +34,31 @@ exceptions raised by the native ``int.from_bytes()`` and
   ``Frame()`` constructor or the ``Frame.pack_len()`` method will
   issue a warning.
 
+- The ``dali.address`` classes for gear and devices have been
+  separated. ``dali.address.Short()`` has been split into
+  ``dali.address.GearShort()`` and ``dali.address.DeviceShort()``;
+  similar changes have been made to ``Group()``, ``Broadcast()`` and
+  ``BroadcastUnaddressed()``. The old names are still present and
+  usable for gear, and there is no plan to remove them. [sl-wallace]
+
+- The 24-bit command support in ``dali.device.general`` has been
+  improved: commands now have appropriate ``Response`` types. This
+  code has now been tested against real hardware. [sl-wallace]
+
+- The memory subsystem now supports access to the memory banks of
+  24-bit control devices as well as 16-bit control gear. [sl-wallace]
+
+- 24-bit event messages are supported. [sl-wallace]
+
+- Support has been added for pushbutton devices (IEC 62386 part
+  301). [sl-wallace]
+
+- 24-bit frame support has been added to the async Tridonic
+  driver. [sde1000]
+
+- A driver has been added for Lunatone LUBA serial DALI
+  interfaces. [sl-wallace]
+
 0.9 (2022-04-21)
 ----------------
 
