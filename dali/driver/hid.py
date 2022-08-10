@@ -48,21 +48,22 @@ class _callback:
 
     def _invoke(self, *args):
         for func in self._callbacks.values():
-            self._parent.loop.call_soon(func, self._parent, *args)
+            asyncio.get_running_loop().call_soon(func, self._parent, *args)
+
 
 class hid:
     """Shared code for drivers that work with HID devices
     """
     def __init__(self, path, reconnect_interval=1, reconnect_limit=None,
-                 loop=None, glob=False):
+                 glob=False, dev_inst_map=None):
         self._log = logging.getLogger()
         self._path = path
         self._reconnect_interval = reconnect_interval
         self._reconnect_limit = reconnect_limit
         self._reconnect_count = 0
         self._reconnect_task = None
-        self.loop = loop or asyncio.get_event_loop()
         self._glob = glob
+        self.dev_inst_map = dev_inst_map
         self._f = None
 
         # Should the send() method raise an exception if there is a
@@ -74,7 +75,7 @@ class hid:
         # Acquire this lock to perform a series of commands as a
         # transaction.  While you hold the lock, you must call send()
         # with keyword argument in_transaction=True
-        self.transaction_lock = asyncio.Lock(loop=self.loop)
+        self.transaction_lock = asyncio.Lock()
 
         # Register to be called back with "connected", "disconnected"
         # or "failed" as appropriate ("failed" means the reconnect
@@ -91,7 +92,7 @@ class hid:
 
         # This event will be set when we are connected to the device
         # and cleared when the connection is lost
-        self.connected = asyncio.Event(loop=self.loop)
+        self.connected = asyncio.Event()
 
         # firmware_version and serial may be populated on some
         # devices, and will read as None on devices that don't support
@@ -134,12 +135,12 @@ class hid:
         if not self._f:
             # It didn't work.  Schedule a reconnection attempt if we can.
             self._log.debug("hid failed to open %s - waiting to try again", self._path)
-            self._reconnect_task = asyncio.ensure_future(self._reconnect(), loop=self.loop)
+            self._reconnect_task = asyncio.create_task(self._reconnect())
             return False
         self._reconnect_count = 0
         self._initialise_device()
         self._log.debug("hid opened %s", path[0])
-        self.loop.add_reader(self._f, self._reader)
+        asyncio.get_running_loop().add_reader(self._f, self._reader)
         self.connection_status_callback._invoke("connected")
         return True
 
@@ -162,7 +163,7 @@ class hid:
             self._reconnect_task.cancel()
             self._reconnect_task = None
         if self._f:
-            self.loop.remove_reader(self._f)
+            asyncio.get_running_loop().remove_reader(self._f)
             os.close(self._f)
         self._shutdown_device()
         self._f = None
@@ -265,42 +266,62 @@ class hid:
 
 class tridonic(hid):
     # Commands sent to the interface
-    _cmdtmpl = struct.Struct(">4Bx3sB55x")
+    # cmd, seq, ctrl, mode, frame (4 bytes), dtr, prio, devtype
+    _cmdtmpl = struct.Struct(">4B4s3B53x")
+
     # _CMD send in byte 0
     _CMD_INIT = 0x01
     _CMD_BOOTLOADER = 0x02
     _CMD_SEND = 0x12
+    _CMD_SEND_ANSWER = 0x15
+    _CMD_SET_IOPINS = 0x20
+    _CMD_READ_IOPINS = 0x21
+    _CMD_IDENTIFY = 0x22
 
     # For _CMD_INIT, send in byte 1:
     _CMD_INIT_READVERSION = 0x00
     _CMD_INIT_READSERIAL = 0x02
 
-    # For _CMD_SEND, send in byte 2
-    _SEND_FLAGS_SETDTR0 = 0x10
-    _SEND_FLAGS_SENDTWICE = 0x20
+    # For _CMD_SEND, send a sequence number is byte 1 and you can set
+    # the following flag bits in control byte 2:
+    _SEND_CTRL_SET_ACTUAL_LEVEL_TO_DTR = 0x04
+    _SEND_CTRL_SEND_DEVTYPE = 0x80
+    _SEND_CTRL_SETDTR0 = 0x10
+    _SEND_CTRL_SENDTWICE = 0x20
+    _SEND_CTRL_IDENTIFY = 0x40  # response is a _RESPONSE_INFO
 
-    # For _CMD_SEND, send in byte 3
-    _SEND_FRAMESIZE_16 = 0x03
+    # For _CMD_SEND, send in mode byte 3:
+    _SEND_MODE_DALI8 = 2
+    _SEND_MODE_DALI16 = 3
+    _SEND_MODE_eDALI25 = 4
+    _SEND_MODE_DSI = 5
+    _SEND_MODE_DALI24 = 6
+    _SEND_MODE_HELVAR17 = 8
 
     # Responses received from the interface
     # Decodes to mode, response type, frame, interval, seq
-    _resptmpl = struct.Struct(">BBx3sHB55x")
+    _resptmpl = struct.Struct(">BB4sHB55x")
     _MODE_INFO = 0x01 # Response to an init command
     _MODE_OBSERVE = 0x11 # Other traffic observed on the bus
     _MODE_RESPONSE = 0x12 # Response to a send command
 
     # Response types
     _RESPONSE_NO_FRAME = 0x71
-    _RESPONSE_BACKWARD_FRAME = 0x72
-    _RESPONSE_FORWARD_FRAME = 0x73
-    _RESPONSE_BUS_STATUS = 0x77 # bus or framing error - see byte 5
+    _RESPONSE_FRAME_DALI8 = 0x72
+    _RESPONSE_FRAME_DALI16 = 0x73
+    _RESPONSE_FRAME_eDALI25 = 0x74
+    _RESPONSE_FRAME_DSI = 0x75
+    _RESPONSE_FRAME_DALI24 = 0x76
+    _RESPONSE_INFO = 0x77 # bus or framing error - see byte frame[3]
+    _RESPONSE_FRAME_HELVAR17 = 0x78
 
-    # Bus status in byte 5
-    _BUS_STATUS_SHORTED = 0x02
-    _BUS_STATUS_FRAMING_ERROR = 0x03
-    _BUS_STATUS_OK = 0x04
-    _BUS_STATUS_DSI_MODE = 0x05
-    _BUS_STATUS_DALI_MODE = 0x06
+    # Bus status in byte frame[3]
+    _BUS_STATUS_CHECKSUM = 1
+    _BUS_STATUS_SHORTED = 2
+    _BUS_STATUS_FRAMING_ERROR = 3
+    _BUS_STATUS_OK = 4
+    _BUS_STATUS_DSI_MODE = 5
+    _BUS_STATUS_DALI_MODE = 6
 
     @staticmethod
     def _seqnum(i):
@@ -316,18 +337,20 @@ class tridonic(hid):
         super().__init__(*args, **kwargs)
         self._log = self._log.getChild("tridonic")
 
-        # Initialise the command sequence number to a random value, avoiding zero
+        # Initialise the command sequence number to a random value,
+        # avoiding zero
         self._cmd_seq = iter(self._seqnum(random.randint(0x01, 0xff)))
 
-        # Outstanding command events and message queues indexed by sequence number
+        # Outstanding command events and message queues indexed by
+        # sequence number
         self._outstanding = {}
 
         # Semaphore controlling number of outstanding commands
-        self._command_semaphore = asyncio.BoundedSemaphore(2, loop=self.loop)
+        self._command_semaphore = asyncio.BoundedSemaphore(2)
 
         # Bus watch task, event and message queue
         self._bus_watch_task = None
-        self._bus_watch_data_available = asyncio.Event(loop=self.loop)
+        self._bus_watch_data_available = asyncio.Event()
         self._bus_watch_data = []
 
     def _initialise_device(self):
@@ -337,22 +360,25 @@ class tridonic(hid):
 
     async def _send_raw(self, command):
         frame = command.frame
-        if len(frame) != 16:
+        if len(frame) not in (16, 24):
             raise UnsupportedFrameTypeError
         await self.connected.wait()
         async with self._command_semaphore:
             seq = next(self._cmd_seq)
             self._log.debug("Sending with seq %x", seq)
-            event = asyncio.Event(loop=self.loop)
+            event = asyncio.Event()
             messages = []
             # If seq is in self._outstanding this means we've wrapped
             # around the whole sequence number space with an event
             # still outstanding: clearly a bug!
             assert seq not in self._outstanding
             self._outstanding[seq] = (event, messages)
-            data = self._cmd(self._CMD_SEND, seq,
-                             flags=self._SEND_FLAGS_SENDTWICE if command.sendtwice else 0,
-                             ftype=self._SEND_FRAMESIZE_16, frame=frame.pack_len(3))
+            data = self._cmd(
+                self._CMD_SEND, seq,
+                ctrl=self._SEND_CTRL_SENDTWICE if command.sendtwice else 0,
+                mode=self._SEND_MODE_DALI16 if len(frame) == 16
+                else self._SEND_MODE_DALI24,
+                frame=frame.pack_len(4))
             try:
                 os.write(self._f, data)
             except OSError:
@@ -365,29 +391,35 @@ class tridonic(hid):
             outstanding_transmissions = 2 if command.sendtwice else 1
             response = None
             while outstanding_transmissions or response is None:
+                self._log.debug(f"waiting for {outstanding_transmissions=} "
+                                "{response=}")
                 if len(messages) == 0:
                     await event.wait()
                     event.clear()
                 message = messages.pop(0)
                 if message == "fail":
-                    # The device has gone away, possibly in the middle of processing
-                    # our command.
+                    # The device has gone away, possibly in the middle
+                    # of processing our command.
                     self._log.debug("processing queued fail on receive")
                     raise CommunicationError
 
                 # The message mode is guaranteed to be _MODE_RESPONSE
-                mode, rtype, frame, interval, seq = self._resptmpl.unpack(message)
-                self._log.debug(f"mode={mode:02x} rtype={rtype:02x} frame={frame} interval={interval:04x} seq={seq:02x}")
-                if rtype == self._RESPONSE_FORWARD_FRAME:
+                mode, rtype, frame, interval, seq = self._resptmpl.unpack(
+                    message)
+                self._log.debug(f"message mode={mode:02x} rtype={rtype:02x} frame={frame} interval={interval:04x} seq={seq:02x}")
+                if rtype in (self._RESPONSE_FRAME_DALI16,
+                             self._RESPONSE_FRAME_DALI24):
                     # XXX check the frame contents?
                     outstanding_transmissions -= 1
-                elif rtype == self._RESPONSE_BACKWARD_FRAME:
+                elif rtype == self._RESPONSE_FRAME_DALI8:
                     response = dali.frame.BackwardFrame(frame)
-                elif rtype == self._RESPONSE_BUS_STATUS \
-                     and message[5] == self._BUS_STATUS_FRAMING_ERROR:
+                elif rtype == self._RESPONSE_INFO \
+                     and frame[3] == self._BUS_STATUS_FRAMING_ERROR:
                     response = dali.frame.BackwardFrameError(255)
                 elif rtype == self._RESPONSE_NO_FRAME:
                     response = "no"
+                else:
+                    self._log.debug(f"didn't understand {rtype=}")
             del self._outstanding[seq], event, messages
             if command.response:
                 # Construct response and return it
@@ -433,9 +465,11 @@ class tridonic(hid):
                 if origin not in (self._MODE_OBSERVE, self._MODE_RESPONSE):
                     self._log.debug("bus_watch: unexpected packet mode, ignoring")
                     continue
-                if rtype == self._RESPONSE_FORWARD_FRAME:
+                if rtype == self._RESPONSE_FRAME_DALI16:
                     frame = dali.frame.ForwardFrame(16, raw_frame)
-                elif rtype == self._RESPONSE_BACKWARD_FRAME:
+                elif rtype == self._RESPONSE_FRAME_DALI24:
+                    frame = dali.frame.ForwardFrame(24, raw_frame)
+                elif rtype == self._RESPONSE_FRAME_DALI8:
                     frame = dali.frame.BackwardFrame(raw_frame)
                 elif rtype == self._RESPONSE_NO_FRAME:
                     frame = "no"
@@ -512,7 +546,9 @@ class tridonic(hid):
             if timeout:
                 pass
             elif isinstance(frame, dali.frame.ForwardFrame):
-                command = dali.command.from_frame(frame, devicetype=devicetype)
+                command = dali.command.from_frame(
+                    frame, devicetype=devicetype,
+                    dev_inst_map=self.dev_inst_map)
                 devicetype = 0
                 if command.sendtwice or command.response:
                     # We need more information.  Stash the command and wait.
@@ -526,6 +562,7 @@ class tridonic(hid):
                     self._log.debug("remembering device type %s", devicetype)
             elif isinstance(frame, dali.frame.BackwardFrame):
                 self._log.debug("Unexpected backward frame %s", frame)
+            # self._log.debug("End of loop")
 
     def _handle_read(self, data):
         self._log.debug("_handle_read %s", _hex(data[0:9]))
@@ -539,8 +576,7 @@ class tridonic(hid):
             elif not self.serial:
                 self.serial = _hex(data[1:5])
                 self.connected.set()
-                self._bus_watch_task = asyncio.ensure_future(
-                    self._bus_watch(), loop=self.loop)
+                self._bus_watch_task = asyncio.create_task(self._bus_watch())
             else:
                 self._log.debug("Unsolicited init command response")
 
@@ -585,10 +621,13 @@ class tridonic(hid):
         self.serial = None
 
     @staticmethod
-    def _cmd(cmd, serial, flags=0, ftype=0, frame=bytes(), dtr0=0):
+    def _cmd(cmd, serial, ctrl=0, mode=0, frame=bytes(), dtr0=0, prio=0,
+             devtype=0):
         """Return 64 bytes for the specified command
         """
-        return tridonic._cmdtmpl.pack(cmd, serial, flags, ftype, frame, dtr0)
+        return tridonic._cmdtmpl.pack(
+            cmd, serial, ctrl, mode, frame, dtr0, prio, devtype)
+
 
 class hasseb(hid):
     """hasseb DALI Master based on NXP LPC11xx_LPC13xx
@@ -611,8 +650,8 @@ class hasseb(hid):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._log = self._log.getChild("hasseb")
-        self._command_lock = asyncio.Lock(loop=self.loop)
-        self._response_available = asyncio.Event(loop=self.loop)
+        self._command_lock = asyncio.Lock()
+        self._response_available = asyncio.Event()
         self._response = None
 
     async def _send_raw(self, command):
