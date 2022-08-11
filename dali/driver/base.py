@@ -1,5 +1,5 @@
 import threading
-import usb
+from time import sleep, perf_counter
 
 
 ###############################################################################
@@ -101,7 +101,7 @@ class Backend:
         raise NotImplementedError(
             'Abstract ``Backend`` does not implement ``read``')
 
-    def write(data):
+    def write(self, data):
         raise NotImplementedError(
             'Abstract ``Backend`` does not implement ``write``')
 
@@ -136,6 +136,11 @@ class USBBackend(Backend):
 
     def __init__(self, vendor, product, bus=None,
                  port_numbers=None, interface=0):
+        try:
+            import usb
+        except ImportError:
+            raise RuntimeError('{} requires pyusb but it is not installed'.format(self.__class__.__name__))
+        
         self._device = None
         # lookup devices by vendor and product
         devices = [dev for dev in usb.core.find(
@@ -234,3 +239,78 @@ class USBListener(USBBackend, Listener):
         self._disconnecting = True
         self._stop_listening.set()
         super(USBListener, self).close()
+
+class SerialBackend(Backend):
+    """``Backend`` implementation to communicate with DALI interfaces over a serial connection."""
+
+    def __init__(self, port, baudrate=115200, bytesize=None, parity=None, stopbits=None):
+        """Open connection to the DALI interface.
+
+        @param port: valid serial port (e.g. /dev/ttyUSB0 or COM1)
+        @param baudrate: serial baudrate; default is 115.200
+        @param bytesize: number of bits per byte; default is 8
+        @param parity: configures parity bit; default is none
+        @param stopbits: number of stopbits per byte; default is one"""
+
+        try:
+            import serial
+        except ImportError:
+            raise RuntimeError('{} requires pyserial but it is not installed'.format(self.__class__.__name__))
+
+        # constants from serial can't be use in the method's declaration as serial has not been imported yet
+        # therefore the default is None and replaced with the proper constants below
+        bytesize = bytesize if bytesize is not None else serial.EIGHTBITS
+        parity = parity if parity is not None else serial.PARITY_NONE
+        stopbits = stopbits if stopbits is not None else serial.STOPBITS_ONE
+
+        # using serial_for_url makes it possible to talk to devices over the network (e.g. RFC2217)
+        self._serial = serial.serial_for_url(url=port, baudrate=baudrate, bytesize=bytesize, parity=parity, stopbits=stopbits)
+
+        # for compatibility with older pyserial versions
+        # background: the methods for flushing the in-/out-buffer were renamed in v3.0
+        if serial.VERSION.split('.')[0] == '2':
+            self._reset_input_buffer = self._serial.flushInput
+            self._reset_output_buffer = self._serial.flushOutput
+        elif serial.VERSION.split('.')[0] == '3':
+            self._reset_input_buffer = self._serial.reset_input_buffer
+            self._reset_output_buffer = self._serial.reset_output_buffer
+        else:
+            raise RuntimeError(f'pyserial={serial.VERSION} is not supported')
+
+        # flush all buffers to remove old data before checking the port
+        self._reset_output_buffer()
+        sleep(0.050) # just a precaution if the previous command sent some data
+        self._reset_input_buffer()
+            
+        # internal read timeout is set to 10 ms to increase responsiveness
+        self._serial.timeout = 0.010
+
+    def read(self, timeout=None):
+        """Read data from the DALI interface.
+
+        @param timeout: read timeout in seconds; set to 0 or None to disable
+        @return data read from the interface (bytes)"""
+
+        # to compensate for the short read timeout and to use the timeout argument, the read is repeated until
+        # more time than specified has elapsed
+        start = perf_counter()
+        data = bytes()
+        while timeout and abs(start-perf_counter()) < timeout:
+            data = self._serial.read()
+            if len(data) > 0:
+                break
+        return data
+
+    def write(self, data):
+        """Write data to the DALI interface.
+
+        @param data: data to write
+        @return number of bytes written"""
+
+        bytes_written = self._serial.write(data)
+        self._serial.flush()
+        return bytes_written
+
+    def close(self):
+        """Close connection to the DALI interface."""
+        self._serial.close()

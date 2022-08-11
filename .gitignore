@@ -4,6 +4,7 @@
 /.idea
 /.project
 /.pydevproject
+/.vscode
 /bin/
 /build/
 /dist/

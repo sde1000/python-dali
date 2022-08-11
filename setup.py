@@ -25,7 +25,9 @@ setup(
         'dali.tests',
     ],
     extras_require={
-        "driver-unipi": ["pyusb", "pymodbus"],
+        'usb': ['pyusb'],
+        'serial': ['pyserial'],
+        'modbus': ['pymodbus'],
     },
     classifiers=[
         'Development Status :: 3 - Alpha',
