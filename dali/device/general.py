@@ -965,7 +965,7 @@ class _Event(command.Command):
     # 'enabled_by' holds a reference to an element in an enum which, when used
     # with the appropriate 'SetEventFilter' sequence, flags if this event is
     # enabled
-    enabled_by: Optional[IntEnum] = None
+    enabled_by: Optional[InstanceEventFilter] = None
 
     _framesize = 24
     # The metaclass will call '_register_subclass()', which then adds to this

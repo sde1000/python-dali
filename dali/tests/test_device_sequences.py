@@ -233,6 +233,24 @@ def test_event_filter_pushbutton_sequence_all():
     # The previous test for the sequence adequately checks the remaining logic
 
 
+def test_event_filter_sequence_int():
+    # InstanceEventFilter ultimately inherits from int, so it should be
+    # possible to use a plain int in the sequence
+    sequence = SetEventFilters(
+        device=DeviceShort(0),
+        instance=InstanceNumber(0),
+        filter_value=3,
+    )
+    # The first message the sequence should send is DTR0
+    try:
+        cmd = sequence.send(None)
+    except StopIteration:
+        raise RuntimeError()
+    assert isinstance(cmd, DTR0)
+    assert cmd.frame.as_byte_sequence[2] == 3
+    # The previous test for the sequence adequately checks the remaining logic
+
+
 def test_event_filter_sequence_bad_type():
     sequence = SetEventFilters(
         device=DeviceShort(0),

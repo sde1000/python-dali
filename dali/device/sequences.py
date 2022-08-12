@@ -115,8 +115,12 @@ def SetEventFilters(
     if isinstance(instance, int):
         instance = InstanceNumber(instance)
 
-    uses_dtr1 = filter_value.dali_width() > 8
-    uses_dtr2 = filter_value.dali_width() > 16
+    if isinstance(filter_value, InstanceEventFilter):
+        uses_dtr1 = filter_value.dali_width() > 8
+        uses_dtr2 = filter_value.dali_width() > 16
+    else:
+        uses_dtr1 = False
+        uses_dtr2 = False
 
     # The values in InstanceEventFilter are already mapped out to the
     # corresponding bits, through the inheritance from IntFlag
