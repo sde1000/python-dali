@@ -40,11 +40,12 @@ import logging
 
 from dali.address import DeviceShort, GearBroadcast, GearShort, InstanceNumber
 from dali.command import NumericResponse
-from dali.device import pushbutton
+from dali.device import pushbutton, occupancy
 from dali.device.general import (
     DTR0,
     EventScheme,
     QueryEventSchemeResponse,
+    UnknownEvent,
 )
 from dali.device.sequences import SetEventFilters, SetEventSchemes
 from dali.driver.serial import DriverLubaRs232
@@ -61,7 +62,7 @@ from dali.sequences import QueryDeviceTypes, QueryGroups
 URI = "luba232:/dev/ttyUSB0"
 
 
-async def listen_luba():
+async def setup():
     # Set up LUBA RS232 driver
     logger = logging.getLogger("dali")
     log_handler = logging.StreamHandler()
@@ -73,7 +74,10 @@ async def listen_luba():
 
     driver = DriverLubaRs232(uri=URI)
     await driver.connect(scan_dev_inst=True)
+    return driver
 
+
+async def listen_luba(driver):
     for dev_addr in {x[0] for x in driver.dev_inst_map.mapping.keys()}:
         print(f"\nReading memory banks for device A²{dev_addr}:")
         short = DeviceShort(dev_addr)
@@ -86,7 +90,10 @@ async def listen_luba():
     for dev_addr_inst, dev_type in driver.dev_inst_map.mapping.items():
         dev_addr = dev_addr_inst[0]
         inst_num = dev_addr_inst[1]
-        print(f"\nEnabling device/instance scheme for A²{dev_addr}:I{inst_num}")
+        print(
+            f"\nEnabling device/instance scheme for A²{dev_addr}:I{inst_num} "
+            f"(type {dev_type})"
+        )
         sequence = SetEventSchemes(
             device=DeviceShort(dev_addr),
             instance=InstanceNumber(inst_num),
@@ -159,6 +166,59 @@ async def listen_luba():
                 f"A²{dev_addr}:I{inst_num} short timer: {short_timer}, "
                 f"double timer: {double_timer}"
             )
+        elif dev_type == occupancy.instance_type:
+            print(f"\nEnabling occupancy events for A²{dev_addr}:I{inst_num}")
+            filter_to_set = (
+                occupancy.InstanceEventFilter.occupied
+                | occupancy.InstanceEventFilter.vacant
+                | occupancy.InstanceEventFilter.repeat
+            )
+            sequence = SetEventFilters(
+                device=DeviceShort(dev_addr),
+                instance=InstanceNumber(inst_num),
+                filter_value=filter_to_set,
+            )
+            rsp = await driver.run_sequence(sequence)
+            if rsp == filter_to_set:
+                print("Success")
+            else:
+                print("Failed!")
+
+            # Test out some timer settings
+            rsp = await driver.send(
+                occupancy.QueryHoldTimer(
+                    device=DeviceShort(dev_addr),
+                    instance=InstanceNumber(inst_num),
+                )
+            )
+            if isinstance(rsp, NumericResponse):
+                hold_timer = f"{rsp.value * 10} s"
+            else:
+                hold_timer = "<error>"
+
+            await driver.send(DTR0(20))
+            await driver.send(
+                occupancy.SetReportTimer(
+                    device=DeviceShort(dev_addr),
+                    instance=InstanceNumber(inst_num),
+                )
+            )
+
+            rsp = await driver.send(
+                occupancy.QueryReportTimer(
+                    device=DeviceShort(dev_addr),
+                    instance=InstanceNumber(inst_num),
+                )
+            )
+            if isinstance(rsp, NumericResponse):
+                report_timer = f"{rsp.value} s"
+            else:
+                report_timer = "<error>"
+
+            print(
+                f"A²{dev_addr}:I{inst_num} hold timer: {hold_timer}, "
+                f"report timer: {report_timer}"
+            )
 
     # Test out DALI 16-bit control gear
     print("\nSending DAPC(254) to broadcast address")
@@ -206,13 +266,31 @@ async def listen_luba():
     print("\nSending DAPC(0) to broadcast address\n")
     await driver.send(DAPC(GearBroadcast(), 0))
 
+    await listen_print(driver)
+
+
+async def listen_print(driver):
     # Listen and print out any intercepted DALI commands
     print("\nListening for DALI commands on the bus...\n")
     rx_queue = driver.new_dali_rx_queue()
     while True:
         cmd = await rx_queue.get()
         print(cmd)
+        if isinstance(cmd, UnknownEvent):
+            print(f"  Data: {cmd.event_data:b}")
+            print(f"  Frame: {cmd.frame.as_integer:024b}")
+
+
+async def run_listen_luba():
+    driver = await setup()
+    await listen_luba(driver)
+
+
+async def run_listen_print():
+    driver = await setup()
+    await listen_print(driver)
 
 
 if __name__ == "__main__":
-    asyncio.get_event_loop().run_until_complete(listen_luba())
+    # asyncio.get_event_loop().run_until_complete(run_listen_print())
+    asyncio.get_event_loop().run_until_complete(run_listen_luba())

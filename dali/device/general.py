@@ -50,7 +50,7 @@ interpreted as an "UnknownEvent" object.
 from __future__ import annotations
 
 from enum import IntEnum, IntFlag
-from typing import Optional, TYPE_CHECKING, Type
+from typing import Any, Optional, TYPE_CHECKING, Type
 
 from dali import address, command, frame
 
@@ -981,7 +981,6 @@ class _Event(command.Command):
     # Instance Type and Event Info will be overridden in subclasses
     _instance_type = None
     _event_info = None
-    _data = None
 
     def __init__(
         self,
@@ -990,7 +989,7 @@ class _Event(command.Command):
         instance_number: Optional[int] = None,
         instance_group: Optional[int] = None,
         device_group: Optional[int] = None,
-        data: Optional[int] = None,
+        data: Any = None,
     ):
         if isinstance(self, (AmbiguousInstanceType, UnknownEvent)):
             # Start with an empty frame for these edge-case types, the rest will
@@ -1094,10 +1093,12 @@ class _Event(command.Command):
                 "'device group' or 'instance group'"
             )
 
+        # Each instance type has a class that knows what to do to handle data
         self._set_event_data(data, f)
+
         super().__init__(f)
 
-    def _set_event_data(self, set_data: int, set_frame: frame.Frame):
+    def _set_event_data(self, set_data: Optional[int], set_frame: frame.Frame):
         """
         Overridden in subclasses which have data to include in the 10 bits of
         event information, by default does nothing
@@ -1283,14 +1284,19 @@ class UnknownEvent(_Event):
         self._instance_type = instance_type
         super().__init__(**kwargs)
 
-    def _set_event_data(self, set_data: Optional[int], set_frame: frame.Frame):
+    def _set_event_data(self, set_data: Any, set_frame: frame.Frame):
         """
         Even though the event information can't be decoded because the
         event type is not understood, the information can still be stored into
         the frame
         """
         if set_data is not None:
+            self._unhandled_data = set_data
             set_frame[9:0] = set_data
+
+    @property
+    def event_data(self):
+        return self._unhandled_data
 
     @classmethod
     def from_frame(cls, f, devicetype=0, dev_inst_map=None):

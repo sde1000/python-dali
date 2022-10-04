@@ -32,6 +32,9 @@ def _test_pattern():
     # Control devices, QueryEventFilter
     for o in (0x90, 0x91, 0x92):
         yield 24, (0x03, 0x00, o), 0
+    # Control devices, events for occupancy sensors (part 303)
+    for e in range(16):
+        yield 24, (0x86, 0xFC, e), 0
 
 
 class TestCommands(unittest.TestCase):

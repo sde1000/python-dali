@@ -23,6 +23,7 @@ This library has been written with reference to the following documents:
 - IEC 62386-205:2009 (supply voltage controller for incandescent lamps)
 - IEC 62386-207:2009 (LED modules)
 - IEC 62386-301:2017 (particular requirements for push button input devices)
+- IEC 62386-303:2017 (particular requirements for occupancy sensor input devices)
 
 I do not have copies of the other parts of the standard; they are
 fairly expensive to obtain.  The library is designed to be extensible;
@@ -62,6 +63,8 @@ Library structure
     - ``general`` - Commands and events from part 103
 
     - ``helpers`` - Useful functions and classes for working with DALI control devices
+
+    - ``occupancy`` - Commands from part 303
 
     - ``pushbutton`` - Commands from part 301
 

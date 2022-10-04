@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, Type
+from typing import Any, Optional, Type
 
 import pytest
 
@@ -10,11 +10,13 @@ from dali.device.general import (
     EventScheme,
     InstanceEventFilter,
     QueryEventSchemeResponse,
+    UnknownEvent,
     _Event,
 )
 from dali.device.helpers import DeviceInstanceTypeMapper
+from dali.device.occupancy import OccupancyEvent
 from dali.device.pushbutton import InstanceEventFilter as EventFilter_pb
-from dali.frame import BackwardFrame, Frame
+from dali.frame import BackwardFrame, ForwardFrame, Frame
 
 
 def test_event_base_not_implemented():
@@ -26,12 +28,13 @@ def test_event_base_not_implemented():
 def event_test_data_good():
     @dataclass
     class EventTestData:
-        event_type: Type[_Event] = pushbutton.ButtonReleased
+        event_type: Type[_Event] = general._Event
         short_address: Optional[int] = None
         instance_number: Optional[int] = None
         instance_group: Optional[int] = None
         device_group: Optional[int] = None
         frame: str = "000000000000000000000000"
+        data: Any = None
 
     test_data = (
         EventTestData(
@@ -99,6 +102,34 @@ def event_test_data_good():
             short_address=63,
             frame="011111100000010000000010",
         ),
+        EventTestData(
+            event_type=OccupancyEvent,
+            short_address=0,
+            frame="000000000000110000001011",
+            data=OccupancyEvent.EventData(movement=True, occupied=True),
+        ),
+        EventTestData(
+            event_type=OccupancyEvent,
+            short_address=0,
+            frame="000000000000110000001010",
+            data=OccupancyEvent.EventData(movement=False, occupied=True),
+        ),
+        EventTestData(
+            event_type=OccupancyEvent,
+            short_address=0,
+            frame="000000000000110000000010",
+            data=OccupancyEvent.EventData(
+                movement=False, occupied=True, sensor_type="presence"
+            ),
+        ),
+        EventTestData(
+            event_type=OccupancyEvent,
+            short_address=63,
+            frame="011111100000110000001111",
+            data=OccupancyEvent.EventData(
+                movement=True, occupied=True, repeat=True
+            ),
+        ),
     )
     return test_data
 
@@ -106,7 +137,7 @@ def event_test_data_good():
 def test_event_to_frame_good(event_test_data_good):
     """
     Tests a number of values against known-good expected frames, for various
-    pushbutton events
+    events
     """
     for test_case in event_test_data_good:
         event = test_case.event_type(
@@ -114,6 +145,7 @@ def test_event_to_frame_good(event_test_data_good):
             instance_number=test_case.instance_number,
             instance_group=test_case.instance_group,
             device_group=test_case.device_group,
+            data=test_case.data,
         )
         event_frame = f"{event.frame.as_integer:024b}"
         assert event_frame == test_case.frame
@@ -133,6 +165,7 @@ def test_frame_to_event_good(event_test_data_good):
         assert event.instance_number == test_case.instance_number
         assert event.instance_group == test_case.instance_group
         assert event.device_group == test_case.device_group
+        assert event.event_data == test_case.data
 
 
 def test_event_pushbutton_repr_short_address():
@@ -264,3 +297,37 @@ def test_event_filter_pushbutton_width():
     assert EventFilter_pb.dali_width() == 8
     filter_instance = EventFilter_pb(3)
     assert filter_instance.dali_width() == 8
+
+
+def test_frame_to_event_dev_inst_occupancy_occupied():
+    device_instance_map = DeviceInstanceTypeMapper()
+    device_instance_map.add_type(
+        short_address=1,
+        instance_number=1,
+        instance_type=3,
+    )
+
+    dev_inst_frame = Frame(24, data=0b000000101000010000001011)
+    decode_cmd = Command.from_frame(
+        dev_inst_frame, dev_inst_map=device_instance_map
+    )
+
+    assert isinstance(decode_cmd, OccupancyEvent)
+    assert decode_cmd.short_address.address == 1
+    assert decode_cmd.instance_number == 1
+    assert decode_cmd.movement
+    assert decode_cmd.occupied
+    assert not decode_cmd.repeat
+    assert decode_cmd.sensor_type == "movement"
+
+
+def test_invalid_occupancy():
+    """
+    Confirms that invalid occupancy messages do not decode
+    """
+    base_frame = 0b000000000000110000000000
+    for tst_int in range(1, 64):
+        tst = base_frame | (tst_int << 4)
+        fr = ForwardFrame(24, tst.to_bytes(3, "big"))
+        ev = Command.from_frame(fr)
+        assert isinstance(ev, UnknownEvent)
