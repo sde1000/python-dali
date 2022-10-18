@@ -441,6 +441,22 @@ class DriverLubaRs232(DriverSerialBase):
             """
             return await self._queue_rx_raw_dali.get()
 
+        def reset_dali_raw_response(self) -> None:
+            """
+            Forces the queue of received DALI responses to be cleared, logging
+            any responses that are dropped if the queue is not empty
+            """
+            qlen = self._queue_rx_raw_dali.qsize()
+            if qlen:
+                _LOG.critical(
+                    f"LUBA RX DALI queue not empty! {qlen} items in queue!"
+                )
+                try:
+                    item = self._queue_rx_raw_dali.get_nowait()
+                    _LOG.critical(f"LUBA RX DALI queue discarding: {item}")
+                except asyncio.QueueEmpty:
+                    pass
+
         @staticmethod
         def _insert_checksum(in_ints: list[int]) -> None:
             in_ints[-1] = reduce(xor, in_ints[1:-1])
@@ -695,31 +711,38 @@ class DriverLubaRs232(DriverSerialBase):
                     _LOG.trace("LUBA checksum passed, full frame received")
                     try:
                         rx_cmd = DriverLubaRs232.LubaCmd(self._buffer[1])
-                        if rx_cmd == DriverLubaRs232.LubaCmd.EVENT_MESSAGE:
-                            self._process_luba_event(received_data)
-                        elif (
-                            rx_cmd
-                            == DriverLubaRs232.LubaCmd.ADD_DALI_FRAME_TO_TX_RSP
-                        ):
-                            self._process_luba_response_dali_frame_to_tx(
-                                received_data
-                            )
-                        elif (
-                            rx_cmd
-                            == DriverLubaRs232.LubaCmd.QUERY_DEVICE_INFO_RSP
-                        ):
-                            self._process_luba_response_device_info(
-                                received_data
-                            )
-                        elif (
-                            rx_cmd
-                            == DriverLubaRs232.LubaCmd.READ_WRITE_SETTINGS_RSP
-                        ):
-                            self._process_luba_response_settings(received_data)
                     except ValueError:
-                        _LOG.warning(
-                            f"LUBA unhandled message type: 0x{self._buffer[1]:02x}"
+                        _LOG.exception(
+                            f"LUBA unknown message type: 0x{self._buffer[1]:02x},"
+                            f" data: {received_data}"
                         )
+                        self.reset()
+                        return
+
+                    if rx_cmd == DriverLubaRs232.LubaCmd.EVENT_MESSAGE:
+                        self._process_luba_event(received_data)
+                    elif (
+                        rx_cmd
+                        == DriverLubaRs232.LubaCmd.ADD_DALI_FRAME_TO_TX_RSP
+                    ):
+                        self._process_luba_response_dali_frame_to_tx(
+                            received_data
+                        )
+                    elif (
+                        rx_cmd == DriverLubaRs232.LubaCmd.QUERY_DEVICE_INFO_RSP
+                    ):
+                        self._process_luba_response_device_info(received_data)
+                    elif (
+                        rx_cmd
+                        == DriverLubaRs232.LubaCmd.READ_WRITE_SETTINGS_RSP
+                    ):
+                        self._process_luba_response_settings(received_data)
+                    else:
+                        _LOG.error(
+                            f"LUBA unexpected message, type 0x{self._buffer[1]:02x},"
+                            f" data: {received_data}"
+                        )
+
                     self.reset()
                     return
             else:
@@ -787,12 +810,31 @@ class DriverLubaRs232(DriverSerialBase):
             # Event type 2: DALI frame was received
             # Bytes 4 onwards are the received DALI frame
             if event_type == 2:
+                # If 'Event Info' == 1-32: number of bits in frame
+                if 1 <= event_info <= 32:
+                    _LOG.trace(f"LUBA DALI frame length: {event_info}")
+                # 'Event Info' == 62: received only start / stop bit combination
+                elif event_info == 62:
+                    _LOG.error(
+                        "LUBA DALI frame error: received only start/stop bit"
+                    )
+                    return
+                # 'Event Info' == 63: framing error
+                elif event_info == 63:
+                    _LOG.error("LUBA DALI frame error: framing error")
+                    return
+                else:
+                    _LOG.critical(f"LUBA DALI unknown event info: {event_info}")
+                    return
+
                 rx_dali = payload[4:]
                 _LOG.trace(
                     f"LUBA DALI frame received: {[f'0x{data:02x}' for data in rx_dali]}"
                 )
 
-                if len(rx_dali) == 1:
+                if len(rx_dali) == 0:
+                    _LOG.error("LUBA DALI frame error, zero length!")
+                elif len(rx_dali) == 1:
                     # An 8-bit frame is a response, don't try to decipher it
                     # here because it depends on context which the 'send()'
                     # routine will have to handle
@@ -995,6 +1037,9 @@ class DriverLubaRs232(DriverSerialBase):
         if not in_transaction:
             await self.transaction_lock.acquire()
         try:
+            # Make sure the received command buffer is empty, so that an
+            # unexpected response can't accidentally be used
+            self._protocol.reset_dali_raw_response()
             await self._protocol.send_dali_command(msg)
             if msg.is_query:
                 response = command.Response(None)
