@@ -6,7 +6,7 @@ from __future__ import annotations
 import types
 from typing import Generator, Iterable, Optional
 
-from dali.address import DeviceShort, InstanceNumber
+from dali.address import DeviceBroadcast, DeviceShort, InstanceNumber
 from dali.command import Command, Response
 from dali.device.general import (
     QueryDeviceStatus,
@@ -14,6 +14,8 @@ from dali.device.general import (
     QueryInstanceEnabled,
     QueryInstanceType,
     QueryNumberOfInstances,
+    StartQuiescentMode,
+    StopQuiescentMode,
 )
 from dali.exceptions import MissingResponse, ResponseError
 from dali.frame import BackwardFrameError
@@ -107,6 +109,9 @@ class DeviceInstanceTypeMapper:
         ```
         """
 
+        # Use quiescent mode to reduce bus contention from input devices
+        yield StartQuiescentMode(DeviceBroadcast())
+
         if isinstance(addresses, int):
             addresses = (n for n in range(0, addresses))
         elif isinstance(addresses, tuple) and len(addresses) == 2:
@@ -123,7 +128,6 @@ class DeviceInstanceTypeMapper:
                 # Make sure the status is OK
                 if (
                     rsp.input_device_error
-                    or rsp.quiescent_mode_enabled
                     or rsp.short_address_is_mask
                     or rsp.reset_state
                 ):
@@ -162,6 +166,9 @@ class DeviceInstanceTypeMapper:
                     instance_number=inst,
                     instance_type=rsp.value,
                 )
+
+        # End quiescent mode
+        yield StopQuiescentMode(DeviceBroadcast())
 
     def add_type(
         self,
