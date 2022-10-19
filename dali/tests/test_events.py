@@ -15,6 +15,7 @@ from dali.device.general import (
 )
 from dali.device.helpers import DeviceInstanceTypeMapper
 from dali.device.occupancy import OccupancyEvent
+from dali.device.light import LightEvent
 from dali.device.pushbutton import InstanceEventFilter as EventFilter_pb
 from dali.frame import BackwardFrame, ForwardFrame, Frame
 
@@ -129,6 +130,12 @@ def event_test_data_good():
             data=OccupancyEvent.EventData(
                 movement=True, occupied=True, repeat=True
             ),
+        ),
+        EventTestData(
+            event_type=LightEvent,
+            short_address=1,
+            frame="000000100001001010101010",
+            data=682,
         ),
     )
     return test_data
@@ -331,3 +338,22 @@ def test_invalid_occupancy():
         fr = ForwardFrame(24, tst.to_bytes(3, "big"))
         ev = Command.from_frame(fr)
         assert isinstance(ev, UnknownEvent)
+
+
+def test_frame_to_event_dev_inst_light():
+    device_instance_map = DeviceInstanceTypeMapper()
+    device_instance_map.add_type(
+        short_address=5,
+        instance_number=2,
+        instance_type=4,
+    )
+
+    dev_inst_frame = Frame(24, data=0b000010101000100000001011)
+    decode_cmd = Command.from_frame(
+        dev_inst_frame, dev_inst_map=device_instance_map
+    )
+
+    assert isinstance(decode_cmd, LightEvent)
+    assert decode_cmd.short_address.address == 5
+    assert decode_cmd.instance_number == 2
+    assert decode_cmd.illuminance == 11

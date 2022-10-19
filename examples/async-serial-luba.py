@@ -40,7 +40,7 @@ import logging
 
 from dali.address import DeviceShort, GearBroadcast, GearShort, InstanceNumber
 from dali.command import NumericResponse
-from dali.device import pushbutton, occupancy
+from dali.device import light, occupancy, pushbutton
 from dali.device.general import (
     DTR0,
     EventScheme,
@@ -218,6 +218,80 @@ async def listen_luba(driver):
             print(
                 f"A²{dev_addr}:I{inst_num} hold timer: {hold_timer}, "
                 f"report timer: {report_timer}"
+            )
+        elif dev_type == light.instance_type:
+            print(f"\nEnabling light events for A²{dev_addr}:I{inst_num}")
+            filter_to_set = light.InstanceEventFilter.illuminance_level
+            sequence = SetEventFilters(
+                device=DeviceShort(dev_addr),
+                instance=InstanceNumber(inst_num),
+                filter_value=filter_to_set,
+            )
+            rsp = await driver.run_sequence(sequence)
+            if rsp == filter_to_set:
+                print("Success")
+            else:
+                print("Failed!")
+
+            # Set the report timer to 20 seconds
+            await driver.send(DTR0(20))
+            await driver.send(
+                light.SetReportTimer(
+                    device=DeviceShort(dev_addr),
+                    instance=InstanceNumber(inst_num),
+                )
+            )
+            rsp = await driver.send(
+                light.QueryReportTimer(
+                    device=DeviceShort(dev_addr),
+                    instance=InstanceNumber(inst_num),
+                )
+            )
+            if isinstance(rsp, NumericResponse):
+                report_timer = f"{rsp.value} s"
+            else:
+                report_timer = "<error>"
+
+            # Set hysteresis to 10% and minimum 15
+            await driver.send(DTR0(10))
+            await driver.send(
+                light.SetHysteresis(
+                    device=DeviceShort(dev_addr),
+                    instance=InstanceNumber(inst_num),
+                )
+            )
+            rsp = await driver.send(
+                light.QueryHysteresis(
+                    device=DeviceShort(dev_addr),
+                    instance=InstanceNumber(inst_num),
+                )
+            )
+            if isinstance(rsp, NumericResponse):
+                hyst = f"{rsp.value}%"
+            else:
+                hyst = "<error>"
+
+            await driver.send(DTR0(15))
+            await driver.send(
+                light.SetHysteresisMin(
+                    device=DeviceShort(dev_addr),
+                    instance=InstanceNumber(inst_num),
+                )
+            )
+            rsp = await driver.send(
+                light.QueryHysteresisMin(
+                    device=DeviceShort(dev_addr),
+                    instance=InstanceNumber(inst_num),
+                )
+            )
+            if isinstance(rsp, NumericResponse):
+                hyst_min = f"{rsp.value}"
+            else:
+                hyst_min = "<error>"
+
+            print(
+                f"A²{dev_addr}:I{inst_num} report timer: {report_timer} "
+                f"hysteresis: {hyst}, min. hysteresis: {hyst_min}"
             )
 
     # Test out DALI 16-bit control gear
