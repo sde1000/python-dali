@@ -6,3 +6,9 @@ export PYBUILD_NAME = dali
 
 %:
 	dh $@ --with=python3 --buildsystem=pybuild
+
+# The current release of aptly does not understand zstd compression
+# which as of Ubuntu 21.10 is the default. Force gzip compression
+# until a suitable release of aptly is widely available.
+override_dh_builddeb:
+	dh_builddeb -- -Zgzip
