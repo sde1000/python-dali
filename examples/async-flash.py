@@ -6,10 +6,10 @@ from dali.driver.hid import tridonic, hasseb
 from dali.gear.general import RecallMaxLevel, RecallMinLevel, QueryActualLevel, Off
 from dali.address import Broadcast, Short
 
-async def main(loop):
+async def main():
     # Edit to pick a device type.
-    dev = tridonic("/dev/dali/daliusb-*", glob=True, loop=loop)
-    #dev = hasseb("/dev/dali/hasseb-*", glob=True, loop=loop)
+    dev = tridonic("/dev/dali/daliusb-*", glob=True)
+    #dev = hasseb("/dev/dali/hasseb-*", glob=True)
     dev.connect()
     print("Waiting to be connected...")
     await dev.connected.wait()
@@ -30,7 +30,4 @@ async def main(loop):
 
 if __name__ == "__main__":
     #logging.basicConfig(level=logging.DEBUG)
-    loop = asyncio.get_event_loop()
-    #loop.set_debug(True)
-    loop.run_until_complete(main(loop))
-    loop.close()
+    asyncio.run(main())

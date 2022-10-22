@@ -36,9 +36,9 @@ def print_progress(p):
     if p.completed and p.size:
         log.info(f"Progress: {p.completed*100/p.size:.1f}%")
 
-async def main(args, loop):
+async def main(args):
     driver = drivers[args.driver]
-    d = driver(args.device, loop=loop)
+    d = driver(args.device)
     if args.debug:
         d.bus_traffic.register(print_command_and_response)
     if not d.connect():
@@ -75,6 +75,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO)
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main(args, loop))
-    loop.close()
+    asyncio.run(main(args))
