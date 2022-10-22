@@ -59,6 +59,13 @@ exceptions raised by the native ``int.from_bytes()`` and
 - A driver has been added for Lunatone LUBA serial DALI
   interfaces. [sl-wallace]
 
+- Support for colour devices (device type 8) has been added.
+  [sl-wallace / Petr Ilgner]
+
+- Support for occupancy sensors (IEC 62386 part 303). [sl-wallace]
+
+- Support for light sensors (IEC 62386 part 304). [sl-wallace]
+
 0.9 (2022-04-21)
 ----------------
 
