@@ -1,3 +1,73 @@
+python-dali (0.10) unstable; urgency=low
+
+  * New release 0.10
+
+  * Improve LUBA serial driver error handling
+
+  * Update Debian packaging
+
+  * Update packaging to use setup.cfg
+
+  * Fix async examples
+
+  * Add support for DALI Light Sensor devices
+
+  * Use quiescent mode during control device scan
+
+  * Add support for DALI Occupancy Sensor devices
+
+  * Fix event filter type handling for control devices
+
+  * Expand LUBA example to use new DT8 commands
+
+  * Expand DT8 support with tests and sequences
+
+  * DT8 fixes
+
+  * Added DT8 commands and responses.
+
+  * added DT8 support
+
+  * Add recent developments to CHANGES.rst
+
+  * Update the async Tridonic DALI-USB driver to work with 24-bit frames
+
+  * Update README to mention pushbutton support
+
+  * Update LUBA example to show DALI event support
+
+  * Add support for DALI 24-bit event messages
+
+  * Add device type support to LUBA driver decoding
+
+  * Use gear/device address knowledge in memory objects
+
+  * Use explicit 'gear' and 'device' address objects
+
+  * Improve response type for device query commands
+
+  * Add __eq__ operator for Instance objects
+
+  * Update README to mention serial LUBA driver
+
+  * Add 'fakes' and tests for serial driver
+
+  * Add initial support for Lunatone LUBA interface
+
+  * Avoid using assert in init method
+
+  * Add a 'trace' level to the logging module
+
+  * Remove support for new_exceptions=False from Frame
+
+  * Document removal of support for python 3.6
+
+  * Use assertEqual in test_fakes.py
+
+  * Add "level" support to fakes.py
+
+ -- Stephen Early <steve@assorted.org.uk>  Mon, 24 Oct 2022 10:32:30 +0100
+
 python-dali (0.9) unstable; urgency=low
 
   * New release 0.9
