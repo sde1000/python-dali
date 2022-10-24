@@ -17,18 +17,6 @@ class TestFrame(unittest.TestCase):
 
     def test_frame_init_data(self):
         """frames can be initialised with integer or iterable data"""
-        # In release 0.10, DeprecationWarning is raised if
-        # new_exceptions is passed with any value
-        with self.assertWarns(DeprecationWarning):
-            self.assertEqual(
-                frame.Frame(16, 0xffff),
-                frame.Frame(16, (0xff, 0xff), new_exceptions=False)
-            )
-            self.assertNotEqual(
-                frame.Frame(16, 0xffff),
-                frame.Frame(16, (0xff, 0xfe), new_exceptions=True)
-            )
-
         self.assertEqual(
             frame.Frame(16, 0xffff),
             frame.Frame(16, (0xff, 0xff))
@@ -42,9 +30,6 @@ class TestFrame(unittest.TestCase):
             frame.Frame(16, (0, 0, 0xff, 0xff))
         )
         self.assertRaises(ValueError, frame.Frame, 24, (0x100, 0xff))
-
-        # In release 0.11 (or whatever we decide to call it),
-        # new_exceptions will be removed
 
     def test_comparisons(self):
         """frame comparisons"""
@@ -146,15 +131,6 @@ class TestFrame(unittest.TestCase):
 
     def test_pack_len(self):
         """frame packing with length returns expected byte strings"""
-        # In release 0.10, DeprecationWarning is raised if
-        # new_exceptions is passed with any value
-        with self.assertWarns(DeprecationWarning):
-            f = frame.Frame(28, 0x2345678)
-            self.assertRaises(OverflowError, lambda: f.pack_len(
-                3, new_exceptions=False))
-            self.assertEqual(f.pack_len(4, new_exceptions=True),
-                             b'\x02\x34\x56\x78')
-
         f = frame.Frame(28, 0x2345678)
         self.assertRaises(OverflowError, lambda: f.pack_len(3))
         self.assertEqual(f.pack_len(4), b'\x02\x34\x56\x78')
@@ -163,9 +139,6 @@ class TestFrame(unittest.TestCase):
         self.assertRaises(OverflowError, lambda: f.pack_len(0))
         self.assertEqual(f.pack_len(2), b'\xaa\x55')
         self.assertEqual(f.pack_len(4), b'\x00\x00\xaa\x55')
-
-        # In release 0.11 (or whatever we decide to call it),
-        # new_exceptions will be removed
 
     def test_contains(self):
         """frame __contains__ method works as expected"""

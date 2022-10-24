@@ -1,6 +1,13 @@
 Changes
 =======
 
+0.11 (planned)
+--------------
+
+- Frame exception updates; See below. The ``new_exceptions`` parameter
+  has been removed from the ``Frame()`` constructor and the
+  ``Frame.pack_len()`` method.
+
 Frame exception updates
 -----------------------
 
@@ -24,8 +31,8 @@ The new behaviour makes the library more consistent with the
 exceptions raised by the native ``int.from_bytes()`` and
 ``int.to_bytes()`` methods.
 
-0.10 (planned)
---------------
+0.10 (2022-10-24)
+-----------------
 
 - Python 3.6 is no longer supported.
 

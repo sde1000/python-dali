@@ -1,6 +1,3 @@
-import warnings
-
-
 class Frame:
     """A DALI frame.
 
@@ -10,19 +7,13 @@ class Frame:
     Instances of this object are mutable.
     """
 
-    def __init__(self, bits, data=0, new_exceptions=None):
+    def __init__(self, bits, data=0):
         """Initialise a Frame with the supplied number of data bits.
 
         :parameter bits: the number of data bits in the Frame
         :parameter data: initial data for the Frame as an integer or
         an iterable sequence of integers
         """
-        if new_exceptions is not None:
-            warnings.warn(
-                "new_exceptions=True is now the only behaviour available "
-                "for Frame(); you should remove the new_exceptions "
-                "keyword argument. See CHANGES.rst for more information.",
-                DeprecationWarning, stacklevel=2)
         if not isinstance(bits, int):
             raise TypeError(
                 "Number of bits must be an integer")
@@ -178,22 +169,16 @@ class Frame:
             (len(self) // 8) + (1 if len(self) % 8 else 0),
             'big')
 
-    def pack_len(self, l, new_exceptions=None):
+    def pack_len(self, l):
         """The contents of the frame represented as a fixed length byte string.
 
         The least significant bit of the frame is aligned to the end
-        of the byte string.  The start of the byte string is padded with zeroes.
+        of the byte string.  The start of the byte string is padded
+        with zeroes.
 
         If the frame will not fit in the byte string, raises
-        ValueError (with new_exceptions=False) or OverflowError (with
-        new_exceptions=True).
+        OverflowError.
         """
-        if new_exceptions is not None:
-            warnings.warn(
-                "new_exceptions=True is now the only behaviour available "
-                "for pack_len; you should remove the new_exceptions "
-                "keyword argument. See CHANGES.rst for more information.",
-                DeprecationWarning, stacklevel=2)
         return self._data.to_bytes(l, 'big')
 
     def __str__(self):
