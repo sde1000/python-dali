@@ -208,6 +208,29 @@ class hid:
             if not in_transaction:
                 self.transaction_lock.release()
 
+    async def power_supply(self, supply_on, in_transaction=False, exceptions=None):
+        """
+        TODO
+        """
+        if exceptions is None:
+            exceptions = self.exceptions_on_send
+
+        if not in_transaction:
+            await self.transaction_lock.acquire()
+        try:
+            command_sent = False
+            while not command_sent:
+                try:
+                    response = await self._power_supply(supply_on)
+                    command_sent = True
+                except CommunicationError:
+                    if exceptions:
+                        raise
+            return response
+        finally:
+            if not in_transaction:
+                self.transaction_lock.release()
+
     async def run_sequence(self, seq, progress=None):
         """Run a command sequence as a transaction
         """
@@ -277,6 +300,7 @@ class tridonic(hid):
     _CMD_SET_IOPINS = 0x20
     _CMD_READ_IOPINS = 0x21
     _CMD_IDENTIFY = 0x22
+    _CMD_POWERSUPPLY = 0x40
 
     # For _CMD_INIT, send in byte 1:
     _CMD_INIT_READVERSION = 0x00
@@ -297,6 +321,11 @@ class tridonic(hid):
     _SEND_MODE_DSI = 5
     _SEND_MODE_DALI24 = 6
     _SEND_MODE_HELVAR17 = 8
+
+    # For _CMD_POWERSUPPLY, send in byte 1;
+    _POWER_SUPPLY_OFF = 0x00
+    _POWER_SUPPLY_ON = 0x01
+    _POWER_SUPPLY_TBD = 0xFF # APPLY?
 
     # Responses received from the interface
     # Decodes to mode, response type, frame, interval, seq
@@ -357,6 +386,22 @@ class tridonic(hid):
         # Read firmware version; pick up the reply in _handle_read
         os.write(self._f, self._cmd(
             tridonic._CMD_INIT, tridonic._CMD_INIT_READVERSION))
+
+    async def _power_supply(self, supply_on):
+        await self.connected.wait()
+        async with self._command_semaphore:
+            data = self._cmd(self._CMD_POWERSUPPLY,
+                self._POWER_SUPPLY_ON if supply_on else self._POWER_SUPPLY_OFF)
+
+            try:
+                os.write(self._f, data)
+            except OSError:
+                # The device has failed.  Disconnect, schedule a
+                # reconnection, and report this command as failed.
+                self._log.debug("fail on transmit, disconnecting")
+                self.disconnect(reconnect=True)
+                raise CommunicationError
+
 
     async def _send_raw(self, command):
         frame = command.frame
