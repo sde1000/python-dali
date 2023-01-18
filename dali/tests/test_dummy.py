@@ -33,7 +33,7 @@ class DummyDriverFixtureParts(NamedTuple):
     # The type hint for 'log' seems odd, but is correct - refer to this doc
     # page:
     # https://docs.pytest.org/en/latest/reference/reference.html?highlight=tmpdir#tmpdir
-    log: py._path.local.LocalPath
+    log: py.path.local
     uri: str
     driver: DriverSerialDummy
 
