@@ -123,18 +123,20 @@ class hid:
             path = glob.glob(self._path)
         else:
             path = [self._path]
+        ex = None
         if path:
             try:
                 if self._glob:
                     self._log.debug("trying concrete path %s", path[0])
                 self._f = os.open(path[0], os.O_RDWR | os.O_NONBLOCK)
-            except:
+            except Exception as e:
                 self._f = None
+                ex = e
         else:
             self._log.debug("path %s not found", self._path)
         if not self._f:
             # It didn't work.  Schedule a reconnection attempt if we can.
-            self._log.debug("hid failed to open %s - waiting to try again", self._path)
+            self._log.debug("hid failed to open %s (%s) - waiting to try again", self._path, ex)
             self._reconnect_task = asyncio.create_task(self._reconnect())
             return False
         self._reconnect_count = 0
