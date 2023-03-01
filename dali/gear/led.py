@@ -207,13 +207,30 @@ class QueryOperatingMode(_LEDCommand):
     _cmdval = 0xfc
 
 
+class FastFadeTimeResponse(command.NumericResponse):
+    """
+    Response to "Min Fast Fade Time" and "Fast Fade Time".
+
+    Refer to Part 207 section 9.13 and Table 1 "Fast fade time".
+    """
+
+    def __str__(self):
+        if isinstance(self.value, int):
+            if self.value == 0:
+                return "shortest"
+            if self.value > 27:
+                return f"out of range ({self.value})"
+            return f"{self.value * 25} ms"
+        return self.value
+
+
 class QueryFastFadeTime(_LEDCommand):
-    response = command.Response
+    response = FastFadeTimeResponse
     _cmdval = 0xfd
 
 
 class QueryMinFastFadeTime(_LEDCommand):
-    response = command.Response
+    response = FastFadeTimeResponse
     _cmdval = 0xfe
 
 
