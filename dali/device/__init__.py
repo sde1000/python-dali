@@ -7,3 +7,5 @@ part 103 ("General requirements - Control devices") and parts 3xx
 import dali.device.general
 import dali.device.sequences
 import dali.device.pushbutton  # noqa: F401
+import dali.device.occupancy  # noqa: F401
+import dali.device.light  # noqa: F401
