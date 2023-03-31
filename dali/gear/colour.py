@@ -10,6 +10,21 @@ from dali import command
 from dali.gear.general import _StandardCommand
 
 
+def tc_kelvin_mirek(val: int) -> int:
+    """
+    Convert Correlated Color Temperature (CCT) between Kelvin and Mirek
+
+    When the input is in Kelvin, this function returns the value in Mirek,
+    and vice versa.
+
+    >>> tc_kelvin_mirek(6300)
+    158
+    >>> tc_kelvin_mirek(250)
+    4000
+    """
+    return int(1000000 / val)
+
+
 class QueryColourValueDTR(IntEnum):
     """
     Enum of all values from Part 209 Table 11 "Query Colour Value". See
