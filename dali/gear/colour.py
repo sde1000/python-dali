@@ -172,6 +172,7 @@ class CopyReportToTemporary(_ColourCommand):
 
 
 class StoreTYPrimaryN(_ColourCommand):
+    sendtwice = True
     uses_dtr0 = True
     uses_dtr1 = True
     uses_dtr2 = True
@@ -179,11 +180,13 @@ class StoreTYPrimaryN(_ColourCommand):
 
 
 class StoreXYCoordinatePrimaryN(_ColourCommand):
+    sendtwice = True
     uses_dtr2 = True
     _cmdval = 241
 
 
 class StoreColourTemperatureTcLimit(_ColourCommand):
+    sendtwice = True
     uses_dtr0 = True
     uses_dtr1 = True
     uses_dtr2 = True
@@ -191,11 +194,13 @@ class StoreColourTemperatureTcLimit(_ColourCommand):
 
 
 class StoreGearFeaturesStatus(_ColourCommand):
+    sendtwice = True
     uses_dtr0 = True
     _cmdval = 243
 
 
 class AssignColourToLinkedChannel(_ColourCommand):
+    sendtwice = True
     uses_dtr0 = True
     _cmdval = 245
 
