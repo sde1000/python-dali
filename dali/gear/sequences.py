@@ -21,7 +21,7 @@ def SetDT8ColourValueTc(
     tc_mired: int,
 ) -> Generator[command.Command, Optional[command.Response], None]:
     """
-    A generator sequence set query the Colour Temperature of a DT8 control
+    A generator sequence to set the Colour Temperature of a DT8 control
     gear. Note that this sequence assumes that the address being targeted
     supports DT8 Tc control, it will not check this before sending commands.
 
