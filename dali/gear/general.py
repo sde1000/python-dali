@@ -680,6 +680,7 @@ class QueryDeviceTypeResponse(command.Response):
               4: "incandescent lamp dimmer",
               5: "dc-controlled dimmer",
               6: "LED lamp",
+              8: "Colour control",
               254: "none / end",
               255: "multiple"}
 
@@ -700,6 +701,7 @@ class QueryDeviceType(_StandardCommand):
     4: incandescent lamps
     5: DC-controlled dimmers
     6: LED lamps
+    8: Colour control
 
     The device type affects which application extended commands the
     device will respond to.
