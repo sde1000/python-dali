@@ -12,8 +12,9 @@ from dali.gear.colour import (
     QueryColourValue,
     QueryColourValueDTR,
     SetTemporaryColourTemperature,
+    StoreColourTemperatureTcLimit,
 )
-from dali.gear.general import DTR0, DTR1, QueryActualLevel, QueryContentDTR0
+from dali.gear.general import DTR0, DTR1, DTR2, QueryActualLevel, QueryContentDTR0
 
 
 def SetDT8ColourValueTc(
@@ -84,3 +85,29 @@ def QueryDT8ColourValue(
             col_val = None
 
     return col_val
+
+
+def SetDT8TcLimit(
+    address: GearAddress,
+    what_limit: int,
+    tc_mired: int,
+) -> Generator[command.Command, Optional[command.Response], None]:
+    """
+    A generator sequence to set the Colour Temperature limit of a DT8 control
+    gear. Note that this sequence assumes that the address being targeted
+    supports DT8 Tc control, it will not check this before sending commands.
+
+    :param address: GearAddress (i.e. short, group, broadcast) address to set
+    :param what_limit: What limit to set, from dali.gear.colour.StoreColourTemperatureTcLimitDTR2
+    :param tc_mired: An int of the colour temperature to set, in mired
+    """
+    # Although the proper types are expected, ints are common enough for
+    # addresses and their meaning is unambiguous in this context
+    if isinstance(address, int):
+        address = GearShort(address)
+
+    tc_bytes = tc_mired.to_bytes(length=2, byteorder="little")
+    yield DTR0(tc_bytes[0])
+    yield DTR1(tc_bytes[1])
+    yield DTR2(what_limit)
+    yield StoreColourTemperatureTcLimit(address)

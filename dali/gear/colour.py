@@ -185,6 +185,17 @@ class StoreXYCoordinatePrimaryN(_ColourCommand):
     _cmdval = 241
 
 
+class StoreColourTemperatureTcLimitDTR2(IntEnum):
+    """
+    Valid DTR2 values for the StoreColourTemperatureTcLimit command
+    """
+
+    TcCoolest = 0
+    TcWarmest = 1
+    TcPhysicalCoolest = 2
+    TcPhysicalWarmest = 3
+
+
 class StoreColourTemperatureTcLimit(_ColourCommand):
     sendtwice = True
     uses_dtr0 = True
