@@ -520,7 +520,7 @@ class tridonic(hid):
                     frame = dali.frame.BackwardFrame(raw_frame)
                 elif rtype == self._RESPONSE_NO_FRAME:
                     frame = "no"
-                elif rtype == self._RESPONSE_BUS_STATUS \
+                elif rtype == self._RESPONSE_INFO \
                      and message[5] == self._BUS_STATUS_FRAMING_ERROR:
                     frame = dali.frame.BackwardFrameError(255)
                 else:
