@@ -549,7 +549,7 @@ class tridonic(hid):
                             current_command = None
                             continue
                         else:
-                            self._log.debug("Failed config command (second frame didn't match): %s", current_comment)
+                            self._log.debug("Failed config command (second frame didn't match): %s", current_command)
                             self.bus_traffic._invoke(current_command, None, True)
                             current_command = None
                             # Fall through to continue processing frame
