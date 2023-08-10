@@ -404,6 +404,15 @@ class tridonic(hid):
                 self.disconnect(reconnect=True)
                 raise CommunicationError
 
+    @staticmethod
+    def _command_mode(frame):
+        if len(frame) == 8:
+            return tridonic._SEND_MODE_DALI8
+        if len(frame) == 16:
+            return tridonic._SEND_MODE_DALI16
+        if len(frame) == 24:
+            return tridonic._SEND_MODE_DALI24
+        raise UnsupportedFrameTypeError
 
     async def _send_raw(self, command):
         frame = command.frame
@@ -423,8 +432,7 @@ class tridonic(hid):
             data = self._cmd(
                 self._CMD_SEND, seq,
                 ctrl=self._SEND_CTRL_SENDTWICE if command.sendtwice else 0,
-                mode=self._SEND_MODE_DALI16 if len(frame) == 16
-                else self._SEND_MODE_DALI24,
+                mode=self._command_mode(frame),
                 frame=frame.pack_len(4))
             try:
                 os.write(self._f, data)
