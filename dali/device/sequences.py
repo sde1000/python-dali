@@ -14,6 +14,9 @@ from dali.device.general import (
     DTR2,
     EventScheme,
     InstanceEventFilter,
+    QueryResolution,
+    QueryInputValue,
+    QueryInputValueLatch,
     QueryEventFilterH,
     QueryEventFilterL,
     QueryEventFilterM,
@@ -23,6 +26,7 @@ from dali.device.general import (
     SetEventScheme,
 )
 from dali.device.helpers import check_bad_rsp
+from dali.exceptions import DALISequenceError
 
 
 def SetEventSchemes(
@@ -225,3 +229,49 @@ def QueryEventFilters(
         hi = rsp.value
 
     return filter_type(int.from_bytes((lo, md, hi), "little"))
+
+
+def query_input_value(
+    device: DeviceShort,
+    instance: InstanceNumber,
+    resolution: Optional[int] = None
+) -> Generator[Command, Optional[Response], Optional[int]]:
+    """
+    A generator sequence to retrieve full sensor value from a part-103 control device.
+    Use with an appropriate DALI driver instance, through the `run_sequence()`
+    method.
+
+    :param device: A DeviceShort address to target
+    :param instance: An InstanceNumber to target
+    :param resolution: Number of valid bits that the device provides
+    """
+    # Although the proper types are expected, ints are common enough for
+    # addresses and their meaning is unambiguous in this context
+    if isinstance(device, int):
+        device = DeviceShort(device)
+    if isinstance(instance, int):
+        instance = InstanceNumber(instance)
+
+    if resolution is None:
+        resolution = yield QueryResolution(device, instance)
+        if check_bad_rsp(resolution):
+            raise DALISequenceError("query_input_value: QueryResolution failed")
+        resolution = resolution.value
+
+    value = yield QueryInputValue(device, instance)
+    if check_bad_rsp(value):
+        raise DALISequenceError("query_input_value: QueryInputValue failed")
+    value = value.value
+    while resolution > 8:
+        resolution -= 8
+        value <<= 8
+        chunk = yield QueryInputValueLatch(device, instance)
+        if check_bad_rsp(chunk):
+            raise DALISequenceError("query_input_value: QueryInputValueLatch failed")
+        value += chunk.value
+
+    if resolution > 0:
+        # Strip the repeated trailing bytes as per IEC 62386-103:2014, part 9.7.2
+        value >>= 8 - resolution
+
+    return value

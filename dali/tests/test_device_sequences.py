@@ -11,6 +11,9 @@ from dali.device.general import (
     QueryEventFilterZeroToSeven,
     QueryEventScheme,
     QueryEventSchemeResponse,
+    QueryInputValue,
+    QueryInputValueLatch,
+    QueryResolution,
     SetEventFilter,
 )
 from dali.device.helpers import DeviceInstanceTypeMapper, check_bad_rsp
@@ -19,6 +22,7 @@ from dali.device.sequences import (
     QueryEventFilters,
     SetEventFilters,
     SetEventSchemes,
+    query_input_value,
 )
 from dali.frame import BackwardFrame, BackwardFrameError
 from dali.tests import fakes
@@ -269,3 +273,93 @@ def test_event_filter_sequence_bad_type():
     # filter_type needs to be a type, not an instance
     with pytest.raises(TypeError):
         sequence.send(None)
+
+
+def test_query_input_values_unknown_1bit():
+    """
+    Reading a device's input register which has a one-bit resolution, with
+    no prior information. Device sends 0xff, which is converted to 1.
+    """
+    sequence = query_input_value(
+        device=DeviceShort(0),
+        instance=InstanceNumber(0),
+        resolution=None,
+    )
+    rsp = None
+    # No resolution was given, so the first message sends out a query for that
+    try:
+        cmd = sequence.send(rsp)
+    except StopIteration:
+        raise RuntimeError()
+    assert isinstance(cmd, QueryResolution)
+    assert cmd.frame.as_byte_sequence[2] == 0x81  # QUERY_RESOLUTION
+    rsp = NumericResponse(BackwardFrame(1))
+
+    # Ask for the first byte
+    try:
+        cmd = sequence.send(rsp)
+    except StopIteration:
+        raise RuntimeError()
+    assert isinstance(cmd, QueryInputValue)
+    assert cmd.frame.as_byte_sequence[2] == 0x8c  # QUERY_INPUT_VALUE
+    assert cmd.destination == DeviceShort(0)
+    assert cmd.instance == InstanceNumber(0)
+
+    rsp = NumericResponse(BackwardFrame(0xff))
+    ret = None
+    try:
+        cmd = sequence.send(rsp)
+        raise RuntimeError()
+    except StopIteration as r:
+        ret = r.value
+
+    assert ret == 1
+
+
+def test_query_input_values_10bit():
+    """
+    Reading a device's input register. The resolution is known upfront to be
+    10bit. The first byte is:
+
+      0x6c = 0110 1100
+
+    The second byte is:
+
+      0x9b = 1001 1011
+
+    And since only the first two bits are needed (10-8), the rest is just
+    repeated first byte, so the result is 0b0110110010 = 434.
+    """
+    sequence = query_input_value(
+        device=DeviceShort(0),
+        instance=InstanceNumber(0),
+        resolution=10,
+    )
+    rsp = None
+    # resolution is known upfront, so there will be no querying
+    try:
+        cmd = sequence.send(rsp)
+    except StopIteration:
+        raise RuntimeError()
+    assert isinstance(cmd, QueryInputValue)
+    assert cmd.frame.as_byte_sequence[2] == 0x8c  # QUERY_INPUT_VALUE
+    assert cmd.destination == DeviceShort(0)
+    assert cmd.instance == InstanceNumber(0)
+    rsp = NumericResponse(BackwardFrame(0x6c))
+    try:
+        cmd = sequence.send(rsp)
+    except StopIteration:
+        raise RuntimeError()
+    assert isinstance(cmd, QueryInputValueLatch)
+    assert cmd.frame.as_byte_sequence[2] == 0x8d  # QUERY_INPUT_VALUE_LATCH
+    assert cmd.destination == DeviceShort(0)
+    assert cmd.instance == InstanceNumber(0)
+    rsp = NumericResponse(BackwardFrame(0x9b))
+
+    ret = None
+    try:
+        cmd = sequence.send(rsp)
+        raise RuntimeError()
+    except StopIteration as r:
+        ret = r.value
+    assert ret == 434
