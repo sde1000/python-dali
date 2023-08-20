@@ -6,6 +6,7 @@ from dali.address import GearShort, GearBroadcast, \
     DeviceShort, DeviceBroadcast, InstanceNumber
 import dali.gear.general as gg
 import dali.device.general as dg
+import dali.device.sequences as ds
 from dali.gear import emergency
 from dali.gear import led
 from dali.sequences import QueryDeviceTypes, DALISequenceError
@@ -85,9 +86,9 @@ async def scan_control_devices(d):
         for instance in (InstanceNumber(x) for x in range(instances.value)):
             print(f" -{instance}- enabled: {await d.send(dg.QueryInstanceEnabled(addr, instance))}")
             print(f" -{instance}- type: {await d.send(dg.QueryInstanceType(addr, instance))}")
-            print(f" -{instance}- resolution: {await d.send(dg.QueryResolution(addr, instance))}")
-            print(f" -{instance}- value: {await d.send(dg.QueryInputValue(addr, instance))}")
-            # XXX read remaining bytes of value
+            resolution = await d.send(dg.QueryResolution(addr, instance))
+            print(f" -{instance}- resolution: {resolution}")
+            print(f" -{instance}- value: {await d.run_sequence(ds.query_input_value(addr, instance, resolution.value))}")
             print(f" -{instance}- feature type: {await d.send(dg.QueryFeatureType(addr, instance))}")
         #for b in (info.BANK_0, oem.BANK_1):
         #    try:
