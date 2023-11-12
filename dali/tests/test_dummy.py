@@ -23,7 +23,7 @@ from typing import NamedTuple
 import py
 import pytest
 
-from dali.driver.serial import DriverSerialBase, DriverLubaRs232, drivers_map
+from dali.driver.serial import DriverSerialBase, DriverLubaRs232, DriverSCIRS232, drivers_map
 from dali.tests.fakes_serial import DriverSerialDummy
 from dali import address, gear
 from dali.sequences import QueryDeviceTypes
@@ -81,6 +81,7 @@ def test_drivers_map():
     drivers = drivers_map()
     assert drivers["dummy"] == DriverSerialDummy
     assert drivers["luba232"] == DriverLubaRs232
+    assert drivers["scirs232"] == DriverSCIRS232
 
 
 def test_dummy_init_good(tmp_path):
