@@ -39,7 +39,6 @@ class DaliHatSerialDriver(DALIDriver):
             self.LOG.exception("Could not open serial connection: %s", e)
             self.conn = None
 
-
     def read_line(self):
         """Read the next line from the buffer, refilling the buffer if necessary."""
         with self.lock:
@@ -153,16 +152,3 @@ class SyncDaliHatDriver(DaliHatSerialDriver, SyncDALIDriver):
             if command.is_query:
                 return command.response(resp)
             return resp
-
-
-if __name__ == "__main__":
-    """Usage: python atxled.py address value"""
-    from dali.gear.general import DAPC
-
-    logging.basicConfig(level=logging.DEBUG)
-    serial_port = "/dev/ttyS0"
-    dali_driver = SyncDaliHatDriver()
-    command = DAPC(int(sys.argv[1]), int(sys.argv[2]))
-    response = dali_driver.send(command)
-    print("DALI response:", response)
-    dali_driver.close()
