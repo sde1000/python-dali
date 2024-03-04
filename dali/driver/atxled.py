@@ -1,15 +1,10 @@
 from dali.command import Command
 from dali.driver.base import SyncDALIDriver, DALIDriver
-from dali.frame import ForwardFrame, BackwardFrame
+from dali.frame import BackwardFrame
 import logging
 import sys
 
-# avoid import name collision with 'serial' driver
-original_sys_path = list(sys.path)
-sys.path = [p for p in sys.path if not p.endswith("python-dali/dali/driver")]
 import serial
-sys.path = original_sys_path
-
 import threading
 import time
 
@@ -29,6 +24,8 @@ class DaliHatSerialDriver(DALIDriver):
             self.LOG = logging.getLogger("AtxLedDaliDriver")
             handler = logging.StreamHandler(sys.stdout)
             self.LOG.addHandler(handler)
+        else:
+            self.LOG = LOG
         try:
             self.conn = serial.Serial(
                 port=self.port,
@@ -36,36 +33,18 @@ class DaliHatSerialDriver(DALIDriver):
                 parity=serial.PARITY_NONE,
                 stopbits=serial.STOPBITS_ONE,
                 bytesize=serial.EIGHTBITS,
-                timeout=.2,
+                timeout=0.2,
             )
         except Exception as e:
             self.LOG.exception("Could not open serial connection: %s", e)
             self.conn = None
 
-    def _read_line(self):
-        """Read a line from the serial connection."""
-        with self.lock:
-            line = ""
-            byte = self.conn.read(1).decode("ascii")
-            ct = 0
-            while byte != "\n":
-                if byte:
-                    ct = 0
-                    line += byte
-                    if len(line) > 30:
-                        raise RuntimeError("Got unexpected line: %s" % repr(line))
-                else:
-                    ct += 1
-                    if ct > 10:
-                        raise RuntimeError("Got incomplete packet: %s" % repr(line))
-                byte = self.conn.read(1).decode("ascii")
-            return line
 
     def read_line(self):
         """Read the next line from the buffer, refilling the buffer if necessary."""
         with self.lock:
             while not self.buffer:
-                line = self._read_line()
+                line = self.conn.read_until(b"\n").decode("ascii")
                 if not line:
                     return ""
                 self.buffer.append(line)
@@ -177,8 +156,7 @@ class SyncDaliHatDriver(DaliHatSerialDriver, SyncDALIDriver):
 
 
 if __name__ == "__main__":
-    """Usage: python atxled.py address value
-    """
+    """Usage: python atxled.py address value"""
     from dali.gear.general import DAPC
 
     logging.basicConfig(level=logging.DEBUG)

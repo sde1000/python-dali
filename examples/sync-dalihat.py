@@ -20,6 +20,7 @@ import logging
 
 LOG = logging.getLogger("DaliHatTest")
 
+
 class DaliHatTest:
     def __init__(self, driver: SyncDALIDriver):
         self.driver = driver
