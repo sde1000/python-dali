@@ -910,9 +910,29 @@ class DriverLubaRs232(DriverSerialBase):
                     f"Wrong event type 0x{self._buffer[1]:02x}, expected 0x21"
                 )
 
-            # QUERY DEVICE INFO supports two "sets" of data, this driver will
-            # only ever request set "0", so it is safe enough to assume that
-            # this is what the response refers to
+            # QUERY DEVICE INFO supports two "sets" of data, and the only way
+            # differentiate between them is to check for response length.
+            # When querying request set "0", response length should be 20 bytes,
+            # and for request set "1", response length should be 18 bytes.
+            # Currently this driver only ever requests set "0", therefore the
+            # harcoded response handling.
+            try:
+                payload_length = self._buffer[2]
+            except IndexError:
+                raise ValueError(
+                    f"Invalid data for QUERY DEVICE INFO response packet"
+                )
+
+            if payload_length not in [20, 18]:
+                raise ValueError(
+                    f"Unexpected payload length {payload_length} for QUERY DEVICE INFO response"
+                )
+
+            if payload_length == 18:
+                raise NotImplementedError(
+                    f"QUERY DEVICE INFO with set \"1\" is not yet implemented"
+                )
+
             info = DriverLubaRs232.LubaDeviceInfo(
                 gtin=int.from_bytes(bytes(received_data[3:9]), byteorder="big"),
                 id=int.from_bytes(bytes(received_data[9:17]), byteorder="big"),
