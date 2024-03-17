@@ -85,6 +85,8 @@ Library structure
 
     - ``serial`` - asyncio-based driver for Lunatone LUBA RS232 interfaces
 
+    - ``atxled`` - Driver for ATX LED SERIAL DALI HAT
+
   - ``exceptions`` - DALI related exceptions
 
   - ``frame`` - Forward and backward frames; stable
