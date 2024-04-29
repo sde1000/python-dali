@@ -73,7 +73,7 @@ class DeviceFakeError(fakes.Device):
     _device_status = 0b00000001
 
 
-def test_device_autodiscover_skip_bad(fakes_bus):
+def test_device_autodiscover_dont_skip_bad(fakes_bus):
     dev_inst_map = DeviceInstanceTypeMapper()
     # Add an extra fake device, one with an error bit set
     fakes_bus.gear.append(
@@ -86,8 +86,8 @@ def test_device_autodiscover_skip_bad(fakes_bus):
     assert rsp.input_device_error
 
     fakes_bus.run_sequence(dev_inst_map.autodiscover())
-    # The device in error mode shouldn't have had its instances counted
-    assert len(dev_inst_map.mapping) == 12
+    # The mere fact that a device has "inputDeviceError" set does not mean it is not usable
+    assert len(dev_inst_map.mapping) == 16
 
 
 class DeviceNoInstances(fakes.Device):
