@@ -127,8 +127,7 @@ class DeviceInstanceTypeMapper:
             if isinstance(rsp, QueryDeviceStatusResponse):
                 # Make sure the status is OK
                 if (
-                    rsp.input_device_error
-                    or rsp.short_address_is_mask
+                    rsp.short_address_is_mask
                     or rsp.reset_state
                 ):
                     continue
