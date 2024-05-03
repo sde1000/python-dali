@@ -1,12 +1,23 @@
 Changes
 =======
 
-0.11 (planned)
---------------
+0.11 (2024-05-03)
+-----------------
 
 - Frame exception updates; See below. The ``new_exceptions`` parameter
   has been removed from the ``Frame()`` constructor and the
   ``Frame.pack_len()`` method.
+
+- Method to control the power supply in the Lunatone DALI USB 30ma
+  added to ``dali.driver.hid.tridonic`` [mbecker]
+
+- Improved support for colour-control devices (device type 8) [jktjkt]
+
+- Driver for Lunatine SCI RS232 [opieters]
+
+- Driver for AL-DALI-HAT [rijimuge]
+
+- Bug fixes to input device support [jktjkt]
 
 Frame exception updates
 -----------------------
