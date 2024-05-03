@@ -1,3 +1,53 @@
+python-dali (0.11) unstable; urgency=low
+
+  * New release 0.11
+
+  * Prepare for next release
+
+  * DeviceInstanceMapper: do not skip devices with inputDeviceError
+
+  * Control Devices: respect "resolution" when reading "inputValue"
+
+  *     Add driver for Atx Led Dali Hat (AL-DALI-HAT). (#135)
+
+  * Add driver for Lunatune SCI RS232.
+
+  * tridonic: support sending 8-bit backward frames
+
+  * Remove obsolete examples
+
+  * hid: fix wrong variable name
+
+  * tridonic: Fix bus traffic dumping
+
+  * led: better printing of Part 207's Fast Fade Time
+
+  * examples: getting and setting a Tc for DT8 CCT LEDs
+
+  * led: DT8: a helper for conversion between K and Mirek for Tc
+
+  * led: DT8: a sequence for setting Tc limits
+
+  * led: DT8: fix a copy/paste error in SetDT8ColourValueTc
+
+  * led: DT8: configuration commands need sending twice
+
+  * recognize DT7 switching relays when querying device types
+
+  * led: DT8: recognize Colour Control device type when parsing a BackwardFrame
+
+  * Parse events from movement and light sensors by default
+
+  * hid: debugging: don't silently discard exception info
+
+  * Ability to switch on the DALI PS in Lunatone DALI USB 30mA
+
+  * Include python 3.11 in tests
+
+  * Frame exceptions: remove new_exceptions parameter
+
+ -- Stephen Early <steve@assorted.org.uk>  Fri, 03 May 2024 12:49:40 +0100
+
 python-dali (0.10) unstable; urgency=low
 
   * New release 0.10
