@@ -590,13 +590,29 @@ class DriverLubaRs232(DriverSerialBase):
             async with self._tx_lock:
                 _LOG.debug("Sending LUBA device settings")
                 mode_settings = 0b00000000
+                # 7: 1 = activates the DALI ping
+                # 6: 1 = Deactivates sending of DALI frames during "Initialize" mode
+                # 5: 1 = Deactivates sending of DALI frames during "Quiescent" mode
+                # 4..0: Reserved
                 event_settings = 0b00010010
+                # 7: 1 = deactivates all events
+                # 6: 1 = deactivates events for successfully sending a DALI frame
+                # 5: 1 = deactivates events for receiving a DALI frame
+                # 4: 1 = deactivate events for the send-buffer (full/empty)
+                # 3: 1 = deactivates including the tick in events
+                # 2: 1 = deactivates including the line number in events
+                # 1: 1 = Deactivates events for macros
+                # 0: reserved
+                hardware_settings = 0b00000000
+                # 7: 1 = turn on bus power supply
+                # 6..0: Reserved
                 tx_ints = [
                     0x59,  # ASCII 'Y'
                     DriverLubaRs232.LubaCmd.READ_WRITE_SETTINGS_CMD.value,  # LUBA Command
-                    2,  # Length
+                    3,  # Length
                     mode_settings,
                     event_settings,
+                    hardware_settings,
                     None,  # Checksum
                 ]
                 # Fill in the checksum
