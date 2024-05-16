@@ -590,13 +590,29 @@ class DriverLubaRs232(DriverSerialBase):
             async with self._tx_lock:
                 _LOG.debug("Sending LUBA device settings")
                 mode_settings = 0b00000000
+                # 7: 1 = activates the DALI ping
+                # 6: 1 = Deactivates sending of DALI frames during "Initialize" mode
+                # 5: 1 = Deactivates sending of DALI frames during "Quiescent" mode
+                # 4..0: Reserved
                 event_settings = 0b00010010
+                # 7: 1 = deactivates all events
+                # 6: 1 = deactivates events for successfully sending a DALI frame
+                # 5: 1 = deactivates events for receiving a DALI frame
+                # 4: 1 = deactivate events for the send-buffer (full/empty)
+                # 3: 1 = deactivates including the tick in events
+                # 2: 1 = deactivates including the line number in events
+                # 1: 1 = Deactivates events for macros
+                # 0: reserved
+                hardware_settings = 0b00000000
+                # 7: 1 = turn on bus power supply
+                # 6..0: Reserved
                 tx_ints = [
                     0x59,  # ASCII 'Y'
                     DriverLubaRs232.LubaCmd.READ_WRITE_SETTINGS_CMD.value,  # LUBA Command
-                    2,  # Length
+                    3,  # Length
                     mode_settings,
                     event_settings,
+                    hardware_settings,
                     None,  # Checksum
                 ]
                 # Fill in the checksum
@@ -910,9 +926,29 @@ class DriverLubaRs232(DriverSerialBase):
                     f"Wrong event type 0x{self._buffer[1]:02x}, expected 0x21"
                 )
 
-            # QUERY DEVICE INFO supports two "sets" of data, this driver will
-            # only ever request set "0", so it is safe enough to assume that
-            # this is what the response refers to
+            # QUERY DEVICE INFO supports two "sets" of data, and the only way
+            # differentiate between them is to check for response length.
+            # When querying request set "0", response length should be 20 bytes,
+            # and for request set "1", response length should be 18 bytes.
+            # Currently this driver only ever requests set "0", therefore the
+            # harcoded response handling.
+            try:
+                payload_length = self._buffer[2]
+            except IndexError:
+                raise ValueError(
+                    f"Invalid data for QUERY DEVICE INFO response packet"
+                )
+
+            if payload_length not in [20, 18]:
+                raise ValueError(
+                    f"Unexpected payload length {payload_length} for QUERY DEVICE INFO response"
+                )
+
+            if payload_length == 18:
+                raise NotImplementedError(
+                    f"QUERY DEVICE INFO with set \"1\" is not yet implemented"
+                )
+
             info = DriverLubaRs232.LubaDeviceInfo(
                 gtin=int.from_bytes(bytes(received_data[3:9]), byteorder="big"),
                 id=int.from_bytes(bytes(received_data[9:17]), byteorder="big"),
