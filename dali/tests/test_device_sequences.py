@@ -23,6 +23,7 @@ from dali.device.sequences import (
     SetEventFilters,
     SetEventSchemes,
     query_input_value,
+    Commissioning,
 )
 from dali.frame import BackwardFrame, BackwardFrameError
 from dali.tests import fakes
@@ -363,3 +364,39 @@ def test_query_input_values_10bit():
     except StopIteration as r:
         ret = r.value
     assert ret == 434
+
+def _check_addresses(devices, expected=None):
+    if expected is None:
+        expected = list(range(len(devices)))
+    addresses = [g.shortaddr_int for g in devices]
+    addresses.sort()
+    assert addresses == expected
+
+def test_commissioning():
+    devices = [fakes.Device() for _ in range(10)]
+    bus = fakes.Bus(devices)
+    bus.run_sequence(Commissioning())
+    _check_addresses(devices)
+
+def test_commissioning_readdress():
+    devices = [fakes.Device(DeviceShort(x + 5)) for x in range(10)]
+    bus = fakes.Bus(devices)
+    bus.run_sequence(Commissioning(readdress=True))
+    _check_addresses(devices)
+
+def test_commissioning_partial():
+    addresses = [DeviceShort(x) if x & 1 else None for x in range(10)]
+    devices = [fakes.Device(address) for address in addresses]
+    bus = fakes.Bus(devices)
+    bus.run_sequence(Commissioning())
+    _check_addresses(devices)
+
+def test_commissioning_clash():
+    # (At least) one of the devices is going to pick the same
+    # "random" number as another the first time around!
+    randoms = list(range(0, 0xffffff, 0x82000))
+    randoms[8] = randoms[4]
+    gear = [fakes.Device(random_preload=[x]) for x in randoms]
+    bus = fakes.Bus(gear)
+    bus.run_sequence(Commissioning())
+    _check_addresses(gear)
