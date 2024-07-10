@@ -69,6 +69,7 @@ def QueryDT8ColourValue(
             "'query' must be a value from QueryColourValueDTR enumerator"
         )
 
+    # 62386-209, command 250, Note 2: start by sending "QUERY ACTUAL LEVEL"
     yield QueryActualLevel(address)
     yield DTR0(query.value)
     msb = yield QueryColourValue(address)
