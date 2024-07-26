@@ -7,8 +7,7 @@ from dali.address import GearShort, GearBroadcast, \
 import dali.gear.general as gg
 import dali.device.general as dg
 import dali.device.sequences as ds
-from dali.gear import emergency
-from dali.gear import led
+from dali.gear import emergency, led, converter
 from dali.sequences import QueryDeviceTypes, DALISequenceError
 from dali.driver.hid import tridonic, hasseb
 from dali.memory import *
@@ -48,6 +47,17 @@ async def scan_control_gear(d):
             print(f" -E- battery charge: {r}")
             r = await d.send(emergency.QueryRatedDuration(addr))
             print(f" -E- rated duration: {r} * 2")
+        if 5 in device_types:
+            r = await d.send(converter.QueryConverterFeatures(addr))
+            print(f" -0-10V- {r}")
+            r = await d.send(converter.QueryConverterStatus(addr))
+            print(f" -0-10V- {r}")
+            r = await d.send(converter.QueryFailureStatus(addr))
+            print(f" -0-10V- {r}")
+            r = await d.send(converter.QueryDimmingCurve(addr))
+            print(f" -0-10V- dimming curve: {r.raw_value.as_integer}")
+            r = await d.send(converter.QueryOutputLevel(addr))
+            print(f" -0-10V- output level: {r}")
         if 6 in device_types:
             r = await d.send(led.QueryGearType(addr))
             print(f" -LED- {r}")
