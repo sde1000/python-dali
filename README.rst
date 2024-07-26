@@ -22,6 +22,7 @@ This library has been written with reference to the following documents:
 - IEC 62386-202:2009 (self-contained emergency lighting)
 - IEC 62386-205:2009 (supply voltage controller for incandescent lamps)
 - IEC 62386-207:2009 (LED modules)
+- IEC 62386-209:2012 (colour control)
 - IEC 62386-301:2017 (particular requirements for push button input devices)
 - IEC 62386-303:2017 (particular requirements for occupancy sensor input devices)
 
