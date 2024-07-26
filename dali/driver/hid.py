@@ -567,6 +567,11 @@ class tridonic(hid):
                                         current_command)
                         self.bus_traffic._invoke(current_command, None, True)
                         current_command = None
+                    elif frame == "no":
+                        self._log.warning("No frame in response to a sendtwice command: %s", current_command)
+                        self.bus_traffic._invoke(current_command, None, True)
+                        current_command = None
+                        continue
                     else:
                         self._log.error("Unexpected response waiting for retransmit of config command, frame = %s", frame)
                 elif current_command.response:
