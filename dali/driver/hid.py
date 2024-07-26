@@ -518,7 +518,7 @@ class tridonic(hid):
                 self._log.debug("bus_watch message %s", _hex(message[0:9]))
                 origin, rtype, raw_frame, interval, seq = self._resptmpl.unpack(message)
                 if origin not in (self._MODE_OBSERVE, self._MODE_RESPONSE):
-                    self._log.debug("bus_watch: unexpected packet mode, ignoring")
+                    self._log.warning("bus_watch: unexpected packet mode, ignoring")
                     continue
                 if rtype == self._RESPONSE_FRAME_DALI16:
                     frame = dali.frame.ForwardFrame(16, raw_frame)
@@ -545,7 +545,7 @@ class tridonic(hid):
                     # We are waiting for a repeat of the command
                     if timeout:
                         # We didn't get it: report a failed command
-                        self._log.debug("Failed sendtwice command: %s", current_command)
+                        self._log.warning("Failed sendtwice command: %s", current_command)
                         self.bus_traffic._invoke(current_command, None, True)
                         current_command = None
                         continue
@@ -557,18 +557,18 @@ class tridonic(hid):
                             current_command = None
                             continue
                         else:
-                            self._log.debug("Failed config command (second frame didn't match): %s", current_command)
+                            self._log.warning("Failed config command (second frame didn't match): %s", current_command)
                             self.bus_traffic._invoke(current_command, None, True)
                             current_command = None
                             # Fall through to continue processing frame
                     elif isinstance(frame, dali.frame.BackwardFrame):
                         # Error: config commands don't get backward frames.
-                        self._log.debug("Failed config command %s with backward frame",
+                        self._log.error("Failed config command %s with backward frame",
                                         current_command)
                         self.bus_traffic._invoke(current_command, None, True)
                         current_command = None
                     else:
-                        self._log.debug("Unexpected response waiting for retransmit of config command")
+                        self._log.error("Unexpected response waiting for retransmit of config command, frame = %s", frame)
                 elif current_command.response:
                     # We are waiting for a response
                     if timeout or frame == "no":
