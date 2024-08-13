@@ -19,3 +19,4 @@
 /debian/files
 /debian/python3-dali*
 /debian/.debhelper
+/.venv/

@@ -9,7 +9,7 @@ from dali.gear.colour import tc_kelvin_mirek, QueryColourValueDTR, QueryColourSt
 from dali.gear.general import QueryControlGearPresent, QueryActualLevel
 from dali.gear.led import QueryDimmingCurve
 from dali.gear.sequences import SetDT8ColourValueTc, SetDT8TcLimit, QueryDT8ColourValue
-from dali.driver.hid import tridonic
+from dali.driver.hid import tridonic, hasseb
 from dali.sequences import QueryDeviceTypes, DALISequenceError
 
 def print_command_and_response(dev, command, response, config_command_error):
@@ -62,7 +62,8 @@ async def scan_control_gear(d, detailed):
                 print(f"{addr}: {arc_power:.01f}%, Tc {tc_kelvin_mirek(tc)}K{tc_detailed_info}")
 
 async def main():
-    d = tridonic("/dev/dali/daliusb-*", glob=True)
+    # d = tridonic("/dev/dali/daliusb-*", glob=True)
+    d = hasseb("/dev/dali/hasseb-*", glob=True)
 
     if len(sys.argv) < 2:
         show_usage()

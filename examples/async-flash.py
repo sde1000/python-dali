@@ -8,8 +8,8 @@ from dali.address import Broadcast, Short
 
 async def main():
     # Edit to pick a device type.
-    dev = tridonic("/dev/dali/daliusb-*", glob=True)
-    #dev = hasseb("/dev/dali/hasseb-*", glob=True)
+    # dev = tridonic("/dev/dali/daliusb-*", glob=True)
+    dev = hasseb("/dev/dali/hasseb-*", glob=True)
     dev.connect()
     print("Waiting to be connected...")
     await dev.connected.wait()

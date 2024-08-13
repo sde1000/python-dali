@@ -563,7 +563,7 @@ class tridonic(hid):
                             # Fall through to continue processing frame
                     elif isinstance(frame, dali.frame.BackwardFrame):
                         # Error: config commands don't get backward frames.
-                        self._log.error("Failed config command %s with backward frame",
+                        self._log.debug("Failed config command %s with backward frame",
                                         current_command)
                         self.bus_traffic._invoke(current_command, None, True)
                         current_command = None
@@ -702,10 +702,19 @@ class hasseb(hid):
     will deadlock.
     """
     _cmdtmpl = struct.Struct("BB")
-    _NO_DATA_AVAILABLE = 0
-    _NO_ANSWER = 1
-    _OK = 2
-    _INVALID_ANSWER = 3
+
+    _HASSEB_READ_FIRMWARE_VERSION    = 0x02
+    _HASSEB_DALI_FRAME               = 0X07
+
+    _sn = 0
+
+    _HASSEB_DRIVER_NO_DATA_AVAILABLE = 0
+    _HASSEB_DRIVER_NO_ANSWER = 1
+    _HASSEB_DRIVER_OK = 2
+    _HASSEB_DRIVER_INVALID_ANSWER = 3
+    _HASSEB_DRIVER_TOO_EARLY = 4
+    _HASSEB_DRIVER_SNIFFER_BYTE = 5
+    _HASSEB_DRIVER_SNIFFER_BYTE_ERROR = 6
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -714,40 +723,72 @@ class hasseb(hid):
         self._response_available = asyncio.Event()
         self._response = None
 
+    def _initialise_device(self):
+        self._sn+=1
+        if self._sn > 255:
+            self._sn = 1
+        # Read firmware version; pick up the reply in _handle_read
+        data = struct.pack('BBBBBBBBBB', 0xAA, self._HASSEB_READ_FIRMWARE_VERSION,
+                            self._sn, 0, 0, 0, 0, 0, 0, 0)
+        os.write(self._f, data)
+      
+    def _construct(self, command):
+        # sequence number
+        self._sn+=1
+        if self._sn > 255:
+            self._sn = 1
+        frame_length = 16
+        if command.is_query:
+            expect_reply = 1
+        else:
+            expect_reply = 0
+        transmitter_settling_time = 0
+        if command.sendtwice:
+            send_twice = 10 # 10 ms delay between messages
+        else:
+            send_twice = 0
+        frame = command.frame.as_byte_sequence
+        byte_a, byte_b = frame
+        data = struct.pack('BBBBBBBBBB', 0xAA, self._HASSEB_DALI_FRAME, self._sn,
+                           frame_length, expect_reply,
+                           transmitter_settling_time, send_twice,
+                           byte_a, byte_b,
+                           0)
+        return data
+
+
     async def _send_raw(self, command):
         frame = command.frame
         if len(frame) != 16:
             raise UnsupportedFrameTypeError
         await self.connected.wait()
         async with self._command_lock:
-            times = 2 if command.sendtwice else 1
-            for rep in range(times):
-                os.write(self._f, frame.pack_len(2))
+            data = self._construct(command)
+            os.write(self._f, data)
             # Earlier commands may have left a response available that
             # we need to ignore.  We're only interested in responses
             # that become available in the future.
             self._response_available.clear()
             response = None
             if command.response:
-                # The hasseb device appears to have an internal table
-                # of which commands require responses.  If a command
-                # does not require a response, it won't reply to us at
-                # all.  Only wait for a reply if one is needed.
-                #
-                # NB there is NO WAY that this can be reliable: it
-                # won't understand commands from IEC-62386 part 202,
-                # for example.
+            #     # The hasseb device appears to have an internal table
+            #     # of which commands require responses.  If a command
+            #     # does not require a response, it won't reply to us at
+            #     # all.  Only wait for a reply if one is needed.
+            #     #
+            #     # NB there is NO WAY that this can be reliable: it
+            #     # won't understand commands from IEC-62386 part 202,
+            #     # for example.
                 await self._response_available.wait()
                 self._response_available.clear()
                 if self._response == "fail":
                     raise CommunicationError
-                elif self._response[0] == self._NO_ANSWER:
+                elif self._response[3] == self._HASSEB_DRIVER_NO_ANSWER:
                     response = command.response(None)
-                elif self._response[0] == self._OK:
-                    response = command.response(dali.frame.BackwardFrame(self._response[1]))
-                elif self._response[0] == self._INVALID_ANSWER:
-                    response = command._response(dali.frame.BackwardFrameError(
-                        self._response[1]))
+                elif self._response[3] == self._HASSEB_DRIVER_OK and data[4] == 1:
+                    response = command.response(dali.frame.BackwardFrame(self._response[5]))
+                elif self._response[3] == self._HASSEB_DRIVER_INVALID_ANSWER:
+                    response = command._response(dali.frame.BackwardFrameError(255))
                 else:
                     self._log.debug("Unknown response code %x", self._response[0])
 
@@ -758,9 +799,18 @@ class hasseb(hid):
         # Response should be two bytes.  First byte is status, second
         # byte is optional response data.  The hasseb appears to send
         # "NO DATA AVAILABLE" reports continuously when it is idle.
-        if data[0] != self._NO_DATA_AVAILABLE:
-            self._response = data
-            self._response_available.set()
+        
+        if len(data)==10:
+            if data[1] == self._HASSEB_DRIVER_NO_DATA_AVAILABLE:
+                return None
+            if data[1] == self._HASSEB_READ_FIRMWARE_VERSION:
+                # print(f"{data[3]}.{data[4]}")
+                self.firmware_version = f"{data[3]}.{data[4]}"
+                self.connected.set()
+            elif data[1] == self._HASSEB_DALI_FRAME:
+                self._response = data
+                self._response_available.set()
+        
 
     def _shutdown_device(self):
         # If there's a command in progress, tell it it's failed
