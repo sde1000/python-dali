@@ -447,7 +447,7 @@ class tridonic(hid):
             response = None
             while outstanding_transmissions or response is None:
                 self._log.debug(f"waiting for {outstanding_transmissions=} "
-                                "{response=}")
+                                f"{response=!s}")
                 if len(messages) == 0:
                     await event.wait()
                     event.clear()
