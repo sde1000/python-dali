@@ -498,13 +498,13 @@ class tridonic(hid):
             # Wait for data
             if len(self._bus_watch_data) == 0:
                 if current_command:
-                    self._log.debug("Bus watch waiting with timeout")
+                    self._log.debug("bus_watch waiting with timeout")
                     try:
                         await asyncio.wait_for(self._bus_watch_data_available.wait(), 0.2)
                     except asyncio.TimeoutError:
                         pass
                 else:
-                    self._log.debug("Bus watch waiting for data, no timeout")
+                    self._log.debug("bus_watch waiting for data, no timeout")
                     await self._bus_watch_data_available.wait()
                 self._bus_watch_data_available.clear()
 
