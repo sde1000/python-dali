@@ -332,6 +332,8 @@ class tridonic(hid):
     # Responses received from the interface
     # Decodes to mode, response type, frame, interval, seq
     _resptmpl = struct.Struct(">BB4sHB55x")
+    # length of the "useful part", without the trailing padding
+    _resptmpl_useful_size = _resptmpl.size - 55
     _MODE_INFO = 0x01 # Response to an init command
     _MODE_OBSERVE = 0x11 # Other traffic observed on the bus
     _MODE_RESPONSE = 0x12 # Response to a send command
@@ -515,7 +517,7 @@ class tridonic(hid):
             else:
                 timeout = False
                 message = self._bus_watch_data.pop(0)
-                self._log.debug("bus_watch message %s", _hex(message[0:9]))
+                self._log.debug("bus_watch message %s", _hex(message[0:self._resptmpl_useful_size]))
                 origin, rtype, raw_frame, interval, seq = self._resptmpl.unpack(message)
                 if origin not in (self._MODE_OBSERVE, self._MODE_RESPONSE):
                     self._log.warning("bus_watch: unexpected packet mode, ignoring")
@@ -625,7 +627,7 @@ class tridonic(hid):
             # self._log.debug("End of loop")
 
     def _handle_read(self, data):
-        self._log.debug("_handle_read %s", _hex(data[0:9]))
+        self._log.debug("_handle_read %s", _hex(data[0:self._resptmpl_useful_size]))
         if data[0] == self._MODE_INFO:
             # Response to initialisation command
             if not self.firmware_version:
