@@ -293,6 +293,8 @@ class tridonic(hid):
     # Commands sent to the interface
     # cmd, seq, ctrl, mode, frame (4 bytes), dtr, prio, devtype
     _cmdtmpl = struct.Struct(">4B4s3B53x")
+    # length of the "useful part", without the trailing padding
+    _cmdtmpl_useful_size = _cmdtmpl.size - 53
 
     # _CMD send in byte 0
     _CMD_INIT = 0x01
@@ -386,9 +388,13 @@ class tridonic(hid):
         self._bus_watch_data_available = asyncio.Event()
         self._bus_watch_data = []
 
+    def _raw_write(self, buf: bytes):
+        self._log.debug(f"_raw_write: {_hex(buf[0:self._cmdtmpl_useful_size])}")
+        os.write(self._f, buf)
+
     def _initialise_device(self):
         # Read firmware version; pick up the reply in _handle_read
-        os.write(self._f, self._cmd(
+        self._raw_write(self._cmd(
             tridonic._CMD_INIT, tridonic._CMD_INIT_READVERSION))
 
     async def _power_supply(self, supply_on):
@@ -398,7 +404,7 @@ class tridonic(hid):
                 self._POWER_SUPPLY_ON if supply_on else self._POWER_SUPPLY_OFF)
 
             try:
-                os.write(self._f, data)
+                self._raw_write(data)
             except OSError:
                 # The device has failed.  Disconnect, schedule a
                 # reconnection, and report this command as failed.
@@ -437,7 +443,7 @@ class tridonic(hid):
                 mode=self._command_mode(frame),
                 frame=frame.pack_len(4))
             try:
-                os.write(self._f, data)
+                self._raw_write(data)
             except OSError:
                 # The device has failed.  Disconnect, schedule a
                 # reconnection, and report this command as failed.
@@ -633,7 +639,7 @@ class tridonic(hid):
             if not self.firmware_version:
                 self.firmware_version = f"{data[3]}.{data[4]}"
                 # Now read the serial number
-                os.write(self._f, self._cmd(
+                self._raw_write(self._cmd(
                     tridonic._CMD_INIT, tridonic._CMD_INIT_READSERIAL))
             elif not self.serial:
                 self.serial = _hex(data[1:5])
@@ -724,7 +730,7 @@ class hasseb(hid):
         async with self._command_lock:
             times = 2 if command.sendtwice else 1
             for rep in range(times):
-                os.write(self._f, frame.pack_len(2))
+                self._raw_write(frame.pack_len(2))
             # Earlier commands may have left a response available that
             # we need to ignore.  We're only interested in responses
             # that become available in the future.
