@@ -457,8 +457,14 @@ class tridonic(hid):
                 self._log.debug(f"_send_raw waiting for {outstanding_transmissions=} "
                                 f"{response=!s}")
                 if len(messages) == 0:
-                    await event.wait()
-                    event.clear()
+                    try:
+                        await asyncio.wait_for(event.wait(), timeout=0.2)
+                    except TimeoutError:
+                        self._log.error(f"_send_raw timed out {seq=:02x}, faking an error response")
+                        response = dali.frame.BackwardFrameError(255)
+                        break
+                    finally:
+                        event.clear()
                 message = messages.pop(0)
                 if message == "fail":
                     # The device has gone away, possibly in the middle
