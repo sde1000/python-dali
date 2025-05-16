@@ -429,7 +429,7 @@ class tridonic(hid):
         await self.connected.wait()
         async with self._command_semaphore:
             seq = next(self._cmd_seq)
-            self._log.debug("Sending with seq %x", seq)
+            self._log.debug(f"Sending with {seq=:02x}")
             event = asyncio.Event()
             messages = []
             # If seq is in self._outstanding this means we've wrapped
@@ -482,7 +482,7 @@ class tridonic(hid):
                 elif rtype == self._RESPONSE_NO_FRAME:
                     response = "no"
                 else:
-                    self._log.debug(f"didn't understand {rtype=}")
+                    self._log.debug(f"didn't understand {rtype=:02x}")
             del self._outstanding[seq], event, messages
             if command.response:
                 # Construct response and return it
