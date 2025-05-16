@@ -469,7 +469,7 @@ class tridonic(hid):
                 # The message mode is guaranteed to be _MODE_RESPONSE
                 mode, rtype, frame, interval, seq = self._resptmpl.unpack(
                     message)
-                self._log.debug(f"message mode={mode:02x} rtype={rtype:02x} frame={frame} interval={interval:04x} seq={seq:02x}")
+                self._log.debug(f"_send_raw got message: {mode=:02x} {rtype=:02x} frame={_hex(frame)} {interval=:04x} {seq=:02x}")
                 if rtype in (self._RESPONSE_FRAME_DALI16,
                              self._RESPONSE_FRAME_DALI24):
                     # XXX check the frame contents?
