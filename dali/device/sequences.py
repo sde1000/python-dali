@@ -6,27 +6,40 @@ from __future__ import annotations
 import types
 from typing import Generator, Optional, Type
 
-from dali.address import DeviceShort, InstanceNumber
+from dali.address import DeviceShort, InstanceNumber, DeviceBroadcast, DeviceBroadcastUnaddressed
 from dali.command import Command, Response
 from dali.device.general import (
+    Compare,
     DTR0,
     DTR1,
     DTR2,
     EventScheme,
+    Initialise,
     InstanceEventFilter,
-    QueryResolution,
-    QueryInputValue,
-    QueryInputValueLatch,
+    ProgramShortAddress,
+    QueryDeviceStatus,
     QueryEventFilterH,
     QueryEventFilterL,
     QueryEventFilterM,
     QueryEventScheme,
     QueryEventSchemeResponse,
+    QueryInputValue,
+    QueryInputValueLatch,
+    QueryResolution,
+    Randomise,
+    SearchAddrH,
+    SearchAddrL,
+    SearchAddrM,
     SetEventFilter,
     SetEventScheme,
+    SetShortAddress,
+    Terminate,
+    VerifyShortAddress,
+    Withdraw,
 )
 from dali.device.helpers import check_bad_rsp
-from dali.exceptions import DALISequenceError
+from dali.exceptions import DALISequenceError, ProgramShortAddressFailure
+from dali.sequences import progress, sleep
 
 
 def SetEventSchemes(
@@ -275,3 +288,113 @@ def query_input_value(
         value >>= 8 - resolution
 
     return value
+
+def _find_next(low, high):
+    yield SearchAddrH((high >> 16) & 0xff)
+    yield SearchAddrM((high >> 8) & 0xff)
+    yield SearchAddrL(high & 0xff)
+
+    r = yield Compare()
+
+    if low == high:
+        if r.value is True:
+            return "clash" if r.raw_value.error else low
+        return
+
+    if r.value is True:
+        midpoint = (low + high) // 2
+        res = yield from _find_next(low, midpoint)
+        if res is not None:
+            return res
+        return (yield from _find_next(midpoint + 1, high))
+
+
+def Commissioning(available_addresses=None, readdress=False,
+                  dry_run=False):
+    """Assign short addresses to control gear
+
+    If available_addresses is passed, only the specified addresses
+    will be assigned; otherwise all short addresses are considered to
+    be available.
+
+    if "readdress" is set, all existing short addresses will be
+    cleared; otherwise, only control gear that is currently
+    unaddressed will have short addresses assigned.
+
+    If "dry_run" is set then no short addresses will actually be set.
+    This can be useful for testing.
+    """
+    if available_addresses is None:
+        available_addresses = list(range(64))
+    else:
+        available_addresses = list(available_addresses)
+
+    if readdress:
+        if dry_run:
+            yield progress(message="dry_run is set: not deleting existing "
+                           "short addresses")
+        else:
+            yield DTR0(255)
+            yield SetShortAddress(DeviceBroadcast())
+    else:
+        # We need to know which short addresses are already in use
+        for a in range(0, 64):
+            if a in available_addresses:
+                in_use = yield QueryDeviceStatus(DeviceShort(a))
+                if in_use.raw_value is not None:
+                    available_addresses.remove(a)
+        yield progress(
+            message=f"Available addresses: {available_addresses}")
+
+    yield Terminate()
+    yield Initialise(0xff if readdress else 0x7f)
+
+    finished = False
+    # We loop here to cope with multiple devices picking the same
+    # random search address; when we discover that, we
+    # re-randomise and begin again.  Devices that have already
+    # received addresses are unaffected.
+    while not finished:
+        yield Randomise()
+        # Randomise can take up to 100ms
+        yield sleep(0.1)
+
+        low = 0
+        high = 0xffffff
+
+        while low is not None:
+            yield progress(completed=low, size=high)
+            low = yield from _find_next(low, high)
+            if low == "clash":
+                yield progress(message="Multiple ballasts picked the same "
+                               "random address; restarting")
+                break
+            if low is None:
+                finished = True
+                break
+            yield progress(
+                message=f"Ballast found at address {low:#x}")
+            if available_addresses:
+                new_addr = available_addresses.pop(0)
+                if dry_run:
+                    yield progress(
+                        message="Not programming short address "
+                        f"{new_addr} because dry_run is set")
+                else:
+                    yield progress(
+                        message=f"Programming short address {new_addr}")
+                    yield ProgramShortAddress(new_addr)
+                    r = yield VerifyShortAddress(new_addr)
+                    if r.value is not True:
+                        raise ProgramShortAddressFailure(new_addr)
+            else:
+                yield progress(
+                    message="Device found but no short addresses left")
+            yield Withdraw()
+            if low < high:
+                low = low + 1
+            else:
+                low = None
+                finished = True
+    yield Terminate()
+    yield progress(message="Addressing complete")
