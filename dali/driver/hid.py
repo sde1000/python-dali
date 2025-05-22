@@ -293,6 +293,8 @@ class tridonic(hid):
     # Commands sent to the interface
     # cmd, seq, ctrl, mode, frame (4 bytes), dtr, prio, devtype
     _cmdtmpl = struct.Struct(">4B4s3B53x")
+    # length of the "useful part", without the trailing padding
+    _cmdtmpl_useful_size = _cmdtmpl.size - 53
 
     # _CMD send in byte 0
     _CMD_INIT = 0x01
@@ -332,6 +334,8 @@ class tridonic(hid):
     # Responses received from the interface
     # Decodes to mode, response type, frame, interval, seq
     _resptmpl = struct.Struct(">BB4sHB55x")
+    # length of the "useful part", without the trailing padding
+    _resptmpl_useful_size = _resptmpl.size - 55
     _MODE_INFO = 0x01 # Response to an init command
     _MODE_OBSERVE = 0x11 # Other traffic observed on the bus
     _MODE_RESPONSE = 0x12 # Response to a send command
@@ -384,9 +388,13 @@ class tridonic(hid):
         self._bus_watch_data_available = asyncio.Event()
         self._bus_watch_data = []
 
+    def _raw_write(self, buf: bytes):
+        self._log.debug(f"_raw_write: {_hex(buf[0:self._cmdtmpl_useful_size])}")
+        os.write(self._f, buf)
+
     def _initialise_device(self):
         # Read firmware version; pick up the reply in _handle_read
-        os.write(self._f, self._cmd(
+        self._raw_write(self._cmd(
             tridonic._CMD_INIT, tridonic._CMD_INIT_READVERSION))
 
     async def _power_supply(self, supply_on):
@@ -396,7 +404,7 @@ class tridonic(hid):
                 self._POWER_SUPPLY_ON if supply_on else self._POWER_SUPPLY_OFF)
 
             try:
-                os.write(self._f, data)
+                self._raw_write(data)
             except OSError:
                 # The device has failed.  Disconnect, schedule a
                 # reconnection, and report this command as failed.
@@ -421,7 +429,7 @@ class tridonic(hid):
         await self.connected.wait()
         async with self._command_semaphore:
             seq = next(self._cmd_seq)
-            self._log.debug("Sending with seq %x", seq)
+            self._log.debug(f"Sending with {seq=:02x}")
             event = asyncio.Event()
             messages = []
             # If seq is in self._outstanding this means we've wrapped
@@ -435,7 +443,7 @@ class tridonic(hid):
                 mode=self._command_mode(frame),
                 frame=frame.pack_len(4))
             try:
-                os.write(self._f, data)
+                self._raw_write(data)
             except OSError:
                 # The device has failed.  Disconnect, schedule a
                 # reconnection, and report this command as failed.
@@ -446,11 +454,17 @@ class tridonic(hid):
             outstanding_transmissions = 2 if command.sendtwice else 1
             response = None
             while outstanding_transmissions or response is None:
-                self._log.debug(f"waiting for {outstanding_transmissions=} "
-                                "{response=}")
+                self._log.debug(f"_send_raw waiting for {outstanding_transmissions=} "
+                                f"{response=!s}")
                 if len(messages) == 0:
-                    await event.wait()
-                    event.clear()
+                    try:
+                        await asyncio.wait_for(event.wait(), timeout=0.2)
+                    except TimeoutError:
+                        self._log.error(f"_send_raw timed out {seq=:02x}, faking an error response")
+                        response = dali.frame.BackwardFrameError(255)
+                        break
+                    finally:
+                        event.clear()
                 message = messages.pop(0)
                 if message == "fail":
                     # The device has gone away, possibly in the middle
@@ -461,11 +475,12 @@ class tridonic(hid):
                 # The message mode is guaranteed to be _MODE_RESPONSE
                 mode, rtype, frame, interval, seq = self._resptmpl.unpack(
                     message)
-                self._log.debug(f"message mode={mode:02x} rtype={rtype:02x} frame={frame} interval={interval:04x} seq={seq:02x}")
+                self._log.debug(f"_send_raw got message: {mode=:02x} {rtype=:02x} frame={_hex(frame)} {interval=:04x} {seq=:02x}")
                 if rtype in (self._RESPONSE_FRAME_DALI16,
                              self._RESPONSE_FRAME_DALI24):
                     # XXX check the frame contents?
                     outstanding_transmissions -= 1
+                    self._log.debug(f"_send_raw rtype DALI16 or DALI24, new {outstanding_transmissions=}")
                 elif rtype == self._RESPONSE_FRAME_DALI8:
                     response = dali.frame.BackwardFrame(frame)
                 elif rtype == self._RESPONSE_INFO \
@@ -474,7 +489,8 @@ class tridonic(hid):
                 elif rtype == self._RESPONSE_NO_FRAME:
                     response = "no"
                 else:
-                    self._log.debug(f"didn't understand {rtype=}")
+                    self._log.debug(f"didn't understand {rtype=:02x}")
+            self._log.debug(f"_send_raw finished {seq=:02x}")
             del self._outstanding[seq], event, messages
             if command.response:
                 # Construct response and return it
@@ -498,13 +514,13 @@ class tridonic(hid):
             # Wait for data
             if len(self._bus_watch_data) == 0:
                 if current_command:
-                    self._log.debug("Bus watch waiting with timeout")
+                    self._log.debug("bus_watch waiting with timeout")
                     try:
                         await asyncio.wait_for(self._bus_watch_data_available.wait(), 0.2)
                     except asyncio.TimeoutError:
                         pass
                 else:
-                    self._log.debug("Bus watch waiting for data, no timeout")
+                    self._log.debug("bus_watch waiting for data, no timeout")
                     await self._bus_watch_data_available.wait()
                 self._bus_watch_data_available.clear()
 
@@ -515,7 +531,7 @@ class tridonic(hid):
             else:
                 timeout = False
                 message = self._bus_watch_data.pop(0)
-                self._log.debug("bus_watch message %s", _hex(message[0:9]))
+                self._log.debug("bus_watch message %s", _hex(message[0:self._resptmpl_useful_size]))
                 origin, rtype, raw_frame, interval, seq = self._resptmpl.unpack(message)
                 if origin not in (self._MODE_OBSERVE, self._MODE_RESPONSE):
                     self._log.warning("bus_watch: unexpected packet mode, ignoring")
@@ -625,13 +641,13 @@ class tridonic(hid):
             # self._log.debug("End of loop")
 
     def _handle_read(self, data):
-        self._log.debug("_handle_read %s", _hex(data[0:9]))
+        self._log.debug("_handle_read %s", _hex(data[0:self._resptmpl_useful_size]))
         if data[0] == self._MODE_INFO:
             # Response to initialisation command
             if not self.firmware_version:
                 self.firmware_version = f"{data[3]}.{data[4]}"
                 # Now read the serial number
-                os.write(self._f, self._cmd(
+                self._raw_write(self._cmd(
                     tridonic._CMD_INIT, tridonic._CMD_INIT_READSERIAL))
             elif not self.serial:
                 self.serial = _hex(data[1:5])
@@ -649,17 +665,20 @@ class tridonic(hid):
             self._bus_watch_data.append(data)
             self._bus_watch_data_available.set()
             seq = data[8]
-            # The Tridonic DALI USB has a firmware bug.  When it
-            # observes a frame on the bus, not generated by itself,
-            # that matches the most recent frame it transmitted, it
-            # reports it as if it had transmitted it itself.  We
-            # ignore this - the sequence number will have been removed
-            # from self._outstanding.
             if seq in self._outstanding:
+                self._log.debug(f"_handle_read: signaling for {seq=:02x}")
                 event, messages = self._outstanding[seq]
                 messages.append(data)
                 event.set()
                 del event, messages
+            else:
+                # The Tridonic DALI USB has a firmware bug.  When it
+                # observes a frame on the bus, not generated by itself,
+                # that matches the most recent frame it transmitted, it
+                # reports it as if it had transmitted it itself.  We
+                # ignore this - the sequence number will have been removed
+                # from self._outstanding.
+                self._log.debug(f"_handle_read: nothing to do for {seq=:02x}")
 
         else:
             self._log.debug("Unknown response mode %x", data[0])
@@ -722,7 +741,7 @@ class hasseb(hid):
         async with self._command_lock:
             times = 2 if command.sendtwice else 1
             for rep in range(times):
-                os.write(self._f, frame.pack_len(2))
+                self._raw_write(frame.pack_len(2))
             # Earlier commands may have left a response available that
             # we need to ignore.  We're only interested in responses
             # that become available in the future.
