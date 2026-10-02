@@ -5,4 +5,5 @@ __all__ = [
     'energy',
     'diagnostics',
     'maintenance',
+    'emergency',
 ]

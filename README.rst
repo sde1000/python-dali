@@ -19,7 +19,7 @@ This library has been written with reference to the following documents:
 - IEC 62386-102:2014 (general requirements for control gear)
 - IEC 62386-103:2014 (general requirements for control devices)
 - IEC 62386-201:2009 (fluorescent lamps)
-- IEC 62386-202:2009 (self-contained emergency lighting)
+- IEC 62386-202:2022 (self-contained emergency lighting)
 - IEC 62386-205:2009 (supply voltage controller for incandescent lamps)
 - IEC 62386-206:2009 (conversion from digital signal into DC voltage)
 - IEC 62386-207:2009 (LED modules)

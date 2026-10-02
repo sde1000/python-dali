@@ -12,7 +12,7 @@ from dali.exceptions import (
 )
 from dali.frame import BackwardFrame
 from dali.gear.general import DTR0, DTR1, ReadMemoryLocation
-from dali.memory import diagnostics, energy, info, maintenance, oem
+from dali.memory import diagnostics, emergency, energy, info, maintenance, oem
 from dali.memory.location import FlagValue, MemoryBank, NumericValue
 from dali.tests import fakes
 
@@ -154,6 +154,51 @@ class FakeBank207(fakes.FakeMemoryBank):
         50,  # Rated median useful life of luminaire, 50000 hours
         90,  # Internal control gear reference temperature, 30°C
         0x13, 0x88,  # Rated median useful light source starts, 500000
+    ]
+
+
+# Self-contained emergency control gear information (IEC 62386-202)
+class FakeBank208(fakes.FakeMemoryBank):
+    bank = emergency.BANK_208
+    initial_contents = [
+        0x33, None, 0xff,
+        0x01,  # Version 1
+        85,  # Max reference temperature 25°C
+        90,  # Control gear temperature 30°C
+        50,  # Min gear temperature (total) -10°C
+        100,  # Max gear temperature (total) 40°C
+        60,  # Min gear temperature (current battery) 0°C
+        95,  # Max gear temperature (current battery) 35°C
+        100,  # Average power during charging 10.0W
+        50,  # Average power during maintenance 5.0W
+        90,  # Rated duration 180 min
+        10,  # Function test time 10s
+        12,  # Battery recharge time 120 min
+        0,  # Battery failure counter
+        3,  # Battery cut-off counter
+        1,  # Lamp cut-off counter (total)
+        0,  # Lamp cut-off counter (current battery)
+        0x00, 0x03, 0xe8,  # Lamp emergency time (total) 1000 min
+        0x00, 0x01, 0xf4,  # Lamp emergency time (current battery) 500 min
+        0x01, 0x6d,  # Battery connected time (total) 365 days
+        0x00, 0x1e,  # Battery connected time (current battery) 30 days
+        0,  # Circuit failure counter
+        1,  # Battery duration failure counter
+        2,  # Battery failure status counter
+        0,  # Emergency lamp failure counter
+        0,  # Function test max delay exceeded counter
+        0,  # Duration test max delay exceeded counter
+        0x00, 0x05,  # Function test failed counter (total) 5
+        1,  # Duration test failed counter (total)
+        0x00, 0x02,  # Function test failed counter (current battery) 2
+        0,  # Duration test failed counter (current battery)
+        0x00, 0x32,  # Start function test counter 50
+        10,  # Start duration test counter (total)
+        3,  # Start duration test counter (current battery)
+        0x00, 0x07,  # Rest mode counter 7
+        0x00, 0x14,  # Emergency mode counter (total) 20
+        0x00, 0x04,  # Emergency mode counter (current battery) 4
+        0x0a,  # Performed on this battery bitmap
     ]
 
 
@@ -314,7 +359,8 @@ class TestMemory(unittest.TestCase):
         self.bus = fakes.Bus([
             fakes.Gear(GearShort(0), memory_banks=(
                 fakes.FakeBank0, FakeBank1, FakeBank202, FakeBank203,
-                FakeBank204, FakeBank205, FakeBank206, FakeBank207)),
+                FakeBank204, FakeBank205, FakeBank206, FakeBank207,
+                FakeBank208)),
             fakes.Gear(GearShort(1), memory_banks=(
                 fakes.FakeBank0, InvalidBank1, InvalidBank202,
                 LatchTestBank203, InvalidBank207)),
@@ -541,6 +587,35 @@ class TestMemory(unittest.TestCase):
                 0, [0x88, 0x3f, 0x00], allow_short_write=True))
         self.assertEqual(self.bus.run_sequence(
             oem.LuminaireIdentification.read(0)), FlagValue.Invalid)
+
+    def test_emergency(self):
+        self._test_value(emergency.MemoryBankVersion, 1)
+        self._test_value(emergency.ControlGearMaxReferenceTemperature, 25)
+        self._test_value(emergency.ControlGearTemperature, 30)
+        self._test_value(emergency.MinControlGearTemperatureTotal, -10)
+        self._test_value(emergency.MaxControlGearTemperatureTotal, 40)
+        self._test_value(emergency.AveragePowerDuringCharging, 10.0)
+        self._test_value(emergency.AveragePowerDuringMaintenance, 5.0)
+        self._test_value(emergency.RatedDuration, 180)
+        self._test_value(emergency.FunctionTestTime, 10)
+        self._test_value(emergency.BatteryRechargeTime, 120)
+        self._test_value(emergency.BatteryCutOffCounter, 3)
+        self._test_value(emergency.LampEmergencyTimeTotal, 1000)
+        self._test_value(emergency.LampEmergencyTimeCurrentBattery, 500)
+        self._test_value(emergency.BatteryConnectedTimeTotal, 365)
+        self._test_value(emergency.BatteryDurationFailureCounter, 1)
+        self._test_value(emergency.BatteryFailureStatusCounter, 2)
+        self._test_value(emergency.FunctionTestFailedCounterTotal, 5)
+        self._test_value(emergency.StartFunctionTestCounter, 50)
+        self._test_value(emergency.EmergencyModeCounterTotal, 20)
+        self._test_value(emergency.PerformedOnThisBattery, 0x0a)
+
+    def test_emergency_read_all(self):
+        values = self.bus.run_sequence(emergency.BANK_208.read_all(0))
+        self.assertEqual(values[emergency.RatedDuration], 180)
+        self.assertEqual(values[emergency.ControlGearTemperature], 30)
+        self.assertEqual(values[emergency.LampEmergencyTimeTotal], 1000)
+        self.assertEqual(values[emergency.StartFunctionTestCounter], 50)
 
     def test_info(self):
         # Default bank 0 contents from fakes.py

@@ -3,6 +3,7 @@ Sequence for simplifying certain interactions with 16-bit DALI gear
 """
 from __future__ import annotations
 
+from collections import namedtuple
 from typing import Generator, Optional
 
 from dali import command
@@ -13,6 +14,18 @@ from dali.gear.colour import (
     QueryColourValueDTR,
     SetTemporaryColourTemperature,
     StoreColourTemperatureTcLimit,
+)
+from dali.gear.emergency import (
+    QueryBatteryCharge,
+    QueryDurationTestResult,
+    QueryEmergencyFailureStatus,
+    QueryEmergencyFeatures,
+    QueryEmergencyLevel,
+    QueryEmergencyMode,
+    QueryEmergencyStatus,
+    QueryLampEmergencyTime,
+    QueryLampTotalOperationTime,
+    QueryRatedDuration,
 )
 from dali.gear.general import DTR0, DTR1, DTR2, QueryActualLevel, QueryContentDTR0
 
@@ -112,3 +125,77 @@ def SetDT8TcLimit(
     yield DTR1(tc_bytes[1])
     yield DTR2(what_limit)
     yield StoreColourTemperatureTcLimit(address)
+
+
+EmergencyInformation = namedtuple(
+    "EmergencyInformation",
+    [
+        "emergency_mode",
+        "emergency_features",
+        "emergency_failure_status",
+        "emergency_status",
+        "battery_charge",
+        "emergency_level",
+        "duration_test_result",
+        "lamp_emergency_time",
+        "lamp_total_operation_time",
+        "rated_duration",
+    ],
+)
+
+
+def _bitmap_byte(response: Optional[command.Response]) -> Optional[int]:
+    """Return the raw byte of a bitmap response, or None if unavailable."""
+    if response is None:
+        return None
+    raw = response.raw_value
+    if raw is None or raw.error:
+        return None
+    return raw.as_integer
+
+
+def _numeric(response: Optional[command.Response]) -> Optional[int]:
+    """Return the integer value of a numeric response, or None for MASK,
+    a missing answer or a framing error."""
+    if response is None:
+        return None
+    value = response.value
+    return value if isinstance(value, int) else None
+
+
+def QueryEmergencyInformation(
+    address: GearShort,
+) -> Generator[command.Command, Optional[command.Response], EmergencyInformation]:
+    """Read the DT1 (IEC 62386-202) status and measurement values of an
+    emergency control gear in a single sequence.
+
+    Running it as a sequence ensures the required "ENABLE DEVICE TYPE 1"
+    command is sent before each application-extended command, so the gear
+    answers. The returned values are plain integers (or None where the gear
+    reports MASK or does not answer); the four status bytes are returned as
+    raw bytes so the caller can decode individual bits.
+
+    :param address: GearShort address to query
+    :return: an EmergencyInformation namedtuple
+    """
+    # Although the proper types are expected, ints are common enough for
+    # addresses and their meaning is unambiguous in this context
+    if isinstance(address, int):
+        address = GearShort(address)
+
+    return EmergencyInformation(
+        emergency_mode=_bitmap_byte((yield QueryEmergencyMode(address))),
+        emergency_features=_bitmap_byte((yield QueryEmergencyFeatures(address))),
+        emergency_failure_status=_bitmap_byte(
+            (yield QueryEmergencyFailureStatus(address))
+        ),
+        emergency_status=_bitmap_byte((yield QueryEmergencyStatus(address))),
+        battery_charge=_numeric((yield QueryBatteryCharge(address))),
+        emergency_level=_numeric((yield QueryEmergencyLevel(address))),
+        duration_test_result=_numeric((yield QueryDurationTestResult(address))),
+        lamp_emergency_time=_numeric((yield QueryLampEmergencyTime(address))),
+        lamp_total_operation_time=_numeric(
+            (yield QueryLampTotalOperationTime(address))
+        ),
+        rated_duration=_numeric((yield QueryRatedDuration(address))),
+    )

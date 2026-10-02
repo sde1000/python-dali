@@ -130,6 +130,19 @@ class Gear:
         self.ct_mired_min = 153
         self.ct_mired_max = 370
         self.physical_minimum = 1
+        # DT1 (IEC 62386-202) emergency lighting state; only used when 1 is
+        # in devicetypes. Defaults describe a healthy type-A gear in normal
+        # mode with a fully charged battery.
+        self.emergency_mode = 0b00000010  # normal mode
+        self.emergency_features = 0b00000011  # integral + maintained (type A)
+        self.emergency_failure_status = 0x00
+        self.emergency_status = 0b00001000  # battery fully charged
+        self.battery_charge = 254
+        self.emergency_level = 254
+        self.duration_test_result = 60
+        self.lamp_emergency_time = 5
+        self.lamp_total_operation_time = 100
+        self.rated_duration = 90
         self.memory_banks = {}
         for fake_bank in memory_banks:
             bank_number = fake_bank.bank.address
@@ -437,6 +450,43 @@ class Gear:
                 self.temp_ct = self.actual_ct
             elif isinstance(cmd, gear.colour.QueryExtendedVersionNumber):
                 return 2
+
+        # Handle DT1 emergency lighting commands; device type decoding has
+        # already been handled
+        if isinstance(cmd, gear.emergency._EmergencyLightingCommand):
+            # Only handle if this Gear instance has been declared as a DT1 type
+            if 1 not in self.devicetypes:
+                return
+            if isinstance(cmd, gear.emergency.QueryEmergencyMode):
+                return self.emergency_mode
+            elif isinstance(cmd, gear.emergency.QueryEmergencyFeatures):
+                return self.emergency_features
+            elif isinstance(cmd, gear.emergency.QueryEmergencyFailureStatus):
+                return self.emergency_failure_status
+            elif isinstance(cmd, gear.emergency.QueryEmergencyStatus):
+                return self.emergency_status
+            elif isinstance(cmd, gear.emergency.QueryBatteryCharge):
+                return self.battery_charge
+            elif isinstance(cmd, gear.emergency.QueryEmergencyLevel):
+                return self.emergency_level
+            elif isinstance(cmd, gear.emergency.QueryDurationTestResult):
+                return self.duration_test_result
+            elif isinstance(cmd, gear.emergency.QueryLampEmergencyTime):
+                return self.lamp_emergency_time
+            elif isinstance(cmd, gear.emergency.QueryLampTotalOperationTime):
+                return self.lamp_total_operation_time
+            elif isinstance(cmd, gear.emergency.QueryRatedDuration):
+                return self.rated_duration
+            elif isinstance(cmd, gear.emergency.StartFunctionTest):
+                self.emergency_status |= 0b00010000  # function test pending
+            elif isinstance(cmd, gear.emergency.StartDurationTest):
+                self.emergency_status |= 0b00100000  # duration test pending
+            elif isinstance(cmd, gear.emergency.StopTest):
+                self.emergency_status &= ~0b00110000  # clear both pending bits
+            elif isinstance(cmd, gear.emergency.Inhibit):
+                self.emergency_status |= 0b00000001  # inhibit mode
+            elif isinstance(cmd, gear.emergency.ReLightResetInhibit):
+                self.emergency_status &= ~0b00000001
 
 
 # Valid bank 0 ROM contents compatible with IEC 62386-103
