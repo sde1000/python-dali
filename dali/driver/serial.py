@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import warnings
 from enum import Enum
 from functools import reduce
 from operator import xor
@@ -55,6 +56,13 @@ def _drain_queue(queue: asyncio.Queue) -> list:
             items.append(queue.get_nowait())
         except asyncio.QueueEmpty:
             return items
+
+
+def _single_command_sequence(
+    cmd: command.Command,
+) -> Generator[command.Command, Optional[command.Response], Optional[command.Response]]:
+    """Wrap a single command as a trivial sequence that returns its response."""
+    return (yield cmd)
 
 
 class DistributorQueue(asyncio.Queue):
@@ -215,22 +223,24 @@ class DriverSerialBase:
         """
         await self._connected.wait()
 
-    async def send(
-        self, msg: command.Command, in_transaction: bool = False
+    async def _send_frame(
+        self, cmd: command.Command, *, priority: int = 1
     ) -> Optional[command.Response]:
         """
-        Send one DALI command over the bus using the driver. If the command
-        expects a response this will be returned.
+        Transmit a single DALI frame over the bus. If the command expects a
+        response it is returned.
 
-        :param msg: A Command object to send over the DALI bus
-        :param in_transaction: Boolean flag to indicate if this `send()` call
-        is part of a transaction, i.e. where the driver will block sending
-        other messages until the transaction is complete. This is typically
-        only needed internally, by the `run_sequence()` method.
+        This is the low-level, per-frame transmit used by `send()`. Callers
+        should use `send()` instead, which runs commands and sequences as
+        transactions and takes care of EnableDeviceType and priority.
+
+        :param cmd: A Command object to transmit
+        :param priority: IEC 62386-101 Table 22 transmit priority (1..5) for
+        this frame. Drivers that cannot set a transmit priority ignore it.
         :return: Either None if no response is expected, or a Response object
         """
         raise NotImplementedError(
-            "'send()' needs to be implemented in a subclass"
+            "'_send_frame()' needs to be implemented in a subclass"
         )
 
     def new_dali_rx_queue(self) -> DistributorQueue:
@@ -259,29 +269,52 @@ class DriverSerialBase:
             "'new_dali_rx_queue()' needs to be implemented in a subclass"
         )
 
-    async def run_sequence(
+    async def send(
         self,
-        seq: Generator[
-            command.Command,  # Sequences yield commands to send
-            command.Response,  # Sequences get sent the response from the previous command
-            Any,  # The return type depends specifically on the sequence
-        ],
+        msg: command.Command | Generator,
+        *,
+        priority: int = 5,
         progress: Optional[Callable[[str | sequences.progress], None]] = None,
     ) -> Any:
         """
-        Run a command sequence as a transaction. Implements the same API as
-        the 'hid' drivers.
+        Send a command or run a sequence as a single transaction.
 
-        :param seq: A "generator" function to use as a sequence. These are
-        available in various places in the python-dali library.
-        :param progress: A function to call with progress updates, used by
-        some sequences to provide status information. The function must
-        accept a single argument. A suitable example is `progress=print` to
-        use the built-in `print()` function.
-        :return: Depends on the sequence being used
+        A bare Command is wrapped in a trivial sequence, so a single command
+        and a multi-command sequence share the same execution path. The whole
+        transaction is sent while holding the transaction lock, so it cannot be
+        interrupted by another sender.
+
+        The first forward frame of the transaction is sent at `priority`; all
+        subsequent frames are sent at priority 1, forming an IEC 62386-101 §9.3
+        transaction. When a command has a non-zero device type, an
+        EnableDeviceType frame is transmitted immediately before it (taking the
+        caller's priority, so the command itself follows at priority 1).
+
+        :param msg: A Command to send, or a sequence generator to run. Sequences
+        are available in various places in the python-dali library.
+        :param priority: IEC 62386-101 Table 22 priority for the first frame, in
+        the range 2..5 (see IEC 62386-103 §9.14 for how to choose it). A value
+        outside this range raises ValueError.
+        :param progress: A function to call with progress updates, used by some
+        sequences to provide status information. The function must accept a
+        single argument. A suitable example is `progress=print`.
+        :return: The command response for a single command, otherwise the
+        sequence's return value.
         """
+        if priority not in (2, 3, 4, 5):
+            raise ValueError(
+                f"priority must be in the range 2..5, not {priority!r}"
+            )
+
+        seq = (
+            _single_command_sequence(msg)
+            if isinstance(msg, command.Command)
+            else msg
+        )
+
         async with self.transaction_lock:
             response = None
+            next_priority = priority
             try:
                 while True:
                     try:
@@ -298,15 +331,37 @@ class DriverSerialBase:
                             progress(cmd)
                     else:
                         if cmd.devicetype != 0:
-                            # The 'send()' calls here *do* refer to the DALI
-                            # transmit method
-                            await self.send(
+                            await self._send_frame(
                                 gear.general.EnableDeviceType(cmd.devicetype),
-                                in_transaction=True,
+                                priority=next_priority,
                             )
-                        response = await self.send(cmd, in_transaction=True)
+                            next_priority = 1
+                        response = await self._send_frame(
+                            cmd, priority=next_priority
+                        )
+                        next_priority = 1
             finally:
                 seq.close()
+
+    async def run_sequence(
+        self,
+        seq: Generator[
+            command.Command,  # Sequences yield commands to send
+            command.Response,  # Sequences get sent the response from the previous command
+            Any,  # The return type depends specifically on the sequence
+        ],
+        progress: Optional[Callable[[str | sequences.progress], None]] = None,
+    ) -> Any:
+        """
+        Deprecated alias for `send()`, which now accepts both commands and
+        sequences. Kept for backwards compatibility.
+        """
+        warnings.warn(
+            "run_sequence() is deprecated; use send() instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return await self.send(seq, progress=progress)
 
 
 def drivers_map() -> dict[str, type[DriverSerialBase]]:
@@ -548,13 +603,16 @@ class DriverLubaRs232(DriverSerialBase):
         def _insert_checksum(in_ints: list[int]) -> None:
             in_ints[-1] = reduce(xor, in_ints[1:-1])
 
-        async def send_dali_command(self, tx: command.Command) -> None:
+        async def send_dali_command(
+            self, tx: command.Command, priority: int = 1
+        ) -> None:
             """
             Sends a variable length DALI command (16 or 24 bits), waiting
             until the LUBA device confirms it has sent the message before
             returning the frame ID.
 
             :param tx: A single DALI command to send
+            :param priority: IEC 62386-101 Table 22 transmit priority (1..5)
             """
             # Make sure the serial interface is not in the process of reading
             # data before we send
@@ -565,18 +623,7 @@ class DriverLubaRs232(DriverSerialBase):
                 raise ValueError(
                     f"Only works with 16 or 24 bit messages, not {8*len(dali_ints)}"
                 )
-            # Determine the message priority - standard commands and DAPC are
-            # high priority, others are low
-            if (
-                isinstance(tx, gear.general._StandardCommand)
-                and not tx.response
-                and not tx.sendtwice
-            ) or isinstance(tx, gear.general.DAPC):
-                priority = 0b00000010  # Priority 2 (second-highest)
-            else:
-                priority = 0b00000101  # Priority 5 (lowest)
-            luba_mode = 0
-            luba_mode |= priority
+            luba_mode = priority  # IEC 62386-101 Table 22 priority (1..5)
             luba_mode |= 0b10000000 if tx.sendtwice else 0  # "Send Twice" flag
             tx_ints = [
                 0x59,  # ASCII 'Y'
@@ -1327,7 +1374,7 @@ class DriverLubaRs232(DriverSerialBase):
         # to instance types
         if scan_dev_inst:
             _LOG.info("Scanning DALI bus for control devices")
-            await self.run_sequence(self.dev_inst_map.autodiscover())
+            await self.send(self.dev_inst_map.autodiscover())
             _LOG.info(
                 f"Found {len(self.dev_inst_map.mapping)} enabled control "
                 "device instances"
@@ -1358,8 +1405,8 @@ class DriverLubaRs232(DriverSerialBase):
             raise IOError("DALI driver cannot query, not connected")
         return await self._protocol.send_read_status()
 
-    async def send(
-        self, msg: command.Command, in_transaction: bool = False
+    async def _send_frame(
+        self, cmd: command.Command, *, priority: int = 1
     ) -> Optional[command.Response]:
         # Only send if the driver is connected
         if not self.is_connected:
@@ -1368,47 +1415,39 @@ class DriverLubaRs232(DriverSerialBase):
 
         response = None
 
-        if not in_transaction:
-            await self.transaction_lock.acquire()
-        try:
-            # Make sure the received command buffer is empty, so that an
-            # unexpected response can't accidentally be used
-            self._protocol.reset_dali_response()
-            await self._protocol.send_dali_command(msg)
-            if msg.is_query:
-                # Default to the command's own response type so that a query
-                # which times out is reported as a missing value; a bare
-                # Response(None) passes check_bad_rsp and leaks None to callers.
-                response = msg.response(None)
-                while True:
-                    try:
-                        raw_rsp = await asyncio.wait_for(
-                            self._protocol.wait_dali_raw_response(),
-                            timeout=DriverLubaRs232.timeout_rx,
-                        )
-                    except asyncio.exceptions.TimeoutError:
-                        _LOG.debug(
-                            f"DALI response timeout, from message: {msg}"
-                        )
-                        break
-                    if raw_rsp is _DALI_FRAMING_ERROR:
-                        response = msg.response(frame.BackwardFrameError(255))
-                        _LOG.debug(f"DALI framing error, from message: {msg}")
-                        break
-                    if isinstance(raw_rsp, int):
-                        response = msg.response(frame.BackwardFrame(raw_rsp))
-                        _LOG.debug(f"DALI response received: {raw_rsp}")
-                        break
-                    else:
-                        _LOG.warning(
-                            "DALI response expected to be 'int' but got type "
-                            f"'{type(raw_rsp)}': {raw_rsp}"
-                        )
-                        raw_rsp = None
-                        continue
-        finally:
-            if not in_transaction:
-                self.transaction_lock.release()
+        # Make sure the received command buffer is empty, so that an
+        # unexpected response can't accidentally be used
+        self._protocol.reset_dali_response()
+        await self._protocol.send_dali_command(cmd, priority=priority)
+        if cmd.is_query:
+            # Default to the command's own response type so that a query
+            # which times out is reported as a missing value; a bare
+            # Response(None) passes check_bad_rsp and leaks None to callers.
+            response = cmd.response(None)
+            while True:
+                try:
+                    raw_rsp = await asyncio.wait_for(
+                        self._protocol.wait_dali_raw_response(),
+                        timeout=DriverLubaRs232.timeout_rx,
+                    )
+                except asyncio.exceptions.TimeoutError:
+                    _LOG.debug(f"DALI response timeout, from message: {cmd}")
+                    break
+                if raw_rsp is _DALI_FRAMING_ERROR:
+                    response = cmd.response(frame.BackwardFrameError(255))
+                    _LOG.debug(f"DALI framing error, from message: {cmd}")
+                    break
+                if isinstance(raw_rsp, int):
+                    response = cmd.response(frame.BackwardFrame(raw_rsp))
+                    _LOG.debug(f"DALI response received: {raw_rsp}")
+                    break
+                else:
+                    _LOG.warning(
+                        "DALI response expected to be 'int' but got type "
+                        f"'{type(raw_rsp)}': {raw_rsp}"
+                    )
+                    raw_rsp = None
+                    continue
 
         return response
 
@@ -1944,15 +1983,17 @@ class DriverSCIRS232(DriverSerialBase):
         # to instance types
         if scan_dev_inst:
             _LOG.info("Scanning DALI bus for control devices")
-            await self.run_sequence(self.dev_inst_map.autodiscover())
+            await self.send(self.dev_inst_map.autodiscover())
             _LOG.info(
                 f"Found {len(self.dev_inst_map.mapping)} enabled control "
                 "device instances"
             )
 
-    async def send(
-        self, msg: command.Command, in_transaction: bool = False
+    async def _send_frame(
+        self, cmd: command.Command, *, priority: int = 1
     ) -> Optional[command.Response]:
+        # The SCI RS232 protocol has no transmit priority field, so `priority`
+        # is accepted for a uniform driver API but not used on the wire.
         # Only send if the driver is connected
         if not self.is_connected:
             _LOG.critical(f"DALI driver cannot send, not connected: {self}")
@@ -1960,44 +2001,36 @@ class DriverSCIRS232(DriverSerialBase):
 
         response = None
 
-        if not in_transaction:
-            await self.transaction_lock.acquire()
-        try:
-            # Make sure the received command buffer is empty, so that an
-            # unexpected response can't accidentally be used
-            self._protocol.reset_dali_response()
-            await self._protocol.send_dali_command(msg)
-            if msg.is_query:
-                # Default to the command's own response type so that a query
-                # which times out is reported as a missing value; a bare
-                # Response(None) passes check_bad_rsp and leaks None to callers.
-                response = msg.response(None)
-                while True:
-                    try:
-                        raw_rsp = await asyncio.wait_for(
-                            self._protocol._queue_rx_raw_dali.get(),
-                            #self._protocol.wait_dali_raw_response(),
-                            timeout=DriverSCIRS232.timeout_rx,
-                        )
-                    except asyncio.exceptions.TimeoutError:
-                        _LOG.debug(
-                            f"DALI response timeout, from message: {msg}"
-                        )
-                        break
-                    if isinstance(raw_rsp, int):
-                        response = msg.response(frame.BackwardFrame(raw_rsp))
-                        _LOG.debug(f"DALI response received: {raw_rsp}")
-                        break
-                    else:
-                        _LOG.warning(
-                            "DALI response expected to be 'int' but got type "
-                            f"'{type(raw_rsp)}': {raw_rsp}"
-                        )
-                        raw_rsp = None
-                        continue
-        finally:
-            if not in_transaction:
-                self.transaction_lock.release()
+        # Make sure the received command buffer is empty, so that an
+        # unexpected response can't accidentally be used
+        self._protocol.reset_dali_response()
+        await self._protocol.send_dali_command(cmd)
+        if cmd.is_query:
+            # Default to the command's own response type so that a query
+            # which times out is reported as a missing value; a bare
+            # Response(None) passes check_bad_rsp and leaks None to callers.
+            response = cmd.response(None)
+            while True:
+                try:
+                    raw_rsp = await asyncio.wait_for(
+                        self._protocol._queue_rx_raw_dali.get(),
+                        #self._protocol.wait_dali_raw_response(),
+                        timeout=DriverSCIRS232.timeout_rx,
+                    )
+                except asyncio.exceptions.TimeoutError:
+                    _LOG.debug(f"DALI response timeout, from message: {cmd}")
+                    break
+                if isinstance(raw_rsp, int):
+                    response = cmd.response(frame.BackwardFrame(raw_rsp))
+                    _LOG.debug(f"DALI response received: {raw_rsp}")
+                    break
+                else:
+                    _LOG.warning(
+                        "DALI response expected to be 'int' but got type "
+                        f"'{type(raw_rsp)}': {raw_rsp}"
+                    )
+                    raw_rsp = None
+                    continue
 
         return response
 

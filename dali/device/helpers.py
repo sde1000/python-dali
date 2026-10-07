@@ -113,7 +113,7 @@ class DeviceInstanceTypeMapper:
         for example:
         ```
         dev_inst_map = DeviceInstanceTypeMapper()
-        await driver.run_sequence(dev_inst_map.autodiscover())
+        await driver.send(dev_inst_map.autodiscover())
         ```
         """
 

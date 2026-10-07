@@ -26,6 +26,7 @@ import pytest
 from dali.driver.serial import DriverSerialBase, DriverLubaRs232, DriverSCIRS232, drivers_map
 from dali.tests.fakes_serial import DriverSerialDummy
 from dali import address, gear
+from dali.gear.colour import QueryColourStatus
 from dali.sequences import QueryDeviceTypes
 
 
@@ -172,14 +173,105 @@ async def test_dummy_write_3(dummy_driver):
 
 
 @pytest.mark.asyncio
+async def test_dummy_send_auto_prefixes_enable_device_type(dummy_driver):
+    """
+    A bare command with a non-zero device type is sent with an
+    EnableDeviceType frame immediately before it, so callers no longer need a
+    trivial wrapper sequence to do the prefixing.
+    """
+    await dummy_driver.driver.connect()
+    dummy_driver.driver.sent_frames.clear()
+    await dummy_driver.driver.send(QueryColourStatus(address.GearShort(0)))
+
+    sent = dummy_driver.driver.sent_frames
+    assert len(sent) == 2
+    assert isinstance(sent[0][0], gear.general.EnableDeviceType)
+    assert sent[0][0].param == 8
+    assert isinstance(sent[1][0], QueryColourStatus)
+
+
+@pytest.mark.asyncio
+async def test_dummy_send_no_prefix_for_general_command(dummy_driver):
+    """
+    A device-type-0 command is sent on its own, without any EnableDeviceType.
+    """
+    await dummy_driver.driver.connect()
+    dummy_driver.driver.sent_frames.clear()
+    await dummy_driver.driver.send(gear.general.DAPC(address.GearShort(1), 254))
+
+    sent = dummy_driver.driver.sent_frames
+    assert len(sent) == 1
+    assert isinstance(sent[0][0], gear.general.DAPC)
+
+
+@pytest.mark.parametrize("bad_priority", [0, 1, 6, -1, "5"])
+@pytest.mark.asyncio
+async def test_dummy_send_rejects_invalid_priority(dummy_driver, bad_priority):
+    """
+    Only IEC 62386-101 Table 22 priorities 2..5 are accepted.
+    """
+    await dummy_driver.driver.connect()
+    with pytest.raises(ValueError):
+        await dummy_driver.driver.send(
+            gear.general.DAPC(address.GearShort(1), 254),
+            priority=bad_priority,
+        )
+
+
+@pytest.mark.parametrize("priority", [2, 3, 4, 5])
+@pytest.mark.asyncio
+async def test_dummy_send_valid_priority_accepted(dummy_driver, priority):
+    """
+    A general command is transmitted at exactly the requested priority.
+    """
+    await dummy_driver.driver.connect()
+    dummy_driver.driver.sent_frames.clear()
+    await dummy_driver.driver.send(
+        gear.general.DAPC(address.GearShort(1), 254), priority=priority
+    )
+
+    sent = dummy_driver.driver.sent_frames
+    assert len(sent) == 1
+    assert sent[0][1] == priority
+
+
+@pytest.mark.asyncio
+async def test_dummy_send_transaction_priority(dummy_driver):
+    """
+    The first frame of a transaction carries the caller's priority and every
+    subsequent frame drops to priority 1 (IEC 62386-101 §9.3). The
+    auto-prefixed EnableDeviceType is the first frame, so it takes the caller's
+    priority and the command itself follows at priority 1.
+    """
+    await dummy_driver.driver.connect()
+    dummy_driver.driver.sent_frames.clear()
+    await dummy_driver.driver.send(
+        QueryColourStatus(address.GearShort(0)), priority=3
+    )
+
+    priorities = [priority for _, priority in dummy_driver.driver.sent_frames]
+    assert priorities == [3, 1]
+
+
+@pytest.mark.asyncio
+async def test_dummy_run_sequence_alias_warns(dummy_driver):
+    """
+    The deprecated run_sequence alias still works but warns.
+    """
+    await dummy_driver.driver.connect()
+    with pytest.warns(DeprecationWarning):
+        await dummy_driver.driver.run_sequence(
+            QueryDeviceTypes(address.GearShort(0))
+        )
+
+
+@pytest.mark.asyncio
 async def test_dummy_sequence_device_types(dummy_driver):
     await dummy_driver.driver.connect()
     # The default of dummy_driver has 12 addressed control gears
     for ad in range(11):
         short = address.GearShort(ad)
-        dev_types = await dummy_driver.driver.run_sequence(
-            QueryDeviceTypes(short)
-        )
+        dev_types = await dummy_driver.driver.send(QueryDeviceTypes(short))
         # Colour Temperature LEDs, DT8, are created first by the dummy driver
         if ad in range(0, 5):
             assert len(dev_types) == 1

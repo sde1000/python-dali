@@ -183,6 +183,10 @@ class DriverSerialDummy(DriverSerialBase):
         super().__init__(uri=uri, dev_inst_map=dev_inst_map)
         uri = self.uri
 
+        # Record of every frame sent, as (command, priority) tuples, so tests
+        # can assert what was transmitted and at which priority.
+        self.sent_frames: list[tuple[command.Command, int]] = []
+
         self._log_path = uri.path
         query = parse_qs(uri.query, strict_parsing=True)
         self._num_leds = 0
@@ -289,75 +293,62 @@ class DriverSerialDummy(DriverSerialBase):
         # to instance types
         if scan_dev_inst:
             _LOG.info("Scanning DALI bus for control devices")
-            await self.run_sequence(self.dev_inst_map.autodiscover())
+            await self.send(self.dev_inst_map.autodiscover())
             _LOG.info(f"Found {len(self.dev_inst_map.mapping)} instances")
 
-    async def send(
-        self, msg: command.Command, in_transaction: bool = False
+    async def _send_frame(
+        self, cmd: command.Command, *, priority: int = 1
     ) -> Optional[command.Response]:
         """
-        The 'send()' method for the DriverSerialDummy class doesn't actually
-        communicate with anything external - it just tries to imitate hardware,
-        at a very basic level. For now, all that is implemented is:
+        The '_send_frame()' method for the DriverSerialDummy class doesn't
+        actually communicate with anything external - it just tries to imitate
+        hardware, at a very basic level. For now, all that is implemented is:
         * Short addressing (i.e. referring to a dummy directly by its address)
         * Broadcast addressing
         * Brightness/Power Level (DAPC, RecallMaxLevel, RecallMinLevel, Off)
         * Device Type
 
-        :param msg: The DALI message to send
-        :param in_transaction: Flag whether or not this 'send()' call is part
-        of a transaction (i.e. if this call is coming from the 'run_sequence()'
-        method). If the flag is set then the lock will not be acquired before
-        sending.
+        Every transmitted frame is appended to `self.sent_frames` as a
+        `(command, priority)` tuple, so tests can assert what was sent and at
+        which IEC 62386-101 Table 22 priority.
+
+        :param cmd: The DALI message to send
+        :param priority: The transmit priority (1..5) chosen by `send()`
         :return: If a command being sent expects a response, and the type is
-        supported by DriverSerialDummy, then it will be returned by the 'send()'
-        call. If more than one command generates a response then only the last
-        response will be returned. Otherwise, None.
+        supported by DriverSerialDummy, then it will be returned. Otherwise,
+        None.
         """
         # Only send if the driver is connected
         if not self.is_connected:
             _LOG.critical(f"Cannot send, driver is not connected: {self}")
             raise IOError("Cannot send, driver is not connected")
 
-        # If multiple responses are requested in a list of messages to send,
-        # only the last response will be returned
-        response = None
+        self.sent_frames.append((cmd, priority))
 
-        # "Send" each message, one at a time, and figure out what the dummy
-        # response should be
-        if not in_transaction:
-            await self.transaction_lock.acquire()
-        try:
-            with open(self._log_path, mode="at", encoding="utf-8") as log_file:
-                # Write the message to the log file, emulating sending it over
-                # a DALI bus
-                log_file.write(f"{self._get_date()} {msg}\n")
-                # Because writing to a log file is much faster than writing
-                # over RS232, there is a short delay here to make the dummy act
-                # a bit more like a real DALI device
-                await asyncio.sleep(DriverSerialDummy.hardware_delay)
-                # Get the response from the dummy bus
-                response = self._dummy_bus.send(msg)
+        with open(self._log_path, mode="at", encoding="utf-8") as log_file:
+            # Write the message to the log file, emulating sending it over
+            # a DALI bus
+            log_file.write(f"{self._get_date()} {cmd}\n")
+            # Because writing to a log file is much faster than writing
+            # over RS232, there is a short delay here to make the dummy act
+            # a bit more like a real DALI device
+            await asyncio.sleep(DriverSerialDummy.hardware_delay)
+            # Get the response from the dummy bus
+            response = self._dummy_bus.send(cmd)
 
-                # Special handling for a Lunatone Jalousie dummy device
-                if hasattr(msg, "destination"):
-                    if hasattr(msg.destination, "address"):
-                        if isinstance(msg, gear.general.GoToScene):
-                            dst = msg.destination.address
-                            if dst in self._cover_addrs:
-                                _LOG.info(
-                                    f"Scheduling dummy call to turn off A{dst}"
-                                )
-                                asyncio.get_running_loop().call_later(
-                                    delay=10.0,
-                                    callback=lambda: self._set_level_off(
-                                        addr=dst
-                                    ),
-                                )
-
-        finally:
-            if not in_transaction:
-                self.transaction_lock.release()
+            # Special handling for a Lunatone Jalousie dummy device
+            if hasattr(cmd, "destination"):
+                if hasattr(cmd.destination, "address"):
+                    if isinstance(cmd, gear.general.GoToScene):
+                        dst = cmd.destination.address
+                        if dst in self._cover_addrs:
+                            _LOG.info(
+                                f"Scheduling dummy call to turn off A{dst}"
+                            )
+                            asyncio.get_running_loop().call_later(
+                                delay=10.0,
+                                callback=lambda: self._set_level_off(addr=dst),
+                            )
 
         return response
 
