@@ -10,6 +10,7 @@ import struct
 import logging
 import random
 import glob
+import warnings
 from dali.exceptions import UnsupportedFrameTypeError, CommunicationError
 from dali.sequences import sleep as seq_sleep
 from dali.sequences import progress as seq_progress
@@ -22,6 +23,11 @@ from dali.gear.general import EnableDeviceType
 
 def _hex(b):
     return ''.join("%02X" % x for x in b)
+
+
+def _single_command_sequence(cmd):
+    """Wrap a single command as a trivial sequence that returns its response."""
+    return (yield cmd)
 
 class _callback:
     """Helper class for callback registration
@@ -174,41 +180,71 @@ class hid:
         if reconnect:
             self._reconnect_task = asyncio.ensure_future(self._reconnect())
 
-    async def send(self, command, in_transaction=False, exceptions=None):
-        """Send a DALI command and receive a response
+    async def send(self, msg, *, priority=5, progress=None, exceptions=None):
+        """Send a command or run a sequence as a single transaction
 
-        Sends the command.  Returns a response, or None if the command
-        does not expect a response.
+        A bare Command is wrapped in a trivial sequence, so a single command
+        and a multi-command sequence share the same execution path. The whole
+        transaction is sent while holding the transaction_lock, so it cannot be
+        interrupted by another sender. Returns the command's response for a
+        single command, otherwise the sequence's return value.
 
-        If you have acquired the transaction_lock to perform a
-        transaction, you must set the in_transaction keyword argument
-        to True.
+        When a command has a non-zero device type, an EnableDeviceType frame is
+        transmitted immediately before it.
 
-        This call can raise dali.exceptions.CommunicationError if
-        there is a problem sending the command to the device.  If you
-        prefer to wait for the device to become available again, pass
-        exceptions=False or set the exceptions_on_send attribute to False.
+        priority is accepted for a uniform driver API and validated against the
+        IEC 62386-101 Table 22 range 2..5 (a value outside it raises
+        ValueError), but HID dongles transmit at a fixed priority, so it has no
+        effect on the wire.
+
+        This call can raise dali.exceptions.CommunicationError if there is a
+        problem sending a command to the device. If you prefer to wait for the
+        device to become available again, pass exceptions=False or set the
+        exceptions_on_send attribute to False.
         """
+        if priority not in (2, 3, 4, 5):
+            raise ValueError(
+                f"priority must be in the range 2..5, not {priority!r}"
+            )
         if exceptions is None:
             exceptions = self.exceptions_on_send
 
-        if not in_transaction:
-            await self.transaction_lock.acquire()
+        seq = (
+            _single_command_sequence(msg)
+            if isinstance(msg, dali.command.Command)
+            else msg
+        )
+
+        await self.transaction_lock.acquire()
+        response = None
         try:
-            command_sent = False
-            while not command_sent:
+            while True:
                 try:
-                    if command.devicetype != 0:
-                        await self._send_raw(EnableDeviceType(command.devicetype))
-                    response = await self._send_raw(command)
-                    command_sent = True
-                except CommunicationError:
-                    if exceptions:
-                        raise
-            return response
+                    cmd = seq.send(response)
+                except StopIteration as r:
+                    return r.value
+                response = None
+                if isinstance(cmd, seq_sleep):
+                    await asyncio.sleep(cmd.delay)
+                elif isinstance(cmd, seq_progress):
+                    if progress:
+                        progress(cmd)
+                else:
+                    command_sent = False
+                    while not command_sent:
+                        try:
+                            if cmd.devicetype != 0:
+                                await self._send_raw(
+                                    EnableDeviceType(cmd.devicetype)
+                                )
+                            response = await self._send_raw(cmd)
+                            command_sent = True
+                        except CommunicationError:
+                            if exceptions:
+                                raise
         finally:
-            if not in_transaction:
-                self.transaction_lock.release()
+            self.transaction_lock.release()
+            seq.close()
 
     async def power_supply(self, supply_on, in_transaction=False, exceptions=None):
         """
@@ -234,29 +270,14 @@ class hid:
                 self.transaction_lock.release()
 
     async def run_sequence(self, seq, progress=None):
-        """Run a command sequence as a transaction
+        """Deprecated alias for send(), which now accepts commands and sequences
         """
-        await self.transaction_lock.acquire()
-        response = None
-        try:
-            while True:
-                try:
-                    cmd = seq.send(response)
-                except StopIteration as r:
-                    return r.value
-                response = None
-                if isinstance(cmd, seq_sleep):
-                    await asyncio.sleep(cmd.delay)
-                elif isinstance(cmd, seq_progress):
-                    if progress:
-                        progress(cmd)
-                else:
-                    if cmd.devicetype != 0:
-                        await self._send_raw(EnableDeviceType(cmd.devicetype))
-                    response = await self._send_raw(cmd)
-        finally:
-            self.transaction_lock.release()
-            seq.close()
+        warnings.warn(
+            "run_sequence() is deprecated; use send() instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return await self.send(seq, progress=progress)
 
     def _initialise_device(self):
         """Send any device-specific initialisation commands
