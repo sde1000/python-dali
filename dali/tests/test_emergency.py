@@ -1,10 +1,17 @@
+from dataclasses import astuple
+
 from dali.frame import BackwardFrame
 from dali.gear.emergency import (
     QueryEmergencyFailureStatusResponse,
     QueryEmergencyModeResponse,
     QueryEmergencyStatusResponse,
 )
-from dali.gear.sequences import QueryEmergencyInformation
+from dali.gear.sequences import (
+    EmergencyFeatures,
+    EmergencyMode,
+    EmergencyStatus,
+    QueryEmergencyInformation,
+)
 from dali.tests import fakes
 
 
@@ -36,10 +43,37 @@ def test_emergency_mode_property():
 def test_query_emergency_information():
     bus = fakes.Bus([fakes.Gear(shortaddr=0, devicetypes=[1])])
     info = bus.run_sequence(QueryEmergencyInformation(0))
-    assert info.emergency_mode == 0b00000010
-    assert info.emergency_features == 0b00000011
-    assert info.emergency_failure_status == 0
-    assert info.emergency_status == 0b00001000
+    assert info.emergency_mode == EmergencyMode(
+        rest_mode=False,
+        normal_mode=True,
+        emergency_mode=False,
+        extended_emergency_mode=False,
+        function_test=False,
+        duration_test=False,
+        hardwired_inhibit_active=False,
+        hardwired_switch_on=False,
+    )
+    assert info.emergency_features == EmergencyFeatures(
+        integral_emergency_control_gear=True,
+        maintained_control_gear=True,
+        switched_maintained_control_gear=False,
+        auto_test_capability=False,
+        adjustable_emergency_level=False,
+        hardwired_inhibit_supported=False,
+        physical_selection_supported=False,
+        relight_in_rest_mode_supported=False,
+    )
+    assert not any(astuple(info.emergency_failure_status))
+    assert info.emergency_status == EmergencyStatus(
+        inhibit_mode=False,
+        function_test_done_and_result_valid=False,
+        duration_test_done_and_result_valid=False,
+        battery_fully_charged=True,
+        function_test_pending=False,
+        duration_test_pending=False,
+        identification_active=False,
+        physically_selected=False,
+    )
     assert info.battery_charge == 254
     assert info.emergency_level == 254
     assert info.duration_test_result == 60
