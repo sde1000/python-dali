@@ -169,11 +169,11 @@ def QueryEmergencyInformation(
     """Read the DT1 (IEC 62386-202) status and measurement values of an
     emergency control gear in a single sequence.
 
-    Running it as a sequence ensures the required "ENABLE DEVICE TYPE 1"
-    command is sent before each application-extended command, so the gear
-    answers. The returned values are plain integers (or None where the gear
-    reports MASK or does not answer); the four status bytes are returned as
-    raw bytes so the caller can decode individual bits.
+    Bundling the queries into one sequence runs them under a single
+    transaction, so no other command can interleave between them. The
+    returned values are plain integers (or None where the gear reports MASK
+    or does not answer); the four status bytes are returned as raw bytes so
+    the caller can decode individual bits.
 
     :param address: GearShort address to query
     :return: an EmergencyInformation namedtuple
