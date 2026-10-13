@@ -660,18 +660,30 @@ class DriverLubaRs232(DriverSerialBase):
                     )
                     if confirm.error_code is not None:
                         raise TransmissionError(confirm.error_code)
+                    if (
+                        hasattr(confirm.message, "frame")
+                        and confirm.message.frame != tx.frame
+                    ):
+                        # A confirmation for a different frame can only be a
+                        # stale one for an earlier send whose confirmation
+                        # arrived after it had already timed out: sends are
+                        # serialised under '_tx_lock', so nothing later is in
+                        # flight yet. Drop it and keep waiting for this frame's
+                        # own confirmation, otherwise every subsequent send
+                        # inherits the one-off mismatch and the stream never
+                        # resynchronises.
+                        _LOG.warning(
+                            "Discarding stale LUBA confirmation for '%s' "
+                            "while awaiting '%s'",
+                            confirm.message,
+                            tx,
+                        )
+                        continue
                     if hasattr(confirm.message, "frame"):
-                        if confirm.message.frame == tx.frame:
-                            _LOG.trace(
-                                f"LUBA device reports message '{tx}' sent, "
-                                f"with ID {confirm.tx_id}"
-                            )
-                        else:
-                            _LOG.error(
-                                "Expected LUBA device to confirm transmission "
-                                f"of message '{tx}', but got a confirmation "
-                                f"for '{confirm.message}'"
-                            )
+                        _LOG.trace(
+                            f"LUBA device reports message '{tx}' sent, "
+                            f"with ID {confirm.tx_id}"
+                        )
                     else:
                         _LOG.debug(
                             f"Unable to decode message id {confirm.tx_id}, but "
