@@ -39,6 +39,13 @@ from dali.exceptions import TransmissionError
 
 _LOG = logging.getLogger("dali.driver")
 
+# Sentinel placed on the raw DALI response queue when the interface reports a
+# framing error, so a waiting query returns an error response instead of
+# silently timing out. Two control gear answering at once (a short-address
+# collision) are the usual cause, and callers need to tell that apart from an
+# address that simply did not answer.
+_DALI_FRAMING_ERROR = object()
+
 
 def _drain_queue(queue: asyncio.Queue) -> list:
     """Remove and return every currently-queued item without blocking."""
@@ -1010,6 +1017,9 @@ class DriverLubaRs232(DriverSerialBase):
                 # 'Event Info' == 63: framing error
                 elif event_info == 63:
                     _LOG.error("LUBA DALI frame error: framing error")
+                    # Surface the error so a waiting query can distinguish a
+                    # collision (several gear answering) from no answer at all.
+                    self._queue_rx_raw_dali.put_nowait(_DALI_FRAMING_ERROR)
                     return
                 else:
                     _LOG.critical(f"LUBA DALI unknown event info: {event_info}")
@@ -1380,6 +1390,10 @@ class DriverLubaRs232(DriverSerialBase):
                         _LOG.debug(
                             f"DALI response timeout, from message: {msg}"
                         )
+                        break
+                    if raw_rsp is _DALI_FRAMING_ERROR:
+                        response = msg.response(frame.BackwardFrameError(255))
+                        _LOG.debug(f"DALI framing error, from message: {msg}")
                         break
                     if isinstance(raw_rsp, int):
                         response = msg.response(frame.BackwardFrame(raw_rsp))

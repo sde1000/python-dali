@@ -1,5 +1,7 @@
 import asyncio
+from functools import reduce
 import logging
+from operator import xor
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -8,7 +10,7 @@ from dali.address import DeviceShort, InstanceNumber
 from dali.command import NumericResponse
 from dali.device.general import QueryInstanceType
 from dali.device.helpers import check_bad_rsp
-from dali.driver.serial import DriverLubaRs232
+from dali.driver.serial import _DALI_FRAMING_ERROR, DriverLubaRs232
 
 
 @pytest.mark.asyncio
@@ -157,3 +159,53 @@ async def test_reset_luba_response_drains_all(caplog):
     protocol.reset_luba_response()
 
     assert protocol._queue_rx_luba_cmd.empty()
+
+
+def _luba_framing_error_event():
+    """Build a LUBA 'DALI frame received' event reporting a framing error."""
+    payload = [
+        0x00, 0x01,          # Time tick
+        0x00,                # DALI line
+        (2 << 6) | 63,       # Event type 2, event info 63 (framing error)
+    ]
+    body = [
+        DriverLubaRs232.LubaCmd.EVENT_MESSAGE.value,
+        len(payload),
+        *payload,
+    ]
+    return bytes([0x59, *body, reduce(xor, body)])
+
+
+@pytest.mark.asyncio
+async def test_framing_error_event_is_queued():
+    """A framing-error event must be surfaced on the raw response queue."""
+    protocol = DriverLubaRs232.LubaProtocol()
+
+    protocol.data_received(_luba_framing_error_event())
+
+    raw = await asyncio.wait_for(protocol._queue_rx_raw_dali.get(), timeout=1)
+    assert raw is _DALI_FRAMING_ERROR
+
+
+@pytest.mark.asyncio
+async def test_framing_error_query_returns_error_response():
+    """A query that hits a framing error must report it, not time out silently.
+
+    Several gear answering at once (a short-address collision) garble the
+    backward frame; the response must carry the error so callers can tell it
+    apart from an address that did not answer.
+    """
+    driver = DriverLubaRs232("luba232:/dev/ttyACM0")
+    driver._connected.set()
+    protocol = MagicMock()
+    protocol.reset_dali_response = MagicMock()
+    protocol.send_dali_command = AsyncMock()
+    protocol.wait_dali_raw_response = AsyncMock(return_value=_DALI_FRAMING_ERROR)
+    driver._protocol = protocol
+
+    response = await driver.send(
+        QueryInstanceType(device=DeviceShort(0), instance=InstanceNumber(0))
+    )
+
+    assert response.raw_value is not None
+    assert response.raw_value.error is True
