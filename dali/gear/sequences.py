@@ -167,7 +167,7 @@ def _require(response: command.Response, what: str) -> command.Response:
 
 
 def QueryEmergencyInformation(
-    address: GearShort,
+    address: GearAddress,
 ) -> Generator[command.Command, Optional[command.Response], EmergencyInformation]:
     """Read the DT1 (IEC 62386-202) status and measurement values of an
     emergency control gear in a single sequence.
