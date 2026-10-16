@@ -1,6 +1,8 @@
 """Commands and responses from IEC 62386 part 205."""
 
-from dali import command
+from typing import Optional, Literal
+from enum import IntEnum
+from dali import command, frame
 from dali.gear.general import _StandardCommand, QueryExtendedVersionNumberMixin
 
 
@@ -13,6 +15,20 @@ class _IncandescentConfigCommand(_IncandescentCommand):
     section 11.3.4.1 of IEC 62386-205:2009.
     """
     sendtwice = True
+
+
+class _ScaledFloatResponse(
+        command.Response[Optional[float | Literal["MASK"]]]):
+    scale = 1.0
+
+    @property
+    def value(self) -> Optional[float | Literal["MASK"]]:
+        self.raise_for_status()
+        if self._value is None:
+            return None
+        if self._value.as_integer == 0xff:
+            return "MASK"
+        return self._value.as_integer * self.scale
 
 
 ###############################################################################
@@ -52,6 +68,15 @@ class SelectDimmingCurve(_IncandescentConfigCommand):
 # Commands from IEC 62386-205 section 11.3.4.2
 ###############################################################################
 
+class DimmingCurve(IntEnum):
+    LOGARITHMIC = 0
+    LINEAR = 1
+
+
+class QueryDimmingCurveResponse(command.EnumResponse):
+    enumerator = DimmingCurve
+
+
 class QueryDimmingCurve(_IncandescentCommand):
     """Query Dimming Curve
 
@@ -59,7 +84,7 @@ class QueryDimmingCurve(_IncandescentCommand):
     1 = linear
     """
     _cmdval = 0xee
-    response = command.Response
+    response = QueryDimmingCurveResponse
 
 
 class DimmerStatusResponse(command.BitmapResponse):
@@ -104,9 +129,11 @@ class FeaturesByte3Response(command.BitmapResponse):
                         "trailing only", "sine wave"]
 
     @property
-    def dimming_method(self):
-        if self._value:
-            return self._dimming_methods[self._value[1:0]]
+    def dimming_method(self) -> Optional[str]:
+        if not self.value:
+            return None
+        assert isinstance(self.value, frame.BackwardFrame)
+        return self._dimming_methods[self.value[1:0]]
 
 
 class QueryFeatures(_IncandescentCommand):
@@ -160,6 +187,14 @@ class QueryFailureStatus(_IncandescentCommand):
     response = FailureStatusByte1Response
 
 
+class DimmerTemperatureResponse(command.OptionalNumericResponseMask):
+    """Dimmer temperature between -40C and 214C, or "MASK" if unknown"""
+    @property
+    def value(self) -> Optional[int | Literal["MASK"]]:
+        v = super().value
+        return v - 40 if isinstance(v, int) else v
+
+
 class QueryDimmerTemperature(_IncandescentCommand):
     """Query Dimmer Temperature
 
@@ -171,12 +206,15 @@ class QueryDimmerTemperature(_IncandescentCommand):
     Control gear without this feature shall not react.
     """
     _cmdval = 0xf2
-    # XXX add a temperature response class?
-    response = command.Response
+    response = DimmerTemperatureResponse
 
 
-class VoltageResponse(command.Response):
-    pass
+class VoltageResponse(command.OptionalNumericResponseMask):
+    """Voltage between 0V and 508V RMS, or "MASK" if unknown"""
+    @property
+    def value(self) -> Optional[int | Literal["MASK"]]:
+        v = super().value
+        return v * 2 if isinstance(v, int) else v
 
 
 class QueryRMSSupplyVoltage(_IncandescentCommand):
@@ -192,6 +230,13 @@ class QueryRMSSupplyVoltage(_IncandescentCommand):
     response = VoltageResponse
 
 
+class FrequencyResponse(_ScaledFloatResponse):
+    """Frequency between 0Hz and 127Hz with 0.5Hz resolution,
+    or "MASK" if unknown
+    """
+    scale = 0.5
+
+
 class QuerySupplyFrequency(_IncandescentCommand):
     """Query Supply Frequency
 
@@ -202,7 +247,7 @@ class QuerySupplyFrequency(_IncandescentCommand):
     Control gear without this feature shall not react.
     """
     _cmdval = 0xf4
-    response = command.Response
+    response = FrequencyResponse
 
 
 class QueryRMSLoadVoltage(_IncandescentCommand):
@@ -218,6 +263,13 @@ class QueryRMSLoadVoltage(_IncandescentCommand):
     response = VoltageResponse
 
 
+class LoadCurrentPctResponse(_ScaledFloatResponse):
+    """Load current percentage between 0% and 127% with 0.5% resolution,
+    or "MASK" if unknown
+    """
+    scale = 0.5
+
+
 class QueryRMSLoadCurrent(_IncandescentCommand):
     """Query RMS Load Current
 
@@ -230,7 +282,7 @@ class QueryRMSLoadCurrent(_IncandescentCommand):
     Control gear without this feature shall not react.
     """
     _cmdval = 0xf6
-    response = command.Response
+    response = LoadCurrentPctResponse
 
 
 class QueryRealLoadPower(_IncandescentCommand):
@@ -243,10 +295,19 @@ class QueryRealLoadPower(_IncandescentCommand):
     "unknown".
 
     Control gear without this feature shall not react.
+
+    There is a sequence making use of this command to return the real
+    power supplied to the load; see
+    dali.gear.sequences.QueryIncandescentRealLoadPower
     """
     _cmdval = 0xf7
     uses_dtr0 = True
-    response = command.Response
+    response = command.OptionalNumericResponse
+
+
+class LoadCurrentRatingResponse(_ScaledFloatResponse):
+    """Current in A with 0.15A resolution"""
+    scale = 0.15
 
 
 class QueryLoadRating(_IncandescentCommand):
@@ -259,7 +320,7 @@ class QueryLoadRating(_IncandescentCommand):
     Control gear without this feature shall not react.
     """
     _cmdval = 0xf8
-    response = command.Response
+    response = LoadCurrentRatingResponse
 
 
 class QueryReferenceRunning(_IncandescentCommand):

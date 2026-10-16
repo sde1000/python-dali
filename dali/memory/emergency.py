@@ -85,7 +85,7 @@ class MaxControlGearTemperatureCurrentBattery(TemperatureValue):
     max_value = 0xFD
 
 
-class AveragePowerDuringCharging(FixedScaleNumericValue):
+class AveragePowerDuringCharging(FixedScaleNumericValue[float]):
     """Average power during battery charging; 0xFD means 25.3 W or greater."""
     bank = BANK_208
     unit = 'W'
@@ -94,7 +94,7 @@ class AveragePowerDuringCharging(FixedScaleNumericValue):
     max_value = 0xFD
 
 
-class AveragePowerDuringMaintenance(FixedScaleNumericValue):
+class AveragePowerDuringMaintenance(FixedScaleNumericValue[float]):
     """Average power during battery charge maintenance; 0xFD means 25.3 W or
     greater."""
     bank = BANK_208
@@ -104,7 +104,7 @@ class AveragePowerDuringMaintenance(FixedScaleNumericValue):
     max_value = 0xFD
 
 
-class RatedDuration(FixedScaleNumericValue):
+class RatedDuration(FixedScaleNumericValue[float]):
     """Rated duration time in minutes (stored in units of 2 min)."""
     bank = BANK_208
     unit = 'min'
@@ -121,12 +121,12 @@ class FunctionTestTime(NumericValue):
     max_value = 0xFD
 
 
-class BatteryRechargeTime(FixedScaleNumericValue):
+class BatteryRechargeTime(FixedScaleNumericValue[float]):
     """Nominal battery recharge time in minutes (stored in units of 10 min);
     0xFD means 2530 min or greater."""
     bank = BANK_208
     unit = 'min'
-    scaling_factor = 10
+    scaling_factor = 10.0
     locations = MemoryLocation(address=0x0E, type_=MemoryType.NVM_RO)
     min_value = 1
     max_value = 0xFD

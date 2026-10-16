@@ -4,9 +4,11 @@ Sequence for simplifying certain interactions with 16-bit DALI gear
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Generator, Optional
+from typing import Optional, TypeVar, Any, Literal, Iterable
+import warnings
 
-from dali import command
+from dali import command, sequences
+from dali.sequences import DALISequence
 from dali.address import GearAddress, GearShort
 from dali.exceptions import DALISequenceError
 from dali.gear.colour import (
@@ -32,13 +34,51 @@ from dali.gear.emergency import (
     QueryLampTotalOperationTime,
     QueryRatedDuration,
 )
+from dali.gear.incandescent import QueryRealLoadPower
 from dali.gear.general import DTR0, DTR1, DTR2, QueryActualLevel, QueryContentDTR0
+
+
+# Gear-related sequences will be moved here from dali.sequences at
+# some point. Make the new locations work now, and suppress the
+# deprecation warnings when the new names are used.
+
+def QueryDeviceTypes(
+        addr: GearAddress
+) -> DALISequence[list[int]]:
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return (yield from sequences.QueryDeviceTypes(addr))
+
+
+def QueryGroups(addr: GearAddress) -> DALISequence[set[int]]:
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return (yield from sequences.QueryGroups(addr))
+
+
+def SetGroups(
+        addr: GearAddress, groups: set[int]
+) -> DALISequence:
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        yield from sequences.SetGroups(addr, groups)
+
+
+def Commissioning(
+        available_addresses: Optional[Iterable[int]] = None,
+        readdress: bool = False,
+        dry_run: bool = False
+) -> DALISequence:
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return (yield from sequences.Commissioning(
+            available_addresses, readdress, dry_run))
 
 
 def SetDT8ColourValueTc(
     address: GearAddress,
     tc_mired: int,
-) -> Generator[command.Command, Optional[command.Response], None]:
+) -> DALISequence:
     """
     A generator sequence to set the Colour Temperature of a DT8 control
     gear. Note that this sequence assumes that the address being targeted
@@ -48,11 +88,6 @@ def SetDT8ColourValueTc(
     :param tc_mired: An int of the colour temperature to set, in mired
     :return: None
     """
-    # Although the proper types are expected, ints are common enough for
-    # addresses and their meaning is unambiguous in this context
-    if isinstance(address, int):
-        address = GearShort(address)
-
     tc_bytes = tc_mired.to_bytes(length=2, byteorder="little")
     yield DTR0(tc_bytes[0])
     yield DTR1(tc_bytes[1])
@@ -63,7 +98,7 @@ def SetDT8ColourValueTc(
 def QueryDT8ColourValue(
     address: GearShort,
     query: QueryColourValueDTR,
-) -> Generator[command.Command, Optional[command.Response], Optional[int]]:
+) -> DALISequence[Optional[int]]:
     """
     A generator sequence to query the Colour Value of a DT8 control gear,
     from the list of numerous options in QueryColourValueDTR.
@@ -77,11 +112,6 @@ def QueryDT8ColourValue(
     :param query: specific option from QueryColourValueDTR to send as the query
     :return: The answer to the query as an int, or None if no answer
     """
-    # Although the proper types are expected, ints are common enough for
-    # addresses and their meaning is unambiguous in this context
-    if isinstance(address, int):
-        address = GearShort(address)
-
     if not isinstance(query, QueryColourValueDTR):
         raise TypeError(
             "'query' must be a value from QueryColourValueDTR enumerator"
@@ -97,6 +127,7 @@ def QueryDT8ColourValue(
         isinstance(msb, command.NumericResponseMask)
         and isinstance(lsb, command.NumericResponse)
         and isinstance(msb.value, int)
+        and isinstance(lsb.value, int)
     ):
         try:
             col_val = int.from_bytes((lsb.value, msb.value), "little")
@@ -110,7 +141,7 @@ def SetDT8TcLimit(
     address: GearAddress,
     what_limit: int,
     tc_mired: int,
-) -> Generator[command.Command, Optional[command.Response], None]:
+) -> DALISequence:
     """
     A generator sequence to set the Colour Temperature limit of a DT8 control
     gear. Note that this sequence assumes that the address being targeted
@@ -120,11 +151,6 @@ def SetDT8TcLimit(
     :param what_limit: What limit to set, from dali.gear.colour.StoreColourTemperatureTcLimitDTR2
     :param tc_mired: An int of the colour temperature to set, in mired
     """
-    # Although the proper types are expected, ints are common enough for
-    # addresses and their meaning is unambiguous in this context
-    if isinstance(address, int):
-        address = GearShort(address)
-
     tc_bytes = tc_mired.to_bytes(length=2, byteorder="little")
     yield DTR0(tc_bytes[0])
     yield DTR1(tc_bytes[1])
@@ -155,20 +181,25 @@ class EmergencyInformation:
     rated_duration: command.NumericResponse
 
 
-def _require(response: command.Response, what: str) -> command.Response:
+_ResponseType = TypeVar("_ResponseType", bound=command.Response[Any])
+
+
+def _require(response: Optional[command.Response[Any]],
+             responsetype: type[_ResponseType],
+             what: str) -> _ResponseType:
     """Return the response, or abort the sequence if the gear did not answer
     or replied with a framing error."""
-    raw = response.raw_value
-    if raw is None:
+    assert isinstance(response, responsetype)
+    if response.missing:
         raise DALISequenceError(f"No response to {what}")
-    if raw.error:
+    if response.error:
         raise DALISequenceError(f"Framing error in response to {what}")
     return response
 
 
 def QueryEmergencyInformation(
     address: GearAddress,
-) -> Generator[command.Command, Optional[command.Response], EmergencyInformation]:
+) -> DALISequence[EmergencyInformation]:
     """Read the DT1 (IEC 62386-202) status and measurement values of an
     emergency control gear in a single sequence.
 
@@ -185,42 +216,70 @@ def QueryEmergencyInformation(
     :param address: GearShort address to query
     :return: an EmergencyInformation dataclass
     """
-    # Although the proper types are expected, ints are common enough for
-    # addresses and their meaning is unambiguous in this context
-    if isinstance(address, int):
-        address = GearShort(address)
-
     return EmergencyInformation(
         emergency_mode=_require(
-            (yield QueryEmergencyMode(address)), "QueryEmergencyMode"
+            (yield QueryEmergencyMode(address)), QueryEmergencyModeResponse,
+            "QueryEmergencyMode"
         ),
         emergency_features=_require(
-            (yield QueryEmergencyFeatures(address)), "QueryEmergencyFeatures"
+            (yield QueryEmergencyFeatures(address)),
+            QueryEmergencyFeaturesResponse, "QueryEmergencyFeatures"
         ),
         emergency_failure_status=_require(
             (yield QueryEmergencyFailureStatus(address)),
-            "QueryEmergencyFailureStatus",
+            QueryEmergencyFailureStatusResponse, "QueryEmergencyFailureStatus"
         ),
         emergency_status=_require(
-            (yield QueryEmergencyStatus(address)), "QueryEmergencyStatus"
+            (yield QueryEmergencyStatus(address)),
+            QueryEmergencyStatusResponse, "QueryEmergencyStatus"
         ),
         battery_charge=_require(
-            (yield QueryBatteryCharge(address)), "QueryBatteryCharge"
+            (yield QueryBatteryCharge(address)),
+            command.NumericResponseMask, "QueryBatteryCharge"
         ),
         emergency_level=_require(
-            (yield QueryEmergencyLevel(address)), "QueryEmergencyLevel"
+            (yield QueryEmergencyLevel(address)),
+            command.NumericResponseMask, "QueryEmergencyLevel"
         ),
         duration_test_result=_require(
-            (yield QueryDurationTestResult(address)), "QueryDurationTestResult"
+            (yield QueryDurationTestResult(address)),
+            command.NumericResponse, "QueryDurationTestResult"
         ),
         lamp_emergency_time=_require(
-            (yield QueryLampEmergencyTime(address)), "QueryLampEmergencyTime"
+            (yield QueryLampEmergencyTime(address)),
+            command.NumericResponse, "QueryLampEmergencyTime"
         ),
         lamp_total_operation_time=_require(
             (yield QueryLampTotalOperationTime(address)),
-            "QueryLampTotalOperationTime",
+            command.NumericResponse, "QueryLampTotalOperationTime"
         ),
         rated_duration=_require(
-            (yield QueryRatedDuration(address)), "QueryRatedDuration"
+            (yield QueryRatedDuration(address)),
+            command.NumericResponse, "QueryRatedDuration"
         ),
     )
+
+
+def QueryIncandescentRealLoadPower(
+        address: GearAddress
+) -> DALISequence[Optional[float | Literal["MASK"]]]:
+    """Read the real load power of an incandescent light in a single sequence
+
+    The power in Watts is returned as a float. If the power is greater than
+    16383.5W then it is returned as 16383.5W. If the power is unknown then
+    the string "MASK" is returned. If the device does not react then None is
+    returned.
+
+    An exception will be raised if there is a framing error in any response,
+    or if QueryContentDTR0 does not respond.
+    """
+    high = yield QueryRealLoadPower(address)
+    assert isinstance(high, QueryRealLoadPower.response)
+    if high.value is None:
+        return None  # Control gear does not have this feature
+    low = yield QueryContentDTR0(address)
+    assert isinstance(low, QueryContentDTR0.response)
+    value_int = (high.value << 8) | low.value
+    if value_int == 0xffff:
+        return "MASK"
+    return value_int / 4.0

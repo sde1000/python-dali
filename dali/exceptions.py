@@ -50,7 +50,7 @@ class DALISequenceError(DALIError):
 class ProgramShortAddressFailure(DALIError):
     """A device did not accept programming of its short address."""
 
-    def __init__(self, address):
+    def __init__(self, address: int) -> None:
         self.address = address
 
 
@@ -125,7 +125,7 @@ class TransmissionError(DriverError):
     ``error_code`` is the interface-specific reason for the rejection.
     """
 
-    def __init__(self, error_code):
+    def __init__(self, error_code: object) -> None:
         self.error_code = error_code
         super().__init__(
             f"Frame transmission rejected, error code {error_code}"

@@ -4,7 +4,7 @@ from dali import exceptions
 
 class TestExceptions(unittest.TestCase):
 
-    def test_exceptions(self):
+    def test_exceptions(self) -> None:
         """exception class hierarchy as expected"""
         # general
         self.assertIsInstance(exceptions.DALIError(), Exception)

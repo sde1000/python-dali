@@ -2,6 +2,7 @@ import pytest
 
 from dali.exceptions import DALISequenceError
 from dali.frame import BackwardFrame
+from dali.address import GearShort
 from dali.gear.emergency import (
     QueryEmergencyFailureStatusResponse,
     QueryEmergencyModeResponse,
@@ -11,7 +12,7 @@ from dali.gear.sequences import QueryEmergencyInformation
 from dali.tests import fakes
 
 
-def test_emergency_status_decoding():
+def test_emergency_status_decoding() -> None:
     rsp = QueryEmergencyStatusResponse(BackwardFrame(0b00001010))
     assert rsp.inhibit_mode == 0
     assert rsp.function_test_done_and_result_valid == 1
@@ -23,22 +24,22 @@ def test_emergency_status_decoding():
     }
 
 
-def test_emergency_failure_decoding():
+def test_emergency_failure_decoding() -> None:
     rsp = QueryEmergencyFailureStatusResponse(BackwardFrame(0b00000101))
     assert rsp.circuit_failure == 1
     assert rsp.battery_duration_failure == 0
     assert rsp.battery_failure == 1
 
 
-def test_emergency_mode_property():
+def test_emergency_mode_property() -> None:
     # Only the "emergency mode" bit set
     rsp = QueryEmergencyModeResponse(BackwardFrame(0b00000100))
     assert rsp.mode == "emergency mode"
 
 
-def test_query_emergency_information():
+def test_query_emergency_information() -> None:
     bus = fakes.Bus([fakes.Gear(shortaddr=0, devicetypes=[1])])
-    info = bus.run_sequence(QueryEmergencyInformation(0))
+    info = bus.run_sequence(QueryEmergencyInformation(GearShort(0)))
     assert info.emergency_mode.normal_mode == 1
     assert info.emergency_mode.emergency_mode == 0
     assert info.emergency_features.integral_emergency_control_gear == 1
@@ -55,17 +56,17 @@ def test_query_emergency_information():
     assert info.rated_duration.value == 90
 
 
-def test_query_emergency_information_mask():
+def test_query_emergency_information_mask() -> None:
     gear = fakes.Gear(shortaddr=0, devicetypes=[1])
     gear.battery_charge = 255  # MASK
     bus = fakes.Bus([gear])
-    info = bus.run_sequence(QueryEmergencyInformation(0))
+    info = bus.run_sequence(QueryEmergencyInformation(GearShort(0)))
     assert info.battery_charge.value == "MASK"
 
 
-def test_query_emergency_information_aborts_on_missing_response():
+def test_query_emergency_information_aborts_on_missing_response() -> None:
     gear = fakes.Gear(shortaddr=0, devicetypes=[1])
     gear.emergency_mode = None  # gear does not answer the first query
     bus = fakes.Bus([gear])
     with pytest.raises(DALISequenceError):
-        bus.run_sequence(QueryEmergencyInformation(0))
+        bus.run_sequence(QueryEmergencyInformation(GearShort(0)))

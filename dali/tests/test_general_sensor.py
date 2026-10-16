@@ -40,14 +40,14 @@ def test_measurement_variable_command() -> None:
 def test_part_306_constants() -> None:
     """Test normative quantity and unit constants."""
     assert general_sensor.instance_type == 6
-    assert MeasurementVariable.QUANTITY_NAME == 0x1E
-    assert QuantityName.TEMPERATURE == 26
-    assert QuantityName.RELATIVE_HUMIDITY == 29
-    assert QuantityName.PRESSURE == 31
-    assert QuantityName.CO2 == 34
-    assert QuantityName.VOC == 36
-    assert QuantityName.AIR_QUALITY_INDEX == 46
-    assert UnitOfMeasurement.CELSIUS == 9
-    assert UnitOfMeasurement.PASCAL == 16
-    assert UnitOfMeasurement.PERCENT == 50
-    assert UnitOfMeasurement.PARTS_PER_MILLION == 53
+    assert MeasurementVariable.QUANTITY_NAME.value == 0x1E
+    assert QuantityName.TEMPERATURE.value == 26
+    assert QuantityName.RELATIVE_HUMIDITY.value == 29
+    assert QuantityName.PRESSURE.value == 31
+    assert QuantityName.CO2.value == 34
+    assert QuantityName.VOC.value == 36
+    assert QuantityName.AIR_QUALITY_INDEX.value == 46
+    assert UnitOfMeasurement.CELSIUS.value == 9
+    assert UnitOfMeasurement.PASCAL.value == 16
+    assert UnitOfMeasurement.PERCENT.value == 50
+    assert UnitOfMeasurement.PARTS_PER_MILLION.value == 53

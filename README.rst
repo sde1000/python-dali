@@ -74,23 +74,6 @@ Library structure
 
     - ``sequences`` - Packaged sequences for working with DALI control devices
 
-  - ``driver`` - Objects to communicate with physical DALI gateways or
-    services; not stable
-
-    - ``base`` - General driver contracts
-
-    - ``hasseb`` - Driver for Hasseb DALI Master
-
-    - ``tridonic`` - Driver for Tridonic DALI USB
-
-    - ``daliserver`` - Driver for https://github.com/onitake/daliserver (needs to be adopted to dali.driver.base API)
-
-    - ``hid`` - asyncio-based drivers for Tridonic DALI USB and hasseb DALI Master
-
-    - ``serial`` - asyncio-based driver for Lunatone LUBA RS232 interfaces
-
-    - ``atxled`` - Driver for ATX LED SERIAL DALI HAT
-
   - ``exceptions`` - DALI related exceptions
 
   - ``frame`` - Forward and backward frames; stable
@@ -109,7 +92,7 @@ Library structure
 
   - ``memory`` - access to memory banks; not stable
 
-  - ``sequences`` - packaged sequences of commands; stable
+  - ``sequences`` - base classes for packaged sequences of commands; stable
 
 
 Contributors

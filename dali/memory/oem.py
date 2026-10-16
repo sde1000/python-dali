@@ -1,5 +1,5 @@
 from .location import MemoryBank, MemoryLocation, MemoryRange, MemoryType, \
-    MemoryValue, NumericValue, StringValue
+    MemoryValue, NumericValue, StringValue, FlagValue
 
 # Memory bank definitions from IEC 62386-102 section 9.10.7 and DiiA
 # Specification, DALI Part 251 - Memory Bank 1 Extension, Version 1.1,
@@ -36,8 +36,6 @@ class ContentFormatID(NumericValue):
     Set to 0x0003 to indicate DiiA Specification DALI Part 251 -
     Memory Bank 1 Extension, Version 1.1, October 2019
     """
-    # XXX why is this not a MemoryRange? Is it just so the default can
-    # be set?
     bank = BANK_1
     locations = (
         MemoryLocation(address=0x11, default=0x00, type_=MemoryType.NVM_RW_L),
@@ -146,7 +144,7 @@ class CRI(NumericValue):
     mask_supported = True
 
 
-class CCT(NumericValue):
+class CCT(MemoryValue[int | str]):
     """CCT in K
 
     Valid when in the range 0..17000
@@ -161,19 +159,27 @@ class CCT(NumericValue):
     max_value = 17000
 
     @classmethod
-    def raw_to_value(cls, raw):
+    def raw_to_value(cls, raw: bytes) -> int | str:
         if raw == bytes([0xff, 0xfe]):
             return "Part 209 implemented"
-        return super().raw_to_value(raw)
+        return int.from_bytes(raw, 'big', signed=cls.signed)
 
     @classmethod
-    def is_valid(cls, raw):
+    def value_to_raw(cls, value: FlagValue | int | str) -> bytes:
+        raise NotImplementedError
+
+    @classmethod
+    def is_valid(cls, raw: bytes) -> bool:
         if raw == bytes([0xff, 0xfe]):
             return True
-        return super().is_valid(raw)
+        trial = int.from_bytes(raw, 'big', signed=cls.signed)
+        if cls.max_value is not None:
+            if trial > cls.max_value:
+                return False
+        return True
 
 
-class LightDistributionType(MemoryValue):
+class LightDistributionType(MemoryValue[str]):
     """Light Distribution Type
 
     0 = not specified
@@ -190,7 +196,7 @@ class LightDistributionType(MemoryValue):
     mask_supported = True
 
     @classmethod
-    def raw_to_value(cls, r):
+    def raw_to_value(cls, r: bytes) -> str:
         light_distribution_type = r[0]
         if light_distribution_type == 0:
             return 'not specified'
@@ -206,6 +212,10 @@ class LightDistributionType(MemoryValue):
             return 'Type V'
         else:
             return 'reserved'
+
+    @classmethod
+    def value_to_raw(cls, value: FlagValue | str) -> bytes:
+        raise NotImplementedError
 
 
 class LuminaireColor(StringValue):
