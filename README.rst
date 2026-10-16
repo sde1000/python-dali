@@ -26,6 +26,8 @@ This library has been written with reference to the following documents:
 - IEC 62386-209:2012 (colour control)
 - IEC 62386-301:2017 (particular requirements for push button input devices)
 - IEC 62386-303:2017 (particular requirements for occupancy sensor input devices)
+- IEC 62386-306:2023 (particular requirements for general purpose input devices)
+- DiiA Guidelines Clarifications & Recommendations for IEC 62386 1.12, June 2026
 
 I do not have copies of the other parts of the standard; they are
 fairly expensive to obtain.  The library is designed to be extensible;

@@ -9,3 +9,4 @@ import dali.device.sequences
 import dali.device.pushbutton  # noqa: F401
 import dali.device.occupancy  # noqa: F401
 import dali.device.light  # noqa: F401
+import dali.device.general_sensor  # noqa: F401
