@@ -1,13 +1,21 @@
 Changes
 =======
 
-Next release (unreleased)
--------------------------
+0.13 (2026-10-16)
+-----------------
 
 - Python 3.8 and Python 3.9 are no longer supported
 
+- The Debian packaging script has been removed
+
 - Add a sequence for commissioning control devices
   [markus-becker-tridonic-com]
+
+- Update emergency lighting (DT1) to the 2022 version of the standard
+  (the main addition being memory bank 208)
+  [markus-becker-tridonic-com]
+
+- Add Part 306 general sensor support [markus-becker-tridonic-com]
 
 - LUBA Driver updates [markus-becker-tridonic-com]
 
