@@ -43,7 +43,7 @@ Interface Alliance`_:
 Python versions supported
 -------------------------
 
-This library currently requires Python version 3.7 or later.
+This library currently requires Python version 3.8 or later.
 
 Stability
 ---------
@@ -139,11 +139,13 @@ Contributors
 
 - David Russell
 
+- Nikolay Korotkiy
+
 
 Copyright
 ---------
 
-python-dali is Copyright (C) 2013–2024 Stephen Early <steve@assorted.org.uk>
+python-dali is Copyright (C) 2013–2026 Stephen Early <steve@assorted.org.uk>
 and other contributors.
 
 It is distributed under the terms of the GNU Lesser General Public
