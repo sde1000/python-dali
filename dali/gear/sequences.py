@@ -3,16 +3,34 @@ Sequence for simplifying certain interactions with 16-bit DALI gear
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Generator, Optional
 
 from dali import command
 from dali.address import GearAddress, GearShort
+from dali.exceptions import DALISequenceError
 from dali.gear.colour import (
     Activate,
     QueryColourValue,
     QueryColourValueDTR,
     SetTemporaryColourTemperature,
     StoreColourTemperatureTcLimit,
+)
+from dali.gear.emergency import (
+    QueryBatteryCharge,
+    QueryDurationTestResult,
+    QueryEmergencyFailureStatus,
+    QueryEmergencyFailureStatusResponse,
+    QueryEmergencyFeatures,
+    QueryEmergencyFeaturesResponse,
+    QueryEmergencyLevel,
+    QueryEmergencyMode,
+    QueryEmergencyModeResponse,
+    QueryEmergencyStatus,
+    QueryEmergencyStatusResponse,
+    QueryLampEmergencyTime,
+    QueryLampTotalOperationTime,
+    QueryRatedDuration,
 )
 from dali.gear.general import DTR0, DTR1, DTR2, QueryActualLevel, QueryContentDTR0
 
@@ -112,3 +130,97 @@ def SetDT8TcLimit(
     yield DTR1(tc_bytes[1])
     yield DTR2(what_limit)
     yield StoreColourTemperatureTcLimit(address)
+
+
+@dataclass(frozen=True)
+class EmergencyInformation:
+    """DT1 (IEC 62386-202) status and measurement values of an emergency
+    control gear.
+
+    Each field holds the query's response object, preserving the attributes
+    those classes decode: the named status bits (for example
+    ``emergency_mode.emergency_mode``) and the measurement values
+    (``battery_charge.value``, which is an integer or ``"MASK"``).
+    """
+
+    emergency_mode: QueryEmergencyModeResponse
+    emergency_features: QueryEmergencyFeaturesResponse
+    emergency_failure_status: QueryEmergencyFailureStatusResponse
+    emergency_status: QueryEmergencyStatusResponse
+    battery_charge: command.NumericResponseMask
+    emergency_level: command.NumericResponseMask
+    duration_test_result: command.NumericResponse
+    lamp_emergency_time: command.NumericResponse
+    lamp_total_operation_time: command.NumericResponse
+    rated_duration: command.NumericResponse
+
+
+def _require(response: command.Response, what: str) -> command.Response:
+    """Return the response, or abort the sequence if the gear did not answer
+    or replied with a framing error."""
+    raw = response.raw_value
+    if raw is None:
+        raise DALISequenceError(f"No response to {what}")
+    if raw.error:
+        raise DALISequenceError(f"Framing error in response to {what}")
+    return response
+
+
+def QueryEmergencyInformation(
+    address: GearShort,
+) -> Generator[command.Command, Optional[command.Response], EmergencyInformation]:
+    """Read the DT1 (IEC 62386-202) status and measurement values of an
+    emergency control gear in a single sequence.
+
+    Bundling the queries into one sequence runs them under a single
+    transaction, so no other command can interleave between them. Each query's
+    response object is kept in the returned EmergencyInformation, so the caller
+    can read the named status bits and measurement values the response classes
+    decode.
+
+    A MASK measurement is a valid answer and is preserved; the sequence aborts
+    with a DALISequenceError if any query goes unanswered or returns a framing
+    error.
+
+    :param address: GearShort address to query
+    :return: an EmergencyInformation dataclass
+    """
+    # Although the proper types are expected, ints are common enough for
+    # addresses and their meaning is unambiguous in this context
+    if isinstance(address, int):
+        address = GearShort(address)
+
+    return EmergencyInformation(
+        emergency_mode=_require(
+            (yield QueryEmergencyMode(address)), "QueryEmergencyMode"
+        ),
+        emergency_features=_require(
+            (yield QueryEmergencyFeatures(address)), "QueryEmergencyFeatures"
+        ),
+        emergency_failure_status=_require(
+            (yield QueryEmergencyFailureStatus(address)),
+            "QueryEmergencyFailureStatus",
+        ),
+        emergency_status=_require(
+            (yield QueryEmergencyStatus(address)), "QueryEmergencyStatus"
+        ),
+        battery_charge=_require(
+            (yield QueryBatteryCharge(address)), "QueryBatteryCharge"
+        ),
+        emergency_level=_require(
+            (yield QueryEmergencyLevel(address)), "QueryEmergencyLevel"
+        ),
+        duration_test_result=_require(
+            (yield QueryDurationTestResult(address)), "QueryDurationTestResult"
+        ),
+        lamp_emergency_time=_require(
+            (yield QueryLampEmergencyTime(address)), "QueryLampEmergencyTime"
+        ),
+        lamp_total_operation_time=_require(
+            (yield QueryLampTotalOperationTime(address)),
+            "QueryLampTotalOperationTime",
+        ),
+        rated_duration=_require(
+            (yield QueryRatedDuration(address)), "QueryRatedDuration"
+        ),
+    )
