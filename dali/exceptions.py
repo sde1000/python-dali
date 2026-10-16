@@ -119,6 +119,19 @@ class CommunicationError(DriverError):
     """
 
 
+class TransmissionError(DriverError):
+    """The interface rejected transmission of a DALI frame.
+
+    ``error_code`` is the interface-specific reason for the rejection.
+    """
+
+    def __init__(self, error_code):
+        self.error_code = error_code
+        super().__init__(
+            f"Frame transmission rejected, error code {error_code}"
+        )
+
+
 class UnsupportedFrameTypeError(DriverError):
     """Device driver does not support this type of frame
     """
