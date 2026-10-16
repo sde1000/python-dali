@@ -20,6 +20,8 @@ Addressing for event messages is described in IEC 62386-103 section
 7.2.2.  Decoding of event messages is currently not implemented.
 """
 
+from __future__ import annotations
+
 from dali.exceptions import IncompatibleFrame
 
 
@@ -261,7 +263,7 @@ class GearShort(GearAddress):
     address.
     """
 
-    def __init__(self, address):
+    def __init__(self, address: int) -> None:
         if not isinstance(address, int):
             raise ValueError("address must be an integer")
         if address < 0 or address > 63:
@@ -305,7 +307,7 @@ class DeviceShort(DeviceAddress):
     address.
     """
 
-    def __init__(self, address: int):
+    def __init__(self, address: int) -> None:
         if not isinstance(address, int):
             raise ValueError("address must be an integer")
         if address < 0 or address > 63:
@@ -379,7 +381,7 @@ class ReservedInstance(Instance):
 class _AddressedInstance(Instance):
     _flags = None
 
-    def __init__(self, value):
+    def __init__(self, value: int) -> None:
         if not isinstance(value, int):
             raise ValueError("value must be an integer")
         if value < 0 or value > 31:

@@ -1,6 +1,9 @@
 """Declaration of base types for dali commands and their responses."""
 
+from __future__ import annotations
+
 from enum import IntEnum
+from typing import Any
 from dali import address
 from dali import frame
 from dali.exceptions import MissingResponse
@@ -46,17 +49,17 @@ class Response:
     _expected = False
     _error_acceptable = False
 
-    def __init__(self, val):
+    def __init__(self, val: frame.BackwardFrame | None) -> None:
         if val is not None and not isinstance(val, frame.BackwardFrame):
             raise TypeError("Response must be passed None or a BackwardFrame")
         self._value = val
 
     @property
-    def raw_value(self):
+    def raw_value(self) -> frame.BackwardFrame | None:
         return self._value
 
     @property
-    def value(self):
+    def value(self) -> Any:
         if self._value is None and self._expected:
             raise MissingResponse()
         if self._value and self._value.error and not self._error_acceptable:

@@ -69,19 +69,21 @@ class DeviceInstanceTypeMapper:
     through the `from_frame()` method.
     """
 
-    def __init__(self, initial=None):
+    def __init__(
+        self, initial: Optional[dict[tuple[int, int], int]] = None
+    ) -> None:
         """
         Creates a new DeviceInstanceTypeMapper object, optionally with
         preloaded mappings as defined by `initial`.
 
         :param initial: A dict of data to preload into the mapping
         """
-        self._mapping: dict[(int, int), int] = {}
+        self._mapping: dict[tuple[int, int], int] = {}
         if initial:
             self._mapping = initial
 
     @property
-    def mapping(self) -> dict[(int, int), int]:
+    def mapping(self) -> dict[tuple[int, int], int]:
         return self._mapping
 
     def autodiscover(
@@ -89,7 +91,7 @@ class DeviceInstanceTypeMapper:
         addresses: int | tuple[int, int] | Iterable[int] = (0, 63),
         quiescent_settle: float = 0.2,
         status_attempts: int = 3,
-    ) -> Generator[Command, Response, None]:
+    ) -> Generator[Command, Optional[Response], None]:
         """
         A generator sequence to scan a DALI bus for control device instances,
         and query their types. This information is stored within this
