@@ -10,44 +10,14 @@ from dali.address import DeviceBroadcast, DeviceShort, InstanceNumber
 from dali.command import Command, Response
 from dali.device.general import (
     QueryDeviceStatus,
-    QueryDeviceStatusResponse,
     QueryInstanceEnabled,
     QueryInstanceType,
     QueryNumberOfInstances,
     StartQuiescentMode,
     StopQuiescentMode,
 )
-from dali.exceptions import MissingResponse, ResponseError
 from dali.frame import BackwardFrameError
 from dali.sequences import progress as seq_progress, sleep
-
-
-def check_bad_rsp(r: Response | None) -> bool:
-    """
-    Checks if a response is "bad", i.e. if it is missing, is an error, or does
-    not have a value when one is expected.
-
-    :param r: A Response object to check
-    :return: A boolean, True if the response is "bad"
-    """
-    if not r:
-        return True
-    if isinstance(r.raw_value, BackwardFrameError):
-        return True
-    try:
-        # The 'value' property raises an exception if a value is expected but
-        # not present (except for NumericResponse)
-        val = r.value
-        # A NumericResponse uses strings to indicate error state
-        if isinstance(val, str):
-            if "missing" in val:
-                return True
-            if "framing error" in val:
-                return True
-    except (MissingResponse, ResponseError):
-        return True
-
-    return False
 
 
 class DeviceInstanceTypeMapper:
@@ -69,19 +39,20 @@ class DeviceInstanceTypeMapper:
     through the `from_frame()` method.
     """
 
-    def __init__(self, initial=None):
+    def __init__(self, initial: Optional[dict[tuple[int, int], int]] = None
+                 ) -> None:
         """
         Creates a new DeviceInstanceTypeMapper object, optionally with
         preloaded mappings as defined by `initial`.
 
         :param initial: A dict of data to preload into the mapping
         """
-        self._mapping: dict[(int, int), int] = {}
+        self._mapping: dict[tuple[int, int], int] = {}
         if initial:
             self._mapping = initial
 
     @property
-    def mapping(self) -> dict[(int, int), int]:
+    def mapping(self) -> dict[tuple[int, int], int]:
         return self._mapping
 
     def autodiscover(
@@ -89,7 +60,7 @@ class DeviceInstanceTypeMapper:
         addresses: int | tuple[int, int] | Iterable[int] = (0, 63),
         quiescent_settle: float = 0.2,
         status_attempts: int = 3,
-    ) -> Generator[Command, Response, None]:
+    ) -> Generator[Command | sleep | seq_progress, Response, None]:
         """
         A generator sequence to scan a DALI bus for control device instances,
         and query their types. This information is stored within this
@@ -140,27 +111,23 @@ class DeviceInstanceTypeMapper:
             # stop probing it immediately.
             for _attempt in range(status_attempts):
                 rsp = yield QueryDeviceStatus(device=addr)
-                if not check_bad_rsp(rsp):
+                assert isinstance(rsp, QueryDeviceStatus.response)
+                if rsp.valid:
                     break
                 if not isinstance(getattr(rsp, "raw_value", None), BackwardFrameError):
                     break
-            if check_bad_rsp(rsp):
+            assert isinstance(rsp, QueryDeviceStatus.response)
+            if not rsp.valid:
                 continue
-            if isinstance(rsp, QueryDeviceStatusResponse):
-                # Make sure the status is OK
-                if (
-                    rsp.short_address_is_mask
-                    or rsp.reset_state
-                ):
-                    continue
-            else:
-                # If the response isn't QueryDeviceStatusResponse then
-                # something is wrong
+            # Make sure the status is OK
+            if rsp.short_address_is_mask \
+               or rsp.reset_state:
                 continue
 
             # Find out how many instances the device has
             rsp = yield QueryNumberOfInstances(device=addr)
-            if check_bad_rsp(rsp):
+            assert isinstance(rsp, QueryNumberOfInstances.response)
+            if not rsp.valid:
                 continue
             # Instance numbers are 0..31 (IEC 62386-103), so a device can have
             # at most 32 instances. Cap the count defensively: a device
@@ -168,30 +135,32 @@ class DeviceInstanceTypeMapper:
             # would otherwise build an out-of-range InstanceNumber and abort the
             # whole scan. Non-existent instances are skipped when they do not
             # respond to QueryInstanceEnabled below.
-            num_inst = min(rsp.value, 32)
+            num_inst = min(rsp.as_integer, 32)
 
             # For each instance, check it is enabled and then query the type
             for inst_int in range(num_inst):
                 inst = InstanceNumber(inst_int)
                 rsp = yield QueryInstanceEnabled(device=addr, instance=inst)
-                if check_bad_rsp(rsp):
+                assert isinstance(rsp, QueryInstanceEnabled.response)
+                if not rsp.valid:
                     continue
-                if not rsp.value:
+                if not rsp.as_boolean:
                     # Skip if not enabled
                     continue
                 rsp = yield QueryInstanceType(device=addr, instance=inst)
-                if check_bad_rsp(rsp):
+                assert isinstance(rsp, QueryInstanceType.response)
+                if not rsp.valid:
                     continue
 
                 yield seq_progress(
-                    message=f"A²{addr_int} I{inst_int} type: {rsp.value}"
+                    message=f"A²{addr_int} I{inst_int} type: {rsp.as_integer}"
                 )
 
                 # Add the type to the device/instance map
                 self.add_type(
                     short_address=addr,
                     instance_number=inst,
-                    instance_type=rsp.value,
+                    instance_type=rsp.as_integer,
                 )
 
         # End quiescent mode
@@ -262,5 +231,5 @@ class DeviceInstanceTypeMapper:
         """
         self._mapping = {}
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self._mapping})"

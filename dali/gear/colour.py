@@ -4,9 +4,10 @@ gear
 """
 from __future__ import annotations
 
+from typing import Optional
 from enum import IntEnum
 
-from dali import command
+from dali import command, frame
 from dali.gear.general import _StandardCommand
 
 
@@ -299,24 +300,22 @@ class QueryColourTypeFeaturesResponse(command.BitmapResponse):
     ]
 
     @property
-    def primary_n(self) -> int:
+    def primary_n(self) -> Optional[int]:
         """
         Returns the number of primaries supported by the control gear
         """
-        count = self.primary_N_bit_2 << 2
-        count += self.primary_N_bit_1 << 1
-        count += self.primary_N_bit_0
-        return count
+        if not self.raw_value or self.raw_value.error:
+            return None
+        return self.raw_value[4:2]
 
     @property
-    def RGBWAF_channels(self) -> int:
+    def RGBWAF_channels(self) -> Optional[int]:
         """
         Returns the number of RGBWAF channels supported by the control gear
         """
-        count = self.RGBWAF_channels_bit_2 << 2
-        count += self.RGBWAF_channels_bit_1 << 1
-        count += self.RGBWAF_channels_bit_0
-        return count
+        if not self.raw_value or self.raw_value.error:
+            return None
+        return self.raw_value[7:5]
 
 
 class QueryColourTypeFeatures(_ColourCommand):
@@ -359,8 +358,11 @@ class QueryRBGWAFControlResponse(command.BitmapResponse):
         * colour control
         * normalised colour control
         """
-        count = self.control_type_bit_1 << 1
-        count += self.control_type_bit_0
+        if not self.raw_value or self.raw_value.error:
+            # XXX arguably we should be raising an exception or returning
+            # None here?
+            return "(error)"
+        count = self.raw_value[7:6]
         if count == 0:
             return "channel control"
         elif count == 1:
@@ -402,7 +404,7 @@ class QueryAssignedColourResponse(command.EnumResponse):
     enumerator = AssignedColour
 
     @property
-    def value(self):
+    def value(self) -> Optional[frame.BackwardFrame | int | str | bool | IntEnum]:
         if self.raw_value is None:
             return None
         _value = self.raw_value.as_integer

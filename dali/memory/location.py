@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from typing import Optional, Iterable, Generator, Any
 from collections import namedtuple
 from enum import Enum, auto
 
-from dali import device, gear
+from dali import command, device, gear
 from dali.address import Address, DeviceAddress, DeviceShort, GearAddress, GearShort
 from dali.exceptions import (
     LatchingNotSupported,
@@ -15,7 +16,7 @@ from dali.exceptions import (
 )
 
 
-def _DTR0(addr: Address, value: int):
+def _DTR0(addr: Address, value: int) -> command.Command:
     """Returns either a Gear or Device version of DTR0"""
     if isinstance(addr, GearAddress):
         return gear.general.DTR0(value)
@@ -25,7 +26,7 @@ def _DTR0(addr: Address, value: int):
         raise TypeError(f"Invalid addr: {addr}, expected GearAddress or DeviceAddress")
 
 
-def _DTR1(addr: Address, value: int):
+def _DTR1(addr: Address, value: int) -> command.Command:
     """Returns either a Gear or Device version of DTR1"""
     if isinstance(addr, GearAddress):
         return gear.general.DTR1(value)
@@ -35,7 +36,7 @@ def _DTR1(addr: Address, value: int):
         raise TypeError(f"Invalid addr: {addr}, expected GearAddress or DeviceAddress")
 
 
-def _EnableWriteMemory(addr: Address):
+def _EnableWriteMemory(addr: Address) -> command.Command:
     """Returns either a Gear or Device version of EnableWriteMemory"""
     if isinstance(addr, GearAddress):
         return gear.general.EnableWriteMemory(addr)
@@ -45,7 +46,7 @@ def _EnableWriteMemory(addr: Address):
         raise TypeError(f"Invalid addr: {addr}, expected GearAddress or DeviceAddress")
 
 
-def _ReadMemoryLocation(addr: GearShort | DeviceShort):
+def _ReadMemoryLocation(addr: GearShort | DeviceShort) -> command.Command:
     """Returns either a Gear or Device version of ReadMemoryLocation"""
     if isinstance(addr, GearAddress):
         return gear.general.ReadMemoryLocation(addr)
@@ -55,7 +56,7 @@ def _ReadMemoryLocation(addr: GearShort | DeviceShort):
         raise TypeError(f"Invalid addr: {addr}, expected GearAddress or DeviceAddress")
 
 
-def _WriteMemoryLocation(addr: Address, value: int):
+def _WriteMemoryLocation(addr: Address, value: int) -> command.Command:
     """Returns either a Gear or Device version of WriteMemoryLocation"""
     if isinstance(addr, GearAddress):
         return gear.general.WriteMemoryLocation(value)
@@ -65,7 +66,7 @@ def _WriteMemoryLocation(addr: Address, value: int):
         raise TypeError(f"Invalid addr: {addr}, expected GearAddress or DeviceAddress")
 
 
-def _WriteMemoryLocationNoReply(addr: Address, value: int):
+def _WriteMemoryLocationNoReply(addr: Address, value: int) -> command.Command:
     """Returns either a Gear or Device version of WriteMemoryLocationNoReply"""
     if isinstance(addr, GearAddress):
         return gear.general.WriteMemoryLocationNoReply(value)
@@ -75,7 +76,7 @@ def _WriteMemoryLocationNoReply(addr: Address, value: int):
         raise TypeError(f"Invalid addr: {addr}, expected GearAddress or DeviceAddress")
 
 
-def _QueryContentDTR0(addr: Address):
+def _QueryContentDTR0(addr: Address) -> command.Command:
     """Returns either a Gear or Device version of QueryContentDTR0"""
     if isinstance(addr, GearAddress):
         return gear.general.QueryContentDTR0(addr)
@@ -106,16 +107,18 @@ class LockingNotSupported(Exception):
     pass
 
 
-class MemoryBank:
-    MemoryBankEntry = namedtuple(
-        'MemoryBankEntry', ['memory_location', 'memory_value'])
+MemoryBankEntry = namedtuple(
+    'MemoryBankEntry', ['memory_location', 'memory_value'])
 
-    def __init__(self, address, last_address, has_lock=False, has_latch=False):
+
+class MemoryBank:
+    def __init__(self, address: int, last_address: int,
+                 has_lock: bool = False, has_latch: bool = False) -> None:
         """Declares a memory bank at a given address
         """
         self.__address = address
-        self.locations = {x: None for x in range(0xff)}
-        self.values = []
+        self.locations: dict[int, Optional[MemoryBankEntry]] = {x: None for x in range(0xff)}
+        self.values: list[MemoryValue] = []
 
         # add value for last addressable location
         class LastAddress(NumericValue):
@@ -132,40 +135,45 @@ class MemoryBank:
                 latch = has_latch
                 locations = (MemoryLocation(
                     0x02, reset=0xff, default=0xff, type_=MemoryType.RAM_RW),)
-            self.LockByte = LockByte
+            self.LockByte: Optional[type[LockByte]] = LockByte
         else:
             self.LockByte = None
 
     @property
-    def address(self):
+    def address(self) -> int:
         return self.__address
 
     @property
-    def has_lock(self):
+    def has_lock(self) -> bool:
         return bool(self.LockByte and self.LockByte.lock)
 
     @property
-    def has_latch(self):
+    def has_latch(self) -> bool:
         return bool(self.LockByte and self.LockByte.latch)
 
-    def _add_memory_value(self, memory_value):
+    def _add_memory_value(self, memory_value: MemoryValue) -> None:
         self.values.append(memory_value)
+        # The _RegisterMemoryValue metaclass should already have
+        # converted this to an iterable
+        assert not isinstance(memory_value.locations, MemoryLocation)
         for location in memory_value.locations:
             if self.locations[location.address]:
                 raise MemoryLocationOverlap(
                     f'Overlapping MemoryLocation at address {location.address}')
             if location.type_ == MemoryType.NVM_RW_L and not self.has_lock:
                 raise LockingNotSupported()
-            self.locations[location.address] = self.MemoryBankEntry(
+            self.locations[location.address] = MemoryBankEntry(
                 location, memory_value)
 
-    def last_address(self, addr):
+    def last_address(
+            self, addr: GearShort | DeviceShort
+    ) -> Generator[command.Command, Optional[command.Response], int]:
         """Sequence that returns the last available address in this bank
         """
         la = yield from self.LastAddress.read(addr)
         return la
 
-    def read_all(self, addr: Address, use_latch: bool = True):
+    def read_all(self, addr: GearShort | DeviceShort, use_latch: bool = True):
         """Read all available memory values from this memory bank.
 
         If the memory bank has a latch, the latch is set during the
@@ -271,26 +279,28 @@ class MemoryBank:
 # Python 3.7
 
 class MemoryLocation:
-    def __init__(self, address, default=None, reset=None, type_=None):
+    def __init__(self, address: int, default: Optional[int] = None,
+                 reset: Optional[int] = None,
+                 type_: Optional[MemoryType] = None) -> None:
         self.__address = address
         self.__type_ = type_
         self.__default = default
         self.__reset = reset
 
     @property
-    def address(self):
+    def address(self) -> int:
         return self.__address
 
     @property
-    def type_(self):
+    def type_(self) -> Optional[MemoryType]:
         return self.__type_
 
     @property
-    def default(self):
+    def default(self) -> Optional[int]:
         return self.__default
 
     @property
-    def reset(self):
+    def reset(self) -> Optional[int]:
         return self.__reset
 
     def __repr__(self):
@@ -378,8 +388,11 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
     # and/or TMASK?
     signed = False
 
+    bank: MemoryBank
+    locations: MemoryLocation | Iterable[MemoryLocation]
+
     @classmethod
-    def raw_to_value(cls, raw):
+    def raw_to_value(cls, raw: bytes) -> Any:
         """Converts raw bytes to the wanted result
 
         This method should only be called with valid values for 'raw'.
@@ -388,7 +401,7 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
         return raw
 
     @classmethod
-    def value_to_raw(cls, value):
+    def value_to_raw(cls, value: Any) -> bytes:
         """Converts a value to raw bytes to write to the memory bank
 
         If the conversion cannot be performed, raises ValueError
@@ -396,12 +409,12 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
         raise ValueError
 
     @classmethod
-    def is_valid(cls, raw):
+    def is_valid(cls, raw: bytes) -> bool:
         """Check whether raw bytes are valid for this memory value"""
         return True
 
     @classmethod
-    def check_raw(cls, raw):
+    def check_raw(cls, raw: bytes) -> Optional[FlagValue]:
         """Check for invalid or special patterns in raw bytes
 
         Returns None if no invalid or special patterns were found, otherwise
@@ -417,7 +430,7 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
             return FlagValue.Invalid
 
     @classmethod
-    def read_raw(cls, addr: Address):
+    def read_raw(cls, addr: Address) -> bytes:
         """Read the value from the bus unit without interpretation
 
         Raises MemoryLocationNotImplemented if the device does
@@ -430,7 +443,7 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
             addr = GearShort(addr)
         elif not isinstance(addr, (GearShort, DeviceShort)):
             raise TypeError(f"Invalid addr: {addr}, expected GearShort or DeviceShort")
-        result = []
+        result: list[int] = []
         dtr0 = None
         yield _DTR1(addr, cls.bank.address)
         for location in cls.locations:
@@ -632,11 +645,11 @@ class NumericValue(MemoryValue):
     max_value = None
 
     @classmethod
-    def raw_to_value(cls, raw):
+    def raw_to_value(cls, raw: bytes) -> int:
         return int.from_bytes(raw, 'big', signed=cls.signed)
 
     @classmethod
-    def value_to_raw(cls, value):
+    def value_to_raw(cls, value: int) -> bytes | FlagValue:
         if cls.mask_supported and value == 'MASK':
             return cls.mask
         if cls.tmask_supported and value == 'TMASK':
@@ -646,7 +659,7 @@ class NumericValue(MemoryValue):
         return value.to_bytes(len(cls.locations), 'big', signed=cls.signed)
 
     @classmethod
-    def is_valid(cls, raw):
+    def is_valid(cls, raw: bytes) -> bool:
         trial = int.from_bytes(raw, 'big', signed=cls.signed)
         if cls.min_value is not None:
             if trial < cls.min_value:

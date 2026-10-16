@@ -18,10 +18,31 @@
 # Sequences may raise exceptions, which the driver should pass to the
 # caller.
 
+from typing import Optional, Generator, Literal, Iterable
 from dali.exceptions import DALISequenceError, ProgramShortAddressFailure
-
-from dali.gear.general import *
-from dali.address import Broadcast, Short
+from dali import command
+from dali.gear.general import (
+    QueryDeviceType,
+    QueryNextDeviceType,
+    QueryGroupsZeroToSeven,
+    QueryGroupsEightToFifteen,
+    AddToGroup,
+    RemoveFromGroup,
+    SetSearchAddrH,
+    SetSearchAddrM,
+    SetSearchAddrL,
+    Compare,
+    DTR0,
+    QueryControlGearPresent,
+    Initialise,
+    Randomise,
+    Terminate,
+    Withdraw,
+    SetShortAddress,
+    ProgramShortAddress,
+    VerifyShortAddress,
+)
+from dali.address import GearAddress, GearBroadcast, GearShort
 
 
 class sleep:
@@ -30,7 +51,7 @@ class sleep:
     Yielded during a sequence to request that the caller wait for at
     least the specified length of time in seconds
     """
-    def __init__(self, delay):
+    def __init__(self, delay: float) -> None:
         self.delay = delay
 
 
@@ -42,22 +63,28 @@ class progress:
     both.  The amount of progress is just an indication and there is
     no guarantee that it will not decrease as well as increase.
     """
-    def __init__(self, message=None, completed=None, size=None):
+    def __init__(self, message: Optional[str] = None,
+                 completed: Optional[int] = None,
+                 size: Optional[int] = None):
         self.message = message
         self.completed = completed
         self.size = size
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.message:
             return self.message
         if self.completed is not None and self.size is not None:
             return f"Progress: {self.completed}/{self.size}"
+        return "No progress"
 
 
-def QueryDeviceTypes(addr):
+def QueryDeviceTypes(
+        addr: int | GearAddress
+) -> Generator[command.Command, Optional[command.Response], list[int]]:
     """Obtain a list of part 2xx device types supported by control gear
     """
     r = yield QueryDeviceType(addr)
+    assert isinstance(r, QueryDeviceType.response)
     if r.raw_value is None:
         raise DALISequenceError("No response to initial query")
     if r.raw_value.as_integer < 254:
@@ -66,10 +93,11 @@ def QueryDeviceTypes(addr):
         return []
     assert r.raw_value.as_integer == 255
     last_seen = 0
-    result = []
+    result: list[int] = []
     while True:
         r = yield QueryNextDeviceType(addr)
-        if not r.raw_value:
+        assert isinstance(r, QueryNextDeviceType.response)
+        if r.raw_value is None:
             raise DALISequenceError(
                 "No response to QueryNextDeviceType()")
         if r.raw_value.as_integer == 254:
@@ -84,18 +112,22 @@ def QueryDeviceTypes(addr):
         result.append(r.raw_value.as_integer)
 
 
-def QueryGroups(addr):
+def QueryGroups(
+        addr: int | GearAddress
+) -> Generator[command.Command, Optional[command.Response], set[int]]:
     """Obtain the group membership of control gear.
 
     Returns a set of integers.
     """
-    groups = set()
+    groups: set[int] = set()
     g0 = yield QueryGroupsZeroToSeven(addr)
+    assert isinstance(g0, QueryGroupsZeroToSeven.response)
     if g0.raw_value is None:
         raise DALISequenceError("No response reading groups zero to seven")
     if g0.raw_value.error:
         raise DALISequenceError("Framing error reading groups zero to seven")
     g1 = yield QueryGroupsEightToFifteen(addr)
+    assert isinstance(g1, QueryGroupsEightToFifteen.response)
     if g1.raw_value is None:
         raise DALISequenceError("No response reading groups eight to fifteen")
     if g1.raw_value.error:
@@ -107,12 +139,14 @@ def QueryGroups(addr):
     return groups
 
 
-def SetGroups(addr, groups):
+def SetGroups(
+        addr: int | GearAddress, groups: set[int]
+) -> Generator[command.Command, Optional[command.Response], None]:
     """Set the group membership of control gear.
 
     groups is a set of integers in the range 0..15
     """
-    if isinstance(addr, Short) or isinstance(addr, int):
+    if isinstance(addr, GearShort) or isinstance(addr, int):
         existing = yield from QueryGroups(addr)
         for i in groups - existing:
             yield AddToGroup(addr, i)
@@ -127,17 +161,20 @@ def SetGroups(addr, groups):
                 yield RemoveFromGroup(addr, i)
 
 
-def _find_next(low, high):
+def _find_next(
+        low: int, high: int
+) -> Generator[command.Command, Optional[command.Response],
+               Optional[Literal["clash"] | int]]:
     yield SetSearchAddrH((high >> 16) & 0xff)
     yield SetSearchAddrM((high >> 8) & 0xff)
     yield SetSearchAddrL(high & 0xff)
 
     r = yield Compare()
-
+    assert isinstance(r, Compare.response)
     if low == high:
-        if r.value is True:
-            return "clash" if r.raw_value.error else low
-        return
+        if r.as_boolean is True:
+            return "clash" if r.raw_value and r.raw_value.error else low
+        return None
 
     if r.value is True:
         midpoint = (low + high) // 2
@@ -145,10 +182,16 @@ def _find_next(low, high):
         if res is not None:
             return res
         return (yield from _find_next(midpoint + 1, high))
+    return None
 
 
-def Commissioning(available_addresses=None, readdress=False,
-                  dry_run=False):
+def Commissioning(
+        available_addresses: Optional[Iterable[int]] = None,
+        readdress: bool = False,
+        dry_run: bool = False
+) -> Generator[command.Command | sleep | progress,
+               Optional[command.Response],
+               None]:
     """Assign short addresses to control gear
 
     If available_addresses is passed, only the specified addresses
@@ -173,12 +216,13 @@ def Commissioning(available_addresses=None, readdress=False,
                            "short addresses")
         else:
             yield DTR0(255)
-            yield SetShortAddress(Broadcast())
+            yield SetShortAddress(GearBroadcast())
     else:
         # We need to know which short addresses are already in use
         for a in range(0, 64):
             if a in available_addresses:
-                in_use = yield QueryControlGearPresent(Short(a))
+                in_use = yield QueryControlGearPresent(GearShort(a))
+                assert isinstance(in_use, QueryControlGearPresent.response)
                 if in_use.value:
                     available_addresses.remove(a)
         yield progress(
@@ -197,19 +241,22 @@ def Commissioning(available_addresses=None, readdress=False,
         # Randomise can take up to 100ms
         yield sleep(0.1)
 
-        low = 0
+        low: Optional[int] = 0
         high = 0xffffff
 
         while low is not None:
             yield progress(completed=low, size=high)
-            low = yield from _find_next(low, high)
-            if low == "clash":
+            new_low = yield from _find_next(low, high)
+            if new_low == "clash":
                 yield progress(message="Multiple ballasts picked the same "
                                "random address; restarting")
                 break
-            if low is None:
+            elif new_low is None:
+                low = None
                 finished = True
                 break
+            else:
+                low = new_low
             yield progress(
                 message=f"Ballast found at address {low:#x}")
             if available_addresses:
@@ -223,7 +270,8 @@ def Commissioning(available_addresses=None, readdress=False,
                         message=f"Programming short address {new_addr}")
                     yield ProgramShortAddress(new_addr)
                     r = yield VerifyShortAddress(new_addr)
-                    if r.value is not True:
+                    assert isinstance(r, VerifyShortAddress.response)
+                    if r.as_boolean is not True:
                         raise ProgramShortAddressFailure(new_addr)
             else:
                 yield progress(

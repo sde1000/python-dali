@@ -1,7 +1,7 @@
 import pytest
 
 from dali.address import DeviceShort, InstanceNumber
-from dali.command import NumericResponse, YesNoResponse
+from dali.command import NumericResponse
 from dali.device import pushbutton
 from dali.device.general import (
     DTR0,
@@ -17,7 +17,7 @@ from dali.device.general import (
     QueryResolution,
     SetEventFilter,
 )
-from dali.device.helpers import DeviceInstanceTypeMapper, check_bad_rsp
+from dali.device.helpers import DeviceInstanceTypeMapper
 from dali.device.pushbutton import InstanceEventFilter as EventFilter_pb
 from dali.device.sequences import (
     Commissioning,
@@ -28,32 +28,6 @@ from dali.device.sequences import (
 )
 from dali.frame import BackwardFrame, BackwardFrameError
 from dali.tests import fakes
-
-
-def test_check_bad_rsp_none():
-    # A 'None' is always a bad response
-    assert check_bad_rsp(None)
-
-
-def test_check_bad_rsp_yes():
-    # A 'Yes' is always a good response
-    assert not check_bad_rsp(YesNoResponse(BackwardFrame(0xFF)))
-
-
-def test_check_bad_rsp_numeric():
-    # A numeric is always a good response, even if 0
-    assert not check_bad_rsp(NumericResponse(BackwardFrame(0xFF)))
-    assert not check_bad_rsp(NumericResponse(BackwardFrame(0x00)))
-
-
-def test_check_bad_rsp_missing():
-    # A numeric response expects a value
-    assert check_bad_rsp(NumericResponse(None))
-
-
-def test_check_bad_rsp_framing_error():
-    # A numeric response expects a value
-    assert check_bad_rsp(NumericResponse(BackwardFrameError(0xFF)))
 
 
 @pytest.fixture
@@ -316,22 +290,13 @@ def test_event_filter_pushbutton_sequence_all():
     # The previous test for the sequence adequately checks the remaining logic
 
 
-def test_event_filter_sequence_int():
-    # InstanceEventFilter ultimately inherits from int, so it should be
-    # possible to use a plain int in the sequence
-    sequence = SetEventFilters(
-        device=DeviceShort(0),
-        instance=InstanceNumber(0),
-        filter_value=3,
-    )
-    # The first message the sequence should send is DTR0
-    try:
-        cmd = sequence.send(None)
-    except StopIteration:
-        raise RuntimeError()
-    assert isinstance(cmd, DTR0)
-    assert cmd.frame.as_byte_sequence[2] == 3
-    # The previous test for the sequence adequately checks the remaining logic
+# There used to be a test_event_filter_sequence_int() test here. Its
+# comment said:
+
+# InstanceEventFilter ultimately inherits from int, so it should be
+# possible to use a plain int in the sequence
+
+# This breaks type checking, so the test has been removed.
 
 
 def test_event_filter_sequence_bad_type():

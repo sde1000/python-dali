@@ -4,9 +4,9 @@ Sequence for simplifying certain interactions with 16-bit DALI gear
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Generator, Optional
+from typing import Generator, Optional, TypeVar
 
-from dali import command
+from dali import command, sequences
 from dali.address import GearAddress, GearShort
 from dali.exceptions import DALISequenceError
 from dali.gear.colour import (
@@ -33,6 +33,14 @@ from dali.gear.emergency import (
     QueryRatedDuration,
 )
 from dali.gear.general import DTR0, DTR1, DTR2, QueryActualLevel, QueryContentDTR0
+
+
+# Gear-related sequences will be moved here from dali.sequences at
+# some point. Make the new locations work now.
+QueryDeviceTypes = sequences.QueryDeviceTypes
+QueryGroups = sequences.QueryGroups
+SetGroups = sequences.SetGroups
+Commissioning = sequences.Commissioning
 
 
 def SetDT8ColourValueTc(
@@ -97,6 +105,7 @@ def QueryDT8ColourValue(
         isinstance(msb, command.NumericResponseMask)
         and isinstance(lsb, command.NumericResponse)
         and isinstance(msb.value, int)
+        and isinstance(lsb.value, int)
     ):
         try:
             col_val = int.from_bytes((lsb.value, msb.value), "little")
@@ -155,9 +164,17 @@ class EmergencyInformation:
     rated_duration: command.NumericResponse
 
 
-def _require(response: command.Response, what: str) -> command.Response:
+ResponseType = TypeVar("ResponseType", bound=command.Response)
+
+
+def _require(response: Optional[command.Response],
+             responsetype: type[ResponseType],
+             what: str) -> ResponseType:
     """Return the response, or abort the sequence if the gear did not answer
     or replied with a framing error."""
+    if response is None:
+        raise DALISequenceError(f"Missing response to {what}")
+    assert isinstance(response, responsetype)
     raw = response.raw_value
     if raw is None:
         raise DALISequenceError(f"No response to {what}")
@@ -192,35 +209,43 @@ def QueryEmergencyInformation(
 
     return EmergencyInformation(
         emergency_mode=_require(
-            (yield QueryEmergencyMode(address)), "QueryEmergencyMode"
+            (yield QueryEmergencyMode(address)), QueryEmergencyModeResponse,
+            "QueryEmergencyMode"
         ),
         emergency_features=_require(
-            (yield QueryEmergencyFeatures(address)), "QueryEmergencyFeatures"
+            (yield QueryEmergencyFeatures(address)),
+            QueryEmergencyFeaturesResponse, "QueryEmergencyFeatures"
         ),
         emergency_failure_status=_require(
             (yield QueryEmergencyFailureStatus(address)),
-            "QueryEmergencyFailureStatus",
+            QueryEmergencyFailureStatusResponse, "QueryEmergencyFailureStatus"
         ),
         emergency_status=_require(
-            (yield QueryEmergencyStatus(address)), "QueryEmergencyStatus"
+            (yield QueryEmergencyStatus(address)),
+            QueryEmergencyStatusResponse, "QueryEmergencyStatus"
         ),
         battery_charge=_require(
-            (yield QueryBatteryCharge(address)), "QueryBatteryCharge"
+            (yield QueryBatteryCharge(address)),
+            command.NumericResponseMask, "QueryBatteryCharge"
         ),
         emergency_level=_require(
-            (yield QueryEmergencyLevel(address)), "QueryEmergencyLevel"
+            (yield QueryEmergencyLevel(address)),
+            command.NumericResponseMask, "QueryEmergencyLevel"
         ),
         duration_test_result=_require(
-            (yield QueryDurationTestResult(address)), "QueryDurationTestResult"
+            (yield QueryDurationTestResult(address)),
+            command.NumericResponse, "QueryDurationTestResult"
         ),
         lamp_emergency_time=_require(
-            (yield QueryLampEmergencyTime(address)), "QueryLampEmergencyTime"
+            (yield QueryLampEmergencyTime(address)),
+            command.NumericResponse, "QueryLampEmergencyTime"
         ),
         lamp_total_operation_time=_require(
             (yield QueryLampTotalOperationTime(address)),
-            "QueryLampTotalOperationTime",
+            command.NumericResponse, "QueryLampTotalOperationTime"
         ),
         rated_duration=_require(
-            (yield QueryRatedDuration(address)), "QueryRatedDuration"
+            (yield QueryRatedDuration(address)),
+            command.NumericResponse, "QueryRatedDuration"
         ),
     )

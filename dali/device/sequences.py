@@ -3,8 +3,8 @@ Sequence for simplifying certain interactions with 24-bit DALI devices
 """
 from __future__ import annotations
 
-import types
-from typing import Generator, Optional, Type
+from typing import Generator, Optional, Literal, Iterable
+import inspect
 
 from dali.address import DeviceBroadcast, DeviceShort, InstanceNumber
 from dali.command import Command, Response
@@ -39,19 +39,18 @@ from dali.device.general import (
     VerifyShortAddress,
     Withdraw,
 )
-from dali.device.helpers import check_bad_rsp
 from dali.exceptions import DALISequenceError, ProgramShortAddressFailure
 from dali.sequences import progress, sleep
 
 
 def SetEventSchemes(
-    device: DeviceShort,
-    instance: InstanceNumber,
+    device: DeviceShort | int,
+    instance: InstanceNumber | int,
     scheme: EventScheme,
 ) -> Generator[
     Command,
     Optional[Response],
-    Optional[QueryEventSchemeResponse],
+    QueryEventSchemeResponse,
 ]:
     """
     A generator sequence to set the event scheme of a device instance. Use
@@ -85,15 +84,12 @@ def SetEventSchemes(
     # ValueError if not
     EventScheme(pos)
 
-    rsp = yield DTR0(pos)
-    if rsp is not None:
-        return
+    yield DTR0(pos)
 
-    rsp = yield SetEventScheme(device=device, instance=instance)
-    if rsp is not None:
-        return
+    yield SetEventScheme(device=device, instance=instance)
 
     rsp = yield QueryEventScheme(device=device, instance=instance)
+    assert isinstance(rsp, QueryEventScheme.response)
     return rsp
 
 
@@ -123,9 +119,10 @@ def SetEventFilters(
     )
     ```
     """
-    if not isinstance(filter_value, int):
+    if not isinstance(filter_value, InstanceEventFilter):
         raise TypeError(
-            f"'filter_value' must be an int, not {type(filter_value)}"
+            f"'filter_value' must be an InstanceEventFilter, not "
+            f"{type(filter_value)}"
         )
     # Although the proper types are expected, ints are common enough for
     # addresses and their meaning is unambiguous in this context
@@ -134,57 +131,48 @@ def SetEventFilters(
     if isinstance(instance, int):
         instance = InstanceNumber(instance)
 
-    if isinstance(filter_value, InstanceEventFilter):
-        uses_dtr1 = filter_value.dali_width() > 8
-        uses_dtr2 = filter_value.dali_width() > 16
-    else:
-        uses_dtr1 = False
-        uses_dtr2 = False
+    uses_dtr1 = filter_value.dali_width() > 8
+    uses_dtr2 = filter_value.dali_width() > 16
 
     # The values in InstanceEventFilter are already mapped out to the
     # corresponding bits, through the inheritance from IntFlag
     lo, md, hi = filter_value.to_bytes(3, "little")
 
     # Set the various values into the DTRs
-    rsp = yield DTR0(lo)
-    if rsp is not None:
-        return
+    yield DTR0(lo)
     if uses_dtr1:
-        rsp = yield DTR1(md)
-        if rsp is not None:
-            return
-    if uses_dtr2 > 16:
-        rsp = yield DTR2(hi)
-        if rsp is not None:
-            return
+        yield DTR1(md)
+    if uses_dtr2:
+        yield DTR2(hi)
     # Set the filters
-    rsp = yield SetEventFilter(device=device, instance=instance)
-    if rsp is not None:
-        return
+    yield SetEventFilter(device=device, instance=instance)
 
     # Read back the values that were set
     rsp = yield QueryEventFilterL(device=device, instance=instance)
-    if check_bad_rsp(rsp):
-        return
-    lo = rsp.value
+    assert isinstance(rsp, QueryEventFilterL.response)
+    if not rsp.valid:
+        return None  # XXX Should we be raising an exception here?
+    lo = rsp.as_integer
     if uses_dtr1:
         rsp = yield QueryEventFilterM(device=device, instance=instance)
-        if check_bad_rsp(rsp):
-            return
-        md = rsp.value
+        assert isinstance(rsp, QueryEventFilterM.response)
+        if not rsp.valid:
+            return None
+        md = rsp.as_integer
     if uses_dtr2:
         rsp = yield QueryEventFilterH(device=device, instance=instance)
-        if check_bad_rsp(rsp):
-            return
-        hi = rsp.value
+        assert isinstance(rsp, QueryEventFilterH.response)
+        if not rsp.valid:
+            return None
+        hi = rsp.as_integer
 
     return filter_value.__class__(int.from_bytes((lo, md, hi), "little"))
 
 
 def QueryEventFilters(
-    device: DeviceShort,
-    instance: InstanceNumber,
-    filter_type: types.ModuleType | Type[InstanceEventFilter],
+    device: DeviceShort | int,
+    instance: InstanceNumber | int,
+    filter_type: type[InstanceEventFilter],
 ) -> Generator[Command, Optional[Response], Optional[InstanceEventFilter]]:
     """
     A generator sequence to query the event filters of a device instance.
@@ -195,8 +183,8 @@ def QueryEventFilters(
 
     :param device: A DeviceShort address to target
     :param instance: An InstanceNumber to target
-    :param filter_type: Either the module of the type being targeted, or a
-    specific InstanceEventFilter type to use, e.g. `dali.device.pushbutton`
+    :param filter_type: An InstanceEventFilter type to use, e.g.
+    `dali.device.pushbutton.InstanceEventFilter`
     :return: A generator function, to use with e.g. `driver.run_sequence()`
 
     Example:
@@ -213,10 +201,18 @@ def QueryEventFilters(
     )
     ```
     """
-    if hasattr(filter_type, "InstanceEventFilter"):
-        filter_type = getattr(filter_type, "InstanceEventFilter")
-    elif not issubclass(filter_type, InstanceEventFilter):
+    # Deprecated support for passing a module as filter_type
+    if inspect.ismodule(filter_type):
+        if hasattr(filter_type, "InstanceEventFilter"):
+            filter_type = getattr(filter_type, "InstanceEventFilter")
+        else:
+            raise TypeError(
+                "If 'filter_type' is a module, it must have an "
+                "InstanceEventFilter attribute")
+
+    if not issubclass(filter_type, InstanceEventFilter):
         raise TypeError("'filter_type' must be an InstanceEventFilter subclass")
+
     # Although the proper types are expected, ints are common enough for
     # addresses and their meaning is unambiguous in this context
     if isinstance(device, int):
@@ -229,19 +225,22 @@ def QueryEventFilters(
     hi = 0
 
     rsp = yield QueryEventFilterL(device=device, instance=instance)
-    if check_bad_rsp(rsp):
-        return
-    lo = rsp.value
+    assert isinstance(rsp, QueryEventFilterL.response)
+    if not rsp.valid:
+        return None  # should we raise an exception instead?
+    lo = rsp.as_integer
     if filter_type.dali_width() > 8:
         rsp = yield QueryEventFilterM(device=device, instance=instance)
-        if check_bad_rsp(rsp):
-            return
-        md = rsp.value
+        assert isinstance(rsp, QueryEventFilterM.response)
+        if not rsp.valid:
+            return None
+        md = rsp.as_integer
     if filter_type.dali_width() > 16:
         rsp = yield QueryEventFilterH(device=device, instance=instance)
-        if check_bad_rsp(rsp):
-            return
-        hi = rsp.value
+        assert isinstance(rsp, QueryEventFilterH.response)
+        if not rsp.valid:
+            return None
+        hi = rsp.as_integer
 
     return filter_type(int.from_bytes((lo, md, hi), "little"))
 
@@ -250,7 +249,7 @@ def query_input_value(
     device: DeviceShort,
     instance: InstanceNumber,
     resolution: Optional[int] = None
-) -> Generator[Command, Optional[Response], Optional[int]]:
+) -> Generator[Command, Optional[Response], int]:
     """
     A generator sequence to retrieve full sensor value from a part-103 control device.
     Use with an appropriate DALI driver instance, through the `run_sequence()`
@@ -268,22 +267,25 @@ def query_input_value(
         instance = InstanceNumber(instance)
 
     if resolution is None:
-        resolution = yield QueryResolution(device, instance)
-        if check_bad_rsp(resolution):
+        rsp = yield QueryResolution(device, instance)
+        assert isinstance(rsp, QueryResolution.response)
+        if not rsp.valid:
             raise DALISequenceError("query_input_value: QueryResolution failed")
-        resolution = resolution.value
+        resolution = rsp.as_integer
 
-    value = yield QueryInputValue(device, instance)
-    if check_bad_rsp(value):
+    rsp = yield QueryInputValue(device, instance)
+    assert isinstance(rsp, QueryInputValue.response)
+    if not rsp.valid:
         raise DALISequenceError("query_input_value: QueryInputValue failed")
-    value = value.value
+    value = rsp.as_integer
     while resolution > 8:
         resolution -= 8
         value <<= 8
-        chunk = yield QueryInputValueLatch(device, instance)
-        if check_bad_rsp(chunk):
+        rsp = yield QueryInputValueLatch(device, instance)
+        assert isinstance(rsp, QueryInputValueLatch.response)
+        if not rsp.valid:
             raise DALISequenceError("query_input_value: QueryInputValueLatch failed")
-        value += chunk.value
+        value += rsp.as_integer
 
     if resolution > 0:
         # Strip the repeated trailing bytes as per IEC 62386-103:2014, part 9.7.2
@@ -301,7 +303,7 @@ _INITIALISE_UNADDRESSED = 0x7F
 
 def _find_next(
     low: int, high: int
-) -> Generator[Command, Optional[Response], Optional[int | str]]:
+) -> Generator[Command, Optional[Response], Optional[Literal["clash"] | int]]:
     """Binary search the 24-bit random address space for a responding device.
 
     Returns the random address of the device with the lowest address in the
@@ -313,13 +315,14 @@ def _find_next(
     yield SearchAddrL(high & 0xFF)
 
     r = yield Compare()
+    assert isinstance(r, Compare.response)
 
     if low == high:
-        if r.value is True:
-            return "clash" if r.raw_value.error else low
+        if r.as_boolean is True:
+            return "clash" if r.raw_value and r.raw_value.error else low
         return None
 
-    if r.value is True:
+    if r.as_boolean is True:
         midpoint = (low + high) // 2
         res = yield from _find_next(low, midpoint)
         if res is not None:
@@ -330,10 +333,11 @@ def _find_next(
 
 
 def Commissioning(
-    available_addresses: Optional[list[int]] = None,
+    available_addresses: Optional[Iterable[int]] = None,
     readdress: bool = False,
     dry_run: bool = False,
-) -> Generator[Command, Optional[Response], list[DeviceShort]]:
+) -> Generator[Command | sleep | progress, Optional[Response],
+               list[DeviceShort]]:
     """Assign short addresses to 24-bit (part 103) control devices.
 
     This mirrors :func:`dali.sequences.Commissioning` for control gear, using
@@ -350,8 +354,7 @@ def Commissioning(
         currently unaddressed are assigned a short address.
     :param dry_run: If set, no short addresses are actually programmed. Useful
         for testing the search without altering the bus.
-    :return: The list of short addresses that are in use once the sequence
-        completes.
+    :return: The list of short addresses in use after the sequence completes.
     """
     used_addresses: list[DeviceShort] = []
     if available_addresses is None:
@@ -372,7 +375,8 @@ def Commissioning(
         # that address, so those addresses are considered already in use.
         for a in list(available_addresses):
             in_use = yield QueryDeviceStatus(DeviceShort(a))
-            if not check_bad_rsp(in_use):
+            assert isinstance(in_use, QueryDeviceStatus.response)
+            if in_use.valid:
                 available_addresses.remove(a)
                 used_addresses.append(DeviceShort(a))
         yield progress(message=f"Available addresses: {available_addresses}")
@@ -395,21 +399,22 @@ def Commissioning(
         # Randomise can take up to 200ms to settle.
         yield sleep(0.2)
 
-        low = 0
+        low: Optional[int] = 0
         high = 0xFFFFFF
 
         while low is not None:
             yield progress(completed=low, size=high)
-            low = yield from _find_next(low, high)
-            if low == "clash":
-                yield progress(
-                    message="Multiple devices picked the same random "
-                    "address; restarting"
-                )
+            new_low = yield from _find_next(low, high)
+            if new_low == "clash":
+                yield progress(message="Multiple ballasts picked the same "
+                               "random address; restarting")
                 break
-            if low is None:
+            elif new_low is None:
+                low = None
                 finished = True
                 break
+            else:
+                low = new_low
             yield progress(message=f"Device found at address {low:#x}")
             if available_addresses:
                 new_addr = available_addresses.pop(0)
@@ -424,7 +429,8 @@ def Commissioning(
                     )
                     yield ProgramShortAddress(new_addr)
                     r = yield VerifyShortAddress(new_addr)
-                    if r.value is not True:
+                    assert isinstance(r, VerifyShortAddress.response)
+                    if r.as_boolean is not True:
                         failed_address = new_addr
                         finished = True
                         break

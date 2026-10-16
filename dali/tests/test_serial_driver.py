@@ -9,7 +9,6 @@ import pytest
 from dali.address import DeviceShort, InstanceNumber
 from dali.command import NumericResponse
 from dali.device.general import QueryInstanceType
-from dali.device.helpers import check_bad_rsp
 from dali.driver.serial import _DALI_FRAMING_ERROR, DriverLubaRs232
 
 
@@ -34,7 +33,6 @@ async def test_timed_out_query_reports_missing_value():
 
     assert isinstance(response, NumericResponse)
     assert response.value == "(missing)"
-    assert check_bad_rsp(response)
 
 
 @pytest.mark.asyncio
