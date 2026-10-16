@@ -3,11 +3,12 @@ Sequence for simplifying certain interactions with 16-bit DALI gear
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, fields
-from typing import Generator, Optional, Type, TypeVar
+from dataclasses import dataclass
+from typing import Generator, Optional
 
 from dali import command
 from dali.address import GearAddress, GearShort
+from dali.exceptions import DALISequenceError
 from dali.gear.colour import (
     Activate,
     QueryColourValue,
@@ -19,10 +20,14 @@ from dali.gear.emergency import (
     QueryBatteryCharge,
     QueryDurationTestResult,
     QueryEmergencyFailureStatus,
+    QueryEmergencyFailureStatusResponse,
     QueryEmergencyFeatures,
+    QueryEmergencyFeaturesResponse,
     QueryEmergencyLevel,
     QueryEmergencyMode,
+    QueryEmergencyModeResponse,
     QueryEmergencyStatus,
+    QueryEmergencyStatusResponse,
     QueryLampEmergencyTime,
     QueryLampTotalOperationTime,
     QueryRatedDuration,
@@ -128,126 +133,37 @@ def SetDT8TcLimit(
 
 
 @dataclass(frozen=True)
-class EmergencyMode:
-    """Decoded Emergency Mode Information byte (IEC 62386-202).
-
-    Fields are declared least-significant bit first.
-    """
-
-    rest_mode: bool
-    normal_mode: bool
-    emergency_mode: bool
-    extended_emergency_mode: bool
-    function_test: bool
-    duration_test: bool
-    hardwired_inhibit_active: bool
-    hardwired_switch_on: bool
-
-
-@dataclass(frozen=True)
-class EmergencyFeatures:
-    """Decoded Features information byte (IEC 62386-202).
-
-    Fields are declared least-significant bit first.
-    """
-
-    integral_emergency_control_gear: bool
-    maintained_control_gear: bool
-    switched_maintained_control_gear: bool
-    auto_test_capability: bool
-    adjustable_emergency_level: bool
-    hardwired_inhibit_supported: bool
-    physical_selection_supported: bool
-    relight_in_rest_mode_supported: bool
-
-
-@dataclass(frozen=True)
-class EmergencyFailureStatus:
-    """Decoded Failure Status information byte (IEC 62386-202).
-
-    Fields are declared least-significant bit first.
-    """
-
-    circuit_failure: bool
-    battery_duration_failure: bool
-    battery_failure: bool
-    emergency_lamp_failure: bool
-    function_test_max_delay_exceeded: bool
-    duration_test_max_delay_exceeded: bool
-    function_test_failed: bool
-    duration_test_failed: bool
-
-
-@dataclass(frozen=True)
-class EmergencyStatus:
-    """Decoded Emergency Status information byte (IEC 62386-202).
-
-    Fields are declared least-significant bit first.
-    """
-
-    inhibit_mode: bool
-    function_test_done_and_result_valid: bool
-    duration_test_done_and_result_valid: bool
-    battery_fully_charged: bool
-    function_test_pending: bool
-    duration_test_pending: bool
-    identification_active: bool
-    physically_selected: bool
-
-
-@dataclass(frozen=True)
 class EmergencyInformation:
-    """Decoded DT1 (IEC 62386-202) status and measurement values.
+    """DT1 (IEC 62386-202) status and measurement values of an emergency
+    control gear.
 
-    Each status byte is decoded into its named bits, or None where the gear
-    did not answer or replied with a framing error. The measurement values
-    are plain integers, or None where the gear reports MASK or does not
-    answer.
+    Each field holds the query's response object, preserving the attributes
+    those classes decode: the named status bits (for example
+    ``emergency_mode.emergency_mode``) and the measurement values
+    (``battery_charge.value``, which is an integer or ``"MASK"``).
     """
 
-    emergency_mode: Optional[EmergencyMode]
-    emergency_features: Optional[EmergencyFeatures]
-    emergency_failure_status: Optional[EmergencyFailureStatus]
-    emergency_status: Optional[EmergencyStatus]
-    battery_charge: Optional[int]
-    emergency_level: Optional[int]
-    duration_test_result: Optional[int]
-    lamp_emergency_time: Optional[int]
-    lamp_total_operation_time: Optional[int]
-    rated_duration: Optional[int]
+    emergency_mode: QueryEmergencyModeResponse
+    emergency_features: QueryEmergencyFeaturesResponse
+    emergency_failure_status: QueryEmergencyFailureStatusResponse
+    emergency_status: QueryEmergencyStatusResponse
+    battery_charge: command.NumericResponseMask
+    emergency_level: command.NumericResponseMask
+    duration_test_result: command.NumericResponse
+    lamp_emergency_time: command.NumericResponse
+    lamp_total_operation_time: command.NumericResponse
+    rated_duration: command.NumericResponse
 
 
-_StatusByte = TypeVar("_StatusByte")
-
-
-def _decode_status(
-    response: Optional[command.Response],
-    cls: Type[_StatusByte],
-) -> Optional[_StatusByte]:
-    """Decode a bitmap response into one of the status dataclasses, or None if
-    the gear did not answer or replied with a framing error.
-
-    The dataclass fields are declared least-significant bit first, so each is
-    assigned the matching bit of the response byte by position.
-    """
-    if response is None:
-        return None
+def _require(response: command.Response, what: str) -> command.Response:
+    """Return the response, or abort the sequence if the gear did not answer
+    or replied with a framing error."""
     raw = response.raw_value
-    if raw is None or raw.error:
-        return None
-    byte = raw.as_integer
-    return cls(
-        **{field.name: bool(byte & (1 << pos)) for pos, field in enumerate(fields(cls))}
-    )
-
-
-def _numeric(response: Optional[command.Response]) -> Optional[int]:
-    """Return the integer value of a numeric response, or None for MASK,
-    a missing answer or a framing error."""
-    if response is None:
-        return None
-    value = response.value
-    return value if isinstance(value, int) else None
+    if raw is None:
+        raise DALISequenceError(f"No response to {what}")
+    if raw.error:
+        raise DALISequenceError(f"Framing error in response to {what}")
+    return response
 
 
 def QueryEmergencyInformation(
@@ -257,10 +173,14 @@ def QueryEmergencyInformation(
     emergency control gear in a single sequence.
 
     Bundling the queries into one sequence runs them under a single
-    transaction, so no other command can interleave between them. The four
-    status bytes are decoded into their named bits and the measurement values
-    are returned as plain integers (or None where the gear reports MASK or
-    does not answer).
+    transaction, so no other command can interleave between them. Each query's
+    response object is kept in the returned EmergencyInformation, so the caller
+    can read the named status bits and measurement values the response classes
+    decode.
+
+    A MASK measurement is a valid answer and is preserved; the sequence aborts
+    with a DALISequenceError if any query goes unanswered or returns a framing
+    error.
 
     :param address: GearShort address to query
     :return: an EmergencyInformation dataclass
@@ -271,24 +191,36 @@ def QueryEmergencyInformation(
         address = GearShort(address)
 
     return EmergencyInformation(
-        emergency_mode=_decode_status(
-            (yield QueryEmergencyMode(address)), EmergencyMode
+        emergency_mode=_require(
+            (yield QueryEmergencyMode(address)), "QueryEmergencyMode"
         ),
-        emergency_features=_decode_status(
-            (yield QueryEmergencyFeatures(address)), EmergencyFeatures
+        emergency_features=_require(
+            (yield QueryEmergencyFeatures(address)), "QueryEmergencyFeatures"
         ),
-        emergency_failure_status=_decode_status(
-            (yield QueryEmergencyFailureStatus(address)), EmergencyFailureStatus
+        emergency_failure_status=_require(
+            (yield QueryEmergencyFailureStatus(address)),
+            "QueryEmergencyFailureStatus",
         ),
-        emergency_status=_decode_status(
-            (yield QueryEmergencyStatus(address)), EmergencyStatus
+        emergency_status=_require(
+            (yield QueryEmergencyStatus(address)), "QueryEmergencyStatus"
         ),
-        battery_charge=_numeric((yield QueryBatteryCharge(address))),
-        emergency_level=_numeric((yield QueryEmergencyLevel(address))),
-        duration_test_result=_numeric((yield QueryDurationTestResult(address))),
-        lamp_emergency_time=_numeric((yield QueryLampEmergencyTime(address))),
-        lamp_total_operation_time=_numeric(
-            (yield QueryLampTotalOperationTime(address))
+        battery_charge=_require(
+            (yield QueryBatteryCharge(address)), "QueryBatteryCharge"
         ),
-        rated_duration=_numeric((yield QueryRatedDuration(address))),
+        emergency_level=_require(
+            (yield QueryEmergencyLevel(address)), "QueryEmergencyLevel"
+        ),
+        duration_test_result=_require(
+            (yield QueryDurationTestResult(address)), "QueryDurationTestResult"
+        ),
+        lamp_emergency_time=_require(
+            (yield QueryLampEmergencyTime(address)), "QueryLampEmergencyTime"
+        ),
+        lamp_total_operation_time=_require(
+            (yield QueryLampTotalOperationTime(address)),
+            "QueryLampTotalOperationTime",
+        ),
+        rated_duration=_require(
+            (yield QueryRatedDuration(address)), "QueryRatedDuration"
+        ),
     )
