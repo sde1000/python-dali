@@ -1,4 +1,5 @@
 import unittest
+from typing import Optional, Any
 from decimal import Decimal
 
 from dali.address import DeviceShort, GearShort
@@ -13,7 +14,8 @@ from dali.exceptions import (
 from dali.frame import BackwardFrame
 from dali.gear.general import DTR0, DTR1, ReadMemoryLocation
 from dali.memory import diagnostics, emergency, energy, info, maintenance, oem
-from dali.memory.location import FlagValue, MemoryBank, NumericValue
+from dali.memory.location import FlagValue, MemoryBank, NumericValue, MemoryValue
+from dali.sequences import DALISequence
 from dali.tests import fakes
 
 
@@ -263,11 +265,11 @@ class LatchTestBank203(fakes.FakeMemoryBank):
         0x00, 0x00, 0x05, 0xdc,  # 15W
     ]
 
-    def read(self, address):
+    def read(self, address: int) -> Optional[int]:
         if self.contents[2] != 0xaa:
             return super().read(address)
-        if address > self.contents[0]:
-            return
+        if self.contents[0] is None or address > self.contents[0]:
+            return None
         return self.latched_contents[address]
 
 
@@ -290,7 +292,7 @@ class BrokenBank1(fakes.FakeMemoryBank):
     """
     bank = oem.BANK_1
 
-    def write(self, address, value):
+    def write(self, address: int, value: int) -> Optional[int]:
         super().write(address, value)
         return 0xaa
 
@@ -326,24 +328,24 @@ class BrokenBank206(fakes.FakeMemoryBank):
 
 
 class TestMemoryBank(unittest.TestCase):
-    def test_repr_memorybank(self):
+    def test_repr_memorybank(self) -> None:
         self.assertEqual(
             repr(MemoryBank(3, 45)),
             "MemoryBank(address=3, has_lock=False, has_latch=False)")
 
-    def test_has_lock(self):
+    def test_has_lock(self) -> None:
         self.assertEqual(MemoryBank(3, 45).has_lock, False)
         self.assertEqual(MemoryBank(3, 45, has_latch=True).has_lock, False)
         self.assertEqual(MemoryBank(3, 45, has_lock=True).has_lock, True)
 
-    def test_has_latch(self):
+    def test_has_latch(self) -> None:
         self.assertEqual(MemoryBank(3, 45).has_latch, False)
         self.assertEqual(MemoryBank(3, 45, has_lock=True).has_latch, False)
         self.assertEqual(MemoryBank(3, 45, has_latch=True).has_latch, True)
 
 
 class TestLocations(unittest.TestCase):
-    def test_str_memoryvalue(self):
+    def test_str_memoryvalue(self) -> None:
         # str() on a concrete memory value class should return the class name
         # so that it is usable as a label.
         self.assertEqual(str(info.GTIN), 'GTIN')
@@ -352,56 +354,67 @@ class TestLocations(unittest.TestCase):
 
 
 class TestMemory(unittest.TestCase):
-    def setUp(self):
+    a0 = GearShort(0)
+    a1 = GearShort(1)
+    a2 = GearShort(2)
+    da0 = DeviceShort(0)
+
+    def setUp(self) -> None:
         # The unit at address 0 behaves normally, the units at address
         # 1 and 2 have some oddities which we use to test special
         # value handling and write errors
         self.bus = fakes.Bus([
-            fakes.Gear(GearShort(0), memory_banks=(
+            fakes.Gear(self.a0, memory_banks=(
                 fakes.FakeBank0, FakeBank1, FakeBank202, FakeBank203,
                 FakeBank204, FakeBank205, FakeBank206, FakeBank207,
                 FakeBank208)),
-            fakes.Gear(GearShort(1), memory_banks=(
+            fakes.Gear(self.a1, memory_banks=(
                 fakes.FakeBank0, InvalidBank1, InvalidBank202,
                 LatchTestBank203, InvalidBank207)),
-            fakes.Gear(GearShort(2), memory_banks=(
+            fakes.Gear(self.a2, memory_banks=(
                 fakes.FakeBank0, BrokenBank1, BrokenBank206)),
-            fakes.Device(DeviceShort(0), memory_banks=(fakes.FakeBank0, FakeBank1)),
+            fakes.Device(self.da0, memory_banks=(fakes.FakeBank0, FakeBank1)),
         ])
 
-    def _test_value(self, memory_value, expected, addr=0):
+    def _test_value(
+            self,
+            memory_value: type[MemoryValue[Any]],
+            expected: Any,
+            addr: GearShort = GearShort(0),
+    ) -> None:
         r = self.bus.run_sequence(memory_value.read(addr))
         self.assertEqual(r, expected)
 
-    def test_missingMemoryLocation(self):
+    def test_missingMemoryLocation(self) -> None:
         self.assertRaises(MemoryLocationNotImplemented, self.bus.run_sequence,
-                          oem.LuminaireColor.read(1))
+                          oem.LuminaireColor.read(self.a1))
         self.assertRaises(MemoryLocationNotImplemented, self.bus.run_sequence,
-                          oem.LuminaireIdentification.read(1))
+                          oem.LuminaireIdentification.read(self.a1))
 
-    def test_lockByte(self):
+    def test_lockByte(self) -> None:
         # Toggle the lock byte in bank 1 and check that values become
         # locked and unlocked as appropriate
-        self.bus.run_sequence(oem.BANK_1.LockByte.write(0, 0xff))
+        assert oem.BANK_1.LockByte is not None
+        self.bus.run_sequence(oem.BANK_1.LockByte.write(self.a0, 0xff))
         self.assertTrue(self.bus.run_sequence(
-            oem.ManufacturerGTIN.is_locked(0)))
-        self.bus.run_sequence(oem.BANK_1.LockByte.write(0, 0x55))
+            oem.ManufacturerGTIN.is_locked(self.a0)))
+        self.bus.run_sequence(oem.BANK_1.LockByte.write(self.a0, 0x55))
         self.assertFalse(self.bus.run_sequence(
-            oem.ManufacturerGTIN.is_locked(0)))
+            oem.ManufacturerGTIN.is_locked(self.a0)))
 
-    def test_isAddressable(self):
+    def test_isAddressable(self) -> None:
         self.assertTrue(self.bus.run_sequence(
-            oem.LuminaireIdentification.is_addressable(0)))
+            oem.LuminaireIdentification.is_addressable(self.a0)))
         self.assertFalse(self.bus.run_sequence(
-            oem.LuminaireIdentification.is_addressable(1)))
+            oem.LuminaireIdentification.is_addressable(self.a1)))
 
-    def test_dtrHandling(self):
+    def test_dtrHandling(self) -> None:
         # Instead of messing with run_sequence in fakes this dummy
         # is implemented. It returns commands in the sequence as
         # a list in place of its result.
-        def dummy_run_sequence(seq):
-            commands = []
-            response = None
+        def dummy_run_sequence(seq: DALISequence[Any]) -> list[Command]:
+            commands: list[Command] = []
+            response: Optional[Response] = None
             while True:
                 try:
                     cmd = seq.send(response)
@@ -411,7 +424,7 @@ class TestMemory(unittest.TestCase):
                 if isinstance(cmd, Command):
                     commands.append(cmd)
 
-        commands = dummy_run_sequence(info.GTIN.read(0))
+        commands = dummy_run_sequence(info.GTIN.read(self.a0))
         dtr0_counter = 0
         dtr1_counter = 0
         for i, cmd in enumerate(commands):
@@ -427,8 +440,8 @@ class TestMemory(unittest.TestCase):
         self.assertEqual(dtr0_counter, 1)
         self.assertEqual(dtr1_counter, 1)
 
-    def test_memorybank_read_all(self):
-        values = self.bus.run_sequence(info.BANK_0.read_all(0))
+    def test_memorybank_read_all(self) -> None:
+        values = self.bus.run_sequence(info.BANK_0.read_all(self.a0))
         # We can't rely on LastMemoryBank being unchanged, so remove it
         # from the results
         del values[info.LastMemoryBank]
@@ -446,8 +459,8 @@ class TestMemory(unittest.TestCase):
         }
         self.assertEqual(values, expected)
 
-    def test_memorybank_device_read_all(self):
-        values = self.bus.run_sequence(info.BANK_0.read_all(DeviceShort(0)))
+    def test_memorybank_device_read_all(self) -> None:
+        values = self.bus.run_sequence(info.BANK_0.read_all(self.da0))
         # We can't rely on LastMemoryBank being unchanged, so remove it
         # from the results
         del values[info.LastMemoryBank]
@@ -465,16 +478,16 @@ class TestMemory(unittest.TestCase):
         }
         self.assertEqual(values, expected)
 
-    def test_memorybank_read_all_latch(self):
+    def test_memorybank_read_all_latch(self) -> None:
         values = self.bus.run_sequence(energy.BANK_203.read_all(
-            1, use_latch=False))
+            self.a1, use_latch=False))
         expected = {
             energy.ApparentBankVersion: 1,
             energy.ApparentEnergy: Decimal("100"),
             energy.ApparentPower: Decimal("10"),
         }
         self.assertEqual(values, expected)
-        values = self.bus.run_sequence(energy.BANK_203.read_all(1))
+        values = self.bus.run_sequence(energy.BANK_203.read_all(self.a1))
         expected = {
             energy.ApparentBankVersion: 1,
             energy.ApparentEnergy: Decimal("150"),
@@ -482,7 +495,7 @@ class TestMemory(unittest.TestCase):
         }
         self.assertEqual(values, expected)
 
-    def test_diagnostics(self):
+    def test_diagnostics(self) -> None:
         self._test_value(diagnostics.ControlGearDiagnosticBankVersion, 1)
         self._test_value(diagnostics.ControlGearOperatingTime, 3600)
         self._test_value(diagnostics.ControlGearStartCounter, 10)
@@ -524,12 +537,12 @@ class TestMemory(unittest.TestCase):
         self._test_value(diagnostics.LightSourceThermalShutdownCounter, 67)
         self._test_value(diagnostics.LightSourceTemperature, 100)
 
-    def test_energy(self):
+    def test_energy(self) -> None:
         self._test_value(energy.ActiveBankVersion, 1)
         self._test_value(energy.ActiveEnergy, Decimal("10000"))
-        self._test_value(energy.ActiveEnergy, FlagValue.Invalid, addr=1)
+        self._test_value(energy.ActiveEnergy, FlagValue.Invalid, addr=self.a1)
         self._test_value(energy.ActivePower, Decimal("1000"))
-        self._test_value(energy.ActivePower, FlagValue.TMASK, addr=1)
+        self._test_value(energy.ActivePower, FlagValue.TMASK, addr=self.a1)
         self._test_value(energy.ApparentBankVersion, 1)
         self._test_value(energy.ApparentEnergy, Decimal("100"))
         self._test_value(energy.ApparentPower, Decimal("10"))
@@ -537,58 +550,58 @@ class TestMemory(unittest.TestCase):
         self._test_value(energy.ActiveEnergyLoadside, Decimal("0.1"))
         self._test_value(energy.ActivePowerLoadside, Decimal("10000"))
 
-    def test_maintenance(self):
+    def test_maintenance(self) -> None:
         self._test_value(
             maintenance.LuminaireMaintenanceBankVersion, 1)
         self._test_value(
             maintenance.RatedMedianUsefulLifeOfLuminaire, 50000)
         self._test_value(
             maintenance.RatedMedianUsefulLifeOfLuminaire,
-            FlagValue.TMASK, addr=1)
+            FlagValue.TMASK, addr=self.a1)
         self._test_value(
             maintenance.InternalControlGearReferenceTemperature, 30)
         self._test_value(
             maintenance.InternalControlGearReferenceTemperature,
-            FlagValue.MASK, addr=1)
+            FlagValue.MASK, addr=self.a1)
         self._test_value(
             maintenance.RatedMedianUsefulLightSourceStarts, 500000)
         self._test_value(
             maintenance.RatedMedianUsefulLightSourceStarts,
-            FlagValue.TMASK, addr=1)
+            FlagValue.TMASK, addr=self.a1)
 
-    def test_oem(self):
+    def test_oem(self) -> None:
         self._test_value(oem.ManufacturerGTIN, 7654321234567)
         self._test_value(oem.LuminaireID, 2)
         self._test_value(oem.ContentFormatID, 3)
         self._test_value(oem.YearOfManufacture, 21)
-        self._test_value(oem.YearOfManufacture, FlagValue.Invalid, addr=1)
+        self._test_value(oem.YearOfManufacture, FlagValue.Invalid, addr=self.a1)
         self._test_value(oem.WeekOfManufacture, 43)
-        self._test_value(oem.WeekOfManufacture, FlagValue.Invalid, addr=1)
+        self._test_value(oem.WeekOfManufacture, FlagValue.Invalid, addr=self.a1)
         self._test_value(oem.InputPowerNominal, 1500)
-        self._test_value(oem.InputPowerNominal, FlagValue.MASK, addr=1)
+        self._test_value(oem.InputPowerNominal, FlagValue.MASK, addr=self.a1)
         self._test_value(oem.InputPowerMinimumDim, 100)
-        self._test_value(oem.InputPowerMinimumDim, FlagValue.MASK, addr=1)
+        self._test_value(oem.InputPowerMinimumDim, FlagValue.MASK, addr=self.a1)
         self._test_value(oem.MainsVoltageMinimum, 220)
         self._test_value(oem.MainsVoltageMaximum, 250)
         self._test_value(oem.LightOutputNominal, 15000)
         self._test_value(oem.CRI, 100)
-        self._test_value(oem.CRI, FlagValue.Invalid, addr=1)
+        self._test_value(oem.CRI, FlagValue.Invalid, addr=self.a1)
         self._test_value(oem.CCT, 1)
-        self._test_value(oem.CCT, "Part 209 implemented", addr=1)
+        self._test_value(oem.CCT, "Part 209 implemented", addr=self.a1)
         self._test_value(oem.LightDistributionType, "Type V")
-        self._test_value(oem.LightDistributionType, FlagValue.MASK, addr=1)
+        self._test_value(oem.LightDistributionType, FlagValue.MASK, addr=self.a1)
         self._test_value(oem.LuminaireColor, "Octarine")
         self._test_value(oem.LuminaireIdentification, "Wizard's Staff")
 
-    def test_invalid_oem_strings(self):
+    def test_invalid_oem_strings(self) -> None:
         # Write an invalid ASCII string to the luminaire colour
         self.bus.run_sequence(
             oem.LuminaireIdentification.write_raw(
-                0, [0x88, 0x3f, 0x00], allow_short_write=True))
+                self.a0, bytes([0x88, 0x3f, 0x00]), allow_short_write=True))
         self.assertEqual(self.bus.run_sequence(
-            oem.LuminaireIdentification.read(0)), FlagValue.Invalid)
+            oem.LuminaireIdentification.read(self.a0)), FlagValue.Invalid)
 
-    def test_emergency(self):
+    def test_emergency(self) -> None:
         self._test_value(emergency.MemoryBankVersion, 1)
         self._test_value(emergency.ControlGearMaxReferenceTemperature, 25)
         self._test_value(emergency.ControlGearTemperature, 30)
@@ -610,14 +623,14 @@ class TestMemory(unittest.TestCase):
         self._test_value(emergency.EmergencyModeCounterTotal, 20)
         self._test_value(emergency.PerformedOnThisBattery, 0x0a)
 
-    def test_emergency_read_all(self):
-        values = self.bus.run_sequence(emergency.BANK_208.read_all(0))
+    def test_emergency_read_all(self) -> None:
+        values = self.bus.run_sequence(emergency.BANK_208.read_all(self.a0))
         self.assertEqual(values[emergency.RatedDuration], 180)
         self.assertEqual(values[emergency.ControlGearTemperature], 30)
         self.assertEqual(values[emergency.LampEmergencyTimeTotal], 1000)
         self.assertEqual(values[emergency.StartFunctionTestCounter], 50)
 
-    def test_info(self):
+    def test_info(self) -> None:
         # Default bank 0 contents from fakes.py
         self._test_value(info.GTIN, 1234567654321)
         self._test_value(info.FirmwareVersion, "1.0")
@@ -630,51 +643,51 @@ class TestMemory(unittest.TestCase):
         self._test_value(info.GearUnitCount, 1)
         self._test_value(info.UnitIndex, 0)
 
-    def test_write(self):
+    def test_write(self) -> None:
         # Write a new OEM GTIN and see if we can read it back
         self.bus.run_sequence(
-            oem.ManufacturerGTIN.write(0, 123123123))
+            oem.ManufacturerGTIN.write(self.a0, 123123123))
         self._test_value(oem.ManufacturerGTIN, 123123123)
         # Try to write a new gear GTIN and ensure we fail
         self.assertRaises(
             MemoryValueNotWriteable, self.bus.run_sequence,
-            info.GTIN.write(0, 123123123))
+            info.GTIN.write(self.a0, 123123123))
         # Write a new luminaire identification and read it back
         test_string = "A wizard's staff has a knob on the end"
         self.bus.run_sequence(
-            oem.LuminaireIdentification.write(0, test_string))
+            oem.LuminaireIdentification.write(self.a0, test_string))
         self._test_value(oem.LuminaireIdentification, test_string)
         # Write MASK to nominal output and check it reads back correctly
         self.bus.run_sequence(
-            oem.LightOutputNominal.write(0, "MASK"))
+            oem.LightOutputNominal.write(self.a0, FlagValue.MASK))
         self._test_value(oem.LightOutputNominal, FlagValue.MASK)
         # Try to write MASK to a value that does not support it;
         self.assertRaises(
             ValueError, self.bus.run_sequence,
-            info.GTIN.write(0, "MASK"))
+            info.GTIN.write(self.a0, FlagValue.MASK))
 
-    def test_write_fail(self):
+    def test_write_fail(self) -> None:
         # The unit at address 1 uses non-standard lock byte value
         # 0x54 to unlock, so attempts to write to lockable values
         # using the normal 0x55 should fail
         self.assertRaises(
             MemoryLocationNotWriteable, self.bus.run_sequence,
-            oem.ManufacturerGTIN.write(1, 123123123))
+            oem.ManufacturerGTIN.write(self.a1, 123123123))
 
         # The unit at address 2 always returns 0xaa when writing to
         # memory bank 1 instead of the value written
         self.assertIsNone(self.bus.run_sequence(
-            oem.ManufacturerGTIN.write(2, 123123123,
+            oem.ManufacturerGTIN.write(self.a2, 123123123,
                                        ignore_feedback=True)))
         self.assertRaises(
             ResponseError, self.bus.run_sequence,
-            oem.ManufacturerGTIN.write(2, 123123123))
+            oem.ManufacturerGTIN.write(self.a2, 123123123))
 
         # The unit at address 2 fails to update DTR0 when writing to
         # memory bank 206
         self.assertRaises(
             MemoryWriteFailure, self.bus.run_sequence,
-            diagnostics.LightSourceStartCounterResettable.write(2, 300))
+            diagnostics.LightSourceStartCounterResettable.write(self.a2, 300))
 
 
 if __name__ == '__main__':

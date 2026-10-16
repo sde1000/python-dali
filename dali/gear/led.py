@@ -214,14 +214,14 @@ class FastFadeTimeResponse(command.NumericResponse):
     Refer to Part 207 section 9.13 and Table 1 "Fast fade time".
     """
 
-    def __str__(self):
+    def __str__(self) -> str:
         if isinstance(self.value, int):
             if self.value == 0:
                 return "shortest"
             if self.value > 27:
                 return f"out of range ({self.value})"
             return f"{self.value * 25} ms"
-        return self.value
+        return str(self.value)
 
 
 class QueryFastFadeTime(_LEDCommand):

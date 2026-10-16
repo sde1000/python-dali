@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Optional, Type
+from typing import Any, Optional, Iterable
 
 import pytest
 
@@ -17,26 +17,27 @@ from dali.device.helpers import DeviceInstanceTypeMapper
 from dali.device.occupancy import OccupancyEvent
 from dali.device.light import LightEvent
 from dali.device.pushbutton import InstanceEventFilter as EventFilter_pb
-from dali.frame import BackwardFrame, ForwardFrame, Frame
+from dali.frame import BackwardFrame, ForwardFrame
 
 
-def test_event_base_not_implemented():
+def test_event_base_not_implemented() -> None:
     with pytest.raises(NotImplementedError):
         general._Event()
 
 
-@pytest.fixture
-def event_test_data_good():
-    @dataclass
-    class EventTestData:
-        event_type: Type[_Event] = general._Event
-        short_address: Optional[int] = None
-        instance_number: Optional[int] = None
-        instance_group: Optional[int] = None
-        device_group: Optional[int] = None
-        frame: str = "000000000000000000000000"
-        data: Any = None
+@dataclass
+class EventTestData:
+    event_type: type[_Event] = general._Event
+    short_address: Optional[int] = None
+    instance_number: Optional[int] = None
+    instance_group: Optional[int] = None
+    device_group: Optional[int] = None
+    frame: str = "000000000000000000000000"
+    data: Any = None
 
+
+@pytest.fixture
+def event_test_data_good() -> Iterable[EventTestData]:
     test_data = (
         EventTestData(
             event_type=pushbutton.ButtonReleased,
@@ -141,7 +142,8 @@ def event_test_data_good():
     return test_data
 
 
-def test_event_to_frame_good(event_test_data_good):
+def test_event_to_frame_good(
+        event_test_data_good: Iterable[EventTestData]) -> None:
     """
     Tests a number of values against known-good expected frames, for various
     events
@@ -158,16 +160,18 @@ def test_event_to_frame_good(event_test_data_good):
         assert event_frame == test_case.frame
 
 
-def test_frame_to_event_good(event_test_data_good):
+def test_frame_to_event_good(
+        event_test_data_good: Iterable[EventTestData]) -> None:
     """
     Tests a number of known-good frames, to ensure the correct object is
     decoded
     """
     for test_case in event_test_data_good:
-        test_frame = Frame(24, data=int(test_case.frame, base=2))
+        test_frame = ForwardFrame(24, data=int(test_case.frame, base=2))
         event = Command.from_frame(test_frame)
         assert isinstance(event, test_case.event_type)
         if test_case.short_address:
+            assert event.short_address is not None
             assert event.short_address.address == test_case.short_address
         assert event.instance_number == test_case.instance_number
         assert event.instance_group == test_case.instance_group
@@ -175,40 +179,41 @@ def test_frame_to_event_good(event_test_data_good):
         assert event.event_data == test_case.data
 
 
-def test_event_pushbutton_repr_short_address():
+def test_event_pushbutton_repr_short_address() -> None:
     event = pushbutton.ButtonReleased(short_address=1)
     event_str = f"{event}"
     assert "ButtonReleased(short_address=1)" == event_str
 
 
-def test_event_pushbutton_repr_instance_number():
+def test_event_pushbutton_repr_instance_number() -> None:
     event = pushbutton.ButtonReleased(instance_number=2)
     event_str = f"{event}"
     assert "ButtonReleased(instance_number=2)" == event_str
 
 
-def test_event_pushbutton_repr_instance_group():
+def test_event_pushbutton_repr_instance_group() -> None:
     event = pushbutton.ButtonReleased(instance_group=3)
     event_str = f"{event}"
     assert "ButtonReleased(instance_group=3)" == event_str
 
 
-def test_event_pushbutton_repr_device_group():
+def test_event_pushbutton_repr_device_group() -> None:
     event = pushbutton.ButtonReleased(device_group=31)
     event_str = f"{event}"
     assert "ButtonReleased(device_group=31)" == event_str
 
 
-def test_frame_to_ambiguous_event():
-    dev_inst_frame = Frame(24, data=0b000000101000010000000010)
+def test_frame_to_ambiguous_event() -> None:
+    dev_inst_frame = ForwardFrame(bits=24, data=0b000000101000010000000010)
     decode_cmd = Command.from_frame(dev_inst_frame)
     assert isinstance(decode_cmd, general.AmbiguousInstanceType)
+    assert decode_cmd.short_address is not None
     assert decode_cmd.short_address.address == 1
     assert decode_cmd.instance_number == 1
     assert decode_cmd.event_data == 0b0000000010
 
 
-def test_frame_to_event_dev_inst_pushbutton():
+def test_frame_to_event_dev_inst_pushbutton() -> None:
     device_instance_map = DeviceInstanceTypeMapper()
     device_instance_map.add_type(
         short_address=1,
@@ -216,17 +221,18 @@ def test_frame_to_event_dev_inst_pushbutton():
         instance_type=pushbutton,
     )
 
-    dev_inst_frame = Frame(24, data=0b000000101000010000000010)
+    dev_inst_frame = ForwardFrame(24, data=0b000000101000010000000010)
     decode_cmd = Command.from_frame(
         dev_inst_frame, dev_inst_map=device_instance_map
     )
 
     assert isinstance(decode_cmd, pushbutton.ShortPress)
+    assert decode_cmd.short_address is not None
     assert decode_cmd.short_address.address == 1
     assert decode_cmd.instance_number == 1
 
 
-def test_event_decode_retry():
+def test_event_decode_retry() -> None:
     device_instance_map = DeviceInstanceTypeMapper()
     device_instance_map.add_type(
         short_address=1,
@@ -234,19 +240,21 @@ def test_event_decode_retry():
         instance_type=pushbutton,
     )
 
-    dev_inst_frame = Frame(24, data=0b000000101000010000000010)
+    dev_inst_frame = ForwardFrame(24, data=0b000000101000010000000010)
     decode_cmd = Command.from_frame(dev_inst_frame, dev_inst_map=None)
 
     assert isinstance(decode_cmd, AmbiguousInstanceType)
+    assert decode_cmd.short_address is not None
     assert decode_cmd.short_address.address == 1
     assert decode_cmd.instance_number == 1
     retry = decode_cmd.retry_decode(device_instance_map)
     assert isinstance(retry, pushbutton.ShortPress)
+    assert retry.short_address is not None
     assert retry.short_address.address == 1
     assert retry.instance_number == 1
 
 
-def test_event_scheme_response_good():
+def test_event_scheme_response_good() -> None:
     rsp = QueryEventSchemeResponse(BackwardFrame(0))
     assert rsp.value == EventScheme.instance
 
@@ -263,13 +271,13 @@ def test_event_scheme_response_good():
     assert rsp.value == EventScheme.instance_group
 
 
-def test_event_scheme_response_bad():
+def test_event_scheme_response_bad() -> None:
     rsp = QueryEventSchemeResponse(BackwardFrame(5))
     with pytest.raises(ValueError):
         assert rsp.value
 
 
-def test_event_filter_subclasses():
+def test_event_filter_subclasses() -> None:
     """
     Runs tests on all InstanceEventFilter subclasses to make sure they are
     implemented properly, i.e. all members are powers of two, and all powers
@@ -296,7 +304,7 @@ def test_event_filter_subclasses():
             )
 
 
-def test_event_filter_pushbutton_width():
+def test_event_filter_pushbutton_width() -> None:
     """
     Confirms that the custom 'bit_width' property of the EventFilter_pb
     enumerator works as expected, on both the class and on instances
@@ -306,7 +314,7 @@ def test_event_filter_pushbutton_width():
     assert filter_instance.dali_width() == 8
 
 
-def test_frame_to_event_dev_inst_occupancy_occupied():
+def test_frame_to_event_dev_inst_occupancy_occupied() -> None:
     device_instance_map = DeviceInstanceTypeMapper()
     device_instance_map.add_type(
         short_address=1,
@@ -314,12 +322,13 @@ def test_frame_to_event_dev_inst_occupancy_occupied():
         instance_type=3,
     )
 
-    dev_inst_frame = Frame(24, data=0b000000101000010000001011)
+    dev_inst_frame = ForwardFrame(24, data=0b000000101000010000001011)
     decode_cmd = Command.from_frame(
         dev_inst_frame, dev_inst_map=device_instance_map
     )
 
     assert isinstance(decode_cmd, OccupancyEvent)
+    assert decode_cmd.short_address is not None
     assert decode_cmd.short_address.address == 1
     assert decode_cmd.instance_number == 1
     assert decode_cmd.movement
@@ -328,7 +337,7 @@ def test_frame_to_event_dev_inst_occupancy_occupied():
     assert decode_cmd.sensor_type == "movement"
 
 
-def test_invalid_occupancy():
+def test_invalid_occupancy() -> None:
     """
     Confirms that invalid occupancy messages do not decode
     """
@@ -340,7 +349,7 @@ def test_invalid_occupancy():
         assert isinstance(ev, UnknownEvent)
 
 
-def test_frame_to_event_dev_inst_light():
+def test_frame_to_event_dev_inst_light() -> None:
     device_instance_map = DeviceInstanceTypeMapper()
     device_instance_map.add_type(
         short_address=5,
@@ -348,12 +357,13 @@ def test_frame_to_event_dev_inst_light():
         instance_type=4,
     )
 
-    dev_inst_frame = Frame(24, data=0b000010101000100000001011)
+    dev_inst_frame = ForwardFrame(24, data=0b000010101000100000001011)
     decode_cmd = Command.from_frame(
         dev_inst_frame, dev_inst_map=device_instance_map
     )
 
     assert isinstance(decode_cmd, LightEvent)
+    assert decode_cmd.short_address is not None
     assert decode_cmd.short_address.address == 5
     assert decode_cmd.instance_number == 2
     assert decode_cmd.illuminance == 11

@@ -293,16 +293,19 @@ class QueryEmergencyModeResponse(command.BitmapResponse):
             "hardwired inhibit active", "hardwired switch on"]
 
     @property
-    def mode(self):
+    def mode(self) -> str:
         """Operating mode of the emergency control gear.  Only one of bits 0-5
         should be set at once, but we support returning a sensible
         response even when multiple bits are set.
         """
-        v = self._value[5:0]
-        l = []
+        if not self.raw_value or self.raw_value.error:
+            return "(error)"
+        v = self.raw_value[5:0]
+        l: list[str] = []
         for b in self.bits:
             if v & 0x01:
-                l.append(b)
+                if b:
+                    l.append(b)
             v = (v >> 1)
         return ",".join(l)
 

@@ -20,6 +20,10 @@ Addressing for event messages is described in IEC 62386-103 section
 7.2.2.  Decoding of event messages is currently not implemented.
 """
 
+from __future__ import annotations
+
+from typing import Optional
+from dali.frame import Frame
 from dali.exceptions import IncompatibleFrame
 
 
@@ -31,39 +35,35 @@ _bad_frame_length = IncompatibleFrame("Unsupported frame size")
 ###############################################################################
 
 
-class AddressTracker(type):
-    """Metaclass keeping track of all the types of Address we understand."""
-
-    def __init__(cls, name, bases, attrs):
-        if not hasattr(cls, "_addrtypes"):
-            cls._addrtypes = []
-        else:
-            cls._addrtypes.append(cls)
-
-
-class Address(metaclass=AddressTracker):
+class Address:
     """An address for one or more ballasts."""
 
-    required_frame_size = None
+    required_frame_size: Optional[int] = None
+    _addrtypes: list[type[Address]] = []
+
+    def __init_subclass__(cls) -> None:
+        super().__init_subclass__()
+        cls._addrtypes.append(cls)
 
     @classmethod
-    def from_frame(cls, f):
+    def from_frame(cls, f: Frame) -> Optional[Address]:
         """Return an Address object
 
         If the frame has a destination address, return a suitable
         Address object; otherwise return None.
         """
         if cls != Address:
-            return
+            return None
         for at in cls._addrtypes:
             r = at.from_frame(f)
             if r:
                 return r
+        return None
 
-    def add_to_frame(self, f):
+    def add_to_frame(self, f: Frame) -> None:
         raise IncompatibleFrame("Cannot add unknown address to any frame")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "<no address>"
 
 
@@ -83,21 +83,22 @@ class GearBroadcast(GearAddress):
     """All control gear connected to the network"""
 
     @classmethod
-    def from_frame(cls, f):
+    def from_frame(cls, f: Frame) -> Optional[GearBroadcast]:
         if len(f) == 16:
             if f[15:9] == 0x7F:
                 return cls()
+        return None
 
-    def add_to_frame(self, f):
+    def add_to_frame(self, f: Frame) -> None:
         if len(f) == 16:
             f[15:9] = 0x7F
         else:
             raise _bad_frame_length
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, GearBroadcast)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "<broadcast (control gear)>"
 
 
@@ -110,21 +111,22 @@ class DeviceBroadcast(DeviceAddress):
     """All control devices connected to the network"""
 
     @classmethod
-    def from_frame(cls, f):
+    def from_frame(cls, f: Frame) -> Optional[DeviceBroadcast]:
         if len(f) == 24:
             if f[16] and f[23:17] == 0x7F:
                 return cls()
+        return None
 
-    def add_to_frame(self, f):
+    def add_to_frame(self, f: Frame) -> None:
         if len(f) == 24:
             f[23:17] = 0x7F
         else:
             raise _bad_frame_length
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, DeviceBroadcast)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "<broadcast (control device)>"
 
 
@@ -135,21 +137,22 @@ class GearBroadcastUnaddressed(GearAddress):
     """
 
     @classmethod
-    def from_frame(cls, f):
+    def from_frame(cls, f: Frame) -> Optional[GearBroadcastUnaddressed]:
         if len(f) == 16:
             if f[15:9] == 0x7E:
                 return cls()
+        return None
 
-    def add_to_frame(self, f):
+    def add_to_frame(self, f: Frame) -> None:
         if len(f) == 16:
             f[15:9] = 0x7E
         else:
             raise _bad_frame_length
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, GearBroadcastUnaddressed)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "<broadcast unaddressed (control gear)>"
 
 
@@ -166,28 +169,29 @@ class DeviceBroadcastUnaddressed(DeviceAddress):
     """
 
     @classmethod
-    def from_frame(cls, f):
+    def from_frame(cls, f: Frame) -> Optional[DeviceBroadcastUnaddressed]:
         if len(f) == 24:
             if f[16] and f[23:17] == 0x7E:
                 return cls()
+        return None
 
-    def add_to_frame(self, f):
+    def add_to_frame(self, f: Frame) -> None:
         if len(f) == 24:
             f[23:17] = 0x7E
         else:
             raise _bad_frame_length
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, DeviceBroadcastUnaddressed)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "<broadcast unaddressed (control device)>"
 
 
 class GearGroup(GearAddress):
     """All control gear that are members of the specified group"""
 
-    def __init__(self, group: int):
+    def __init__(self, group: int) -> None:
         if not isinstance(group, int):
             raise ValueError("group must be an integer")
         if group < 0 or group > 15:
@@ -195,22 +199,23 @@ class GearGroup(GearAddress):
         self.group = group
 
     @classmethod
-    def from_frame(cls, f):
+    def from_frame(cls, f: Frame) -> Optional[GearGroup]:
         if len(f) == 16:
             if f[15:13] == 0x4:
                 return cls(f[12:9])
+        return None
 
-    def add_to_frame(self, f):
+    def add_to_frame(self, f: Frame) -> None:
         if len(f) == 16:
             f[15:13] = 0x4
             f[12:9] = self.group
         else:
             raise _bad_frame_length
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, GearGroup) and other.group == self.group
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"<group (control gear) {self.group}>"
 
 
@@ -222,7 +227,7 @@ Group = GearGroup
 class DeviceGroup(DeviceAddress):
     """All control devices that are members of the specified group"""
 
-    def __init__(self, group: int):
+    def __init__(self, group: int) -> None:
         if not isinstance(group, int):
             raise ValueError("group must be an integer")
         if group < 0 or group > 31:
@@ -230,22 +235,23 @@ class DeviceGroup(DeviceAddress):
         self.group = group
 
     @classmethod
-    def from_frame(cls, f):
+    def from_frame(cls, f: Frame) -> Optional[DeviceGroup]:
         if len(f) == 24:
             if f[16] and f[23:22] == 0x2:
                 return cls(f[21:17])
+        return None
 
-    def add_to_frame(self, f):
+    def add_to_frame(self, f: Frame) -> None:
         if len(f) == 24:
             f[23:22] = 0x2
             f[21:17] = self.group
         else:
             raise _bad_frame_length
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, DeviceGroup) and other.group == self.group
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"<group (control device) {self.group}>"
 
 
@@ -261,7 +267,7 @@ class GearShort(GearAddress):
     address.
     """
 
-    def __init__(self, address):
+    def __init__(self, address: int) -> None:
         if not isinstance(address, int):
             raise ValueError("address must be an integer")
         if address < 0 or address > 63:
@@ -269,22 +275,23 @@ class GearShort(GearAddress):
         self.address = address
 
     @classmethod
-    def from_frame(cls, f):
+    def from_frame(cls, f: Frame) -> Optional[GearAddress]:
         if len(f) == 16:
             if not f[15]:
                 return cls(f[14:9])
+        return None
 
-    def add_to_frame(self, f):
+    def add_to_frame(self, f: Frame) -> None:
         if len(f) == 16:
             f[15] = False
             f[14:9] = self.address
         else:
             raise _bad_frame_length
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, GearShort) and other.address == self.address
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"<address (control gear) {self.address}>"
 
 
@@ -305,7 +312,7 @@ class DeviceShort(DeviceAddress):
     address.
     """
 
-    def __init__(self, address: int):
+    def __init__(self, address: int) -> None:
         if not isinstance(address, int):
             raise ValueError("address must be an integer")
         if address < 0 or address > 63:
@@ -313,22 +320,23 @@ class DeviceShort(DeviceAddress):
         self.address = address
 
     @classmethod
-    def from_frame(cls, f):
+    def from_frame(cls, f: Frame) -> Optional[DeviceShort]:
         if len(f) == 24:
             if f[16] and not f[23]:
                 return cls(f[22:17])
+        return None
 
-    def add_to_frame(self, f):
+    def add_to_frame(self, f: Frame) -> None:
         if len(f) == 24:
             f[23] = False
             f[22:17] = self.address
         else:
             raise _bad_frame_length
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, DeviceShort) and other.address == self.address
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"<address (control device) {self.address}>"
 
 
@@ -341,72 +349,79 @@ from_frame = Address.from_frame
 
 
 class Instance:
-    def __init__(self):
+    _value = -1
+
+    def __init__(self) -> None:
         raise NotImplementedError
 
     @property
-    def value(self):
-        if hasattr(self, "_value"):
-            return self._value
+    def value(self) -> int:
+        if self._value == -1:
+            raise NotImplementedError
+        return self._value
 
-    def add_to_frame(self, f):
+    def add_to_frame(self, f: Frame) -> None:
         raise NotImplementedError
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, self.__class__):
             if hasattr(self, "_value") and hasattr(other, "_value"):
                 if self._value == other._value:
                     return True
-
         return False
 
 
 class ReservedInstance(Instance):
     """A reserved instance byte."""
 
-    def __init__(self, value):
+    def __init__(self, value: int) -> None:
         self._value = value
 
-    def add_to_frame(self, f):
+    def add_to_frame(self, f: Frame) -> None:
         if len(f) != 24:
             raise _bad_frame_length
         f[15:8] = self._value
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "ReservedInstance({:02x})".format(self._value)
 
 
 class _AddressedInstance(Instance):
-    _flags = None
+    _flags = -1
 
-    def __init__(self, value):
+    def __init__(self, value: int) -> None:
         if not isinstance(value, int):
             raise ValueError("value must be an integer")
         if value < 0 or value > 31:
             raise ValueError("value must be in the range 0..31")
         self._value = value
 
-    def add_to_frame(self, f):
+    def add_to_frame(self, f: Frame) -> None:
+        if self._flags == -1:
+            raise NotImplementedError
         if len(f) != 24:
             raise _bad_frame_length
         f[15:8] = self._flags | self._value
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{}({})".format(self.__class__.__name__, self._value)
 
 
 class _UnaddressedInstance(Instance):
-    _val = None
+    _val = -1
 
-    def __init__(self):
+    def __init__(self) -> None:
+        # Do not call superclass __init__()!
         pass
 
-    def add_to_frame(self, f):
+    def add_to_frame(self, f: Frame) -> None:
+        if self._val == -1:
+            raise NotImplementedError
         if len(f) != 24:
             raise _bad_frame_length
         f[15:8] = self._val
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{}()".format(self.__class__.__name__)
 
 
@@ -450,9 +465,9 @@ class Device(_UnaddressedInstance):
     _val = 0xFE
 
 
-def instance_from_frame(f):
+def instance_from_frame(f: Frame) -> Optional[Instance]:
     if len(f) != 24:
-        return
+        return None
     flags = f[15:13]
     p = f[12:8]
     b = f[15:8]

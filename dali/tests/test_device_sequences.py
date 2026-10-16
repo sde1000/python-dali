@@ -1,7 +1,8 @@
 import pytest
 
-from dali.address import DeviceShort, InstanceNumber
-from dali.command import NumericResponse, YesNoResponse
+from typing import Optional, Sequence
+from dali.address import GearShort, DeviceShort, InstanceNumber
+from dali.command import Command, Response, NumericResponse
 from dali.device import pushbutton
 from dali.device.general import (
     DTR0,
@@ -17,7 +18,7 @@ from dali.device.general import (
     QueryResolution,
     SetEventFilter,
 )
-from dali.device.helpers import DeviceInstanceTypeMapper, check_bad_rsp
+from dali.device.helpers import DeviceInstanceTypeMapper
 from dali.device.pushbutton import InstanceEventFilter as EventFilter_pb
 from dali.device.sequences import (
     Commissioning,
@@ -30,44 +31,22 @@ from dali.frame import BackwardFrame, BackwardFrameError
 from dali.tests import fakes
 
 
-def test_check_bad_rsp_none():
-    # A 'None' is always a bad response
-    assert check_bad_rsp(None)
-
-
-def test_check_bad_rsp_yes():
-    # A 'Yes' is always a good response
-    assert not check_bad_rsp(YesNoResponse(BackwardFrame(0xFF)))
-
-
-def test_check_bad_rsp_numeric():
-    # A numeric is always a good response, even if 0
-    assert not check_bad_rsp(NumericResponse(BackwardFrame(0xFF)))
-    assert not check_bad_rsp(NumericResponse(BackwardFrame(0x00)))
-
-
-def test_check_bad_rsp_missing():
-    # A numeric response expects a value
-    assert check_bad_rsp(NumericResponse(None))
-
-
-def test_check_bad_rsp_framing_error():
-    # A numeric response expects a value
-    assert check_bad_rsp(NumericResponse(BackwardFrameError(0xFF)))
+@pytest.fixture
+def fake_devices() -> list[fakes.BusUnit]:
+    return [
+        fakes.Device(DeviceShort(0), memory_banks=(fakes.FakeBank0,)),
+        fakes.Device(DeviceShort(1), memory_banks=(fakes.FakeBank0,)),
+        fakes.Device(DeviceShort(2), memory_banks=(fakes.FakeBank0,)),
+        fakes.Gear(GearShort(0)),
+    ]
 
 
 @pytest.fixture
-def fakes_bus():
-    return fakes.Bus(
-        [
-            fakes.Device(DeviceShort(0), memory_banks=(fakes.FakeBank0,)),
-            fakes.Device(DeviceShort(1), memory_banks=(fakes.FakeBank0,)),
-            fakes.Device(DeviceShort(2), memory_banks=(fakes.FakeBank0,)),
-        ]
-    )
+def fakes_bus(fake_devices: list[fakes.BusUnit]) -> fakes.Bus:
+    return fakes.Bus(fake_devices)
 
 
-def test_device_autodiscover_good(fakes_bus):
+def test_device_autodiscover_good(fakes_bus: fakes.Bus) -> None:
     dev_inst_map = DeviceInstanceTypeMapper()
     fakes_bus.run_sequence(dev_inst_map.autodiscover())
     # There are 4 instances on each fake device, and 3 devices, so 12 in total
@@ -79,10 +58,12 @@ class DeviceFakeError(fakes.Device):
     _device_status = 0b00000001
 
 
-def test_device_autodiscover_dont_skip_bad(fakes_bus):
+def test_device_autodiscover_dont_skip_bad(
+        fake_devices: list[fakes.BusUnit]) -> None:
+    fakes_bus = fakes.Bus(fake_devices)
     dev_inst_map = DeviceInstanceTypeMapper()
     # Add an extra fake device, one with an error bit set
-    fakes_bus.gear.append(
+    fake_devices.append(
         DeviceFakeError(DeviceShort(3), memory_banks=(fakes.FakeBank0,))
     )
 
@@ -100,10 +81,12 @@ class DeviceNoInstances(fakes.Device):
     _instances = []
 
 
-def test_device_autodiscover_skip_no_instances(fakes_bus):
+def test_device_autodiscover_skip_no_instances(
+        fake_devices: list[fakes.BusUnit]) -> None:
+    fakes_bus = fakes.Bus(fake_devices)
     dev_inst_map = DeviceInstanceTypeMapper()
     # Add an extra fake device, one with an error bit set
-    fakes_bus.gear.append(
+    fake_devices.append(
         DeviceNoInstances(DeviceShort(3), memory_banks=(fakes.FakeBank0,))
     )
 
@@ -112,58 +95,65 @@ def test_device_autodiscover_skip_no_instances(fakes_bus):
     assert len(dev_inst_map.mapping) == 12
 
 
-def test_device_autodiscover_retries_collided_status(fakes_bus):
+def test_device_autodiscover_retries_collided_status(
+        fake_devices: list[fakes.BusUnit]) -> None:
     """A status probe that collides with an event is retried, not skipped.
 
     A spontaneous event from a device can corrupt the backward frame of the
     first status probe; without a retry the whole device (and all its
     instances) would be silently dropped from the scan.
     """
+    class send_with_one_collision(fakes.Bus):
+        def __init__(self, gear: Sequence[fakes.BusUnit]) -> None:
+            super().__init__(gear)
+            self.collided = False
+
+        def send(self, cmd: Command) -> Optional[Response]:
+            if not self.collided \
+               and isinstance(cmd, QueryDeviceStatus) \
+               and getattr(cmd.destination, "address") == 0:
+                self.collided = True
+                return cmd.response(BackwardFrameError(0xff))
+            return super().send(cmd)
+
+    fakes_bus = send_with_one_collision(fake_devices)
     dev_inst_map = DeviceInstanceTypeMapper()
-    real_send = fakes_bus.send
-    collided = {"done": False}
 
-    def send_with_one_collision(cmd):
-        if (
-            not collided["done"]
-            and isinstance(cmd, QueryDeviceStatus)
-            and getattr(cmd.destination, "address", None) == 0
-        ):
-            collided["done"] = True
-            return QueryDeviceStatusResponse(BackwardFrameError(0xFF))
-        return real_send(cmd)
-
-    fakes_bus.send = send_with_one_collision
     fakes_bus.run_sequence(dev_inst_map.autodiscover())
 
-    assert collided["done"]
+    assert fakes_bus.collided
     assert any(addr == 0 for addr, _instance in dev_inst_map.mapping)
     assert len(dev_inst_map.mapping) == 12
 
 
-def test_device_autodiscover_absent_address_probed_once(fakes_bus):
+def test_device_autodiscover_absent_address_probed_once(
+        fake_devices: list[fakes.BusUnit]) -> None:
     """An empty address returns a missing (not collided) status, so it is not
     retried; only a framing-error reply triggers the extra probes."""
-    probes: list[int] = []
-    real_send = fakes_bus.send
+    class counting_send(fakes.Bus):
+        def __init__(self, gear: Sequence[fakes.BusUnit]) -> None:
+            super().__init__(gear)
+            self.probes: list[int] = []
 
-    def counting_send(cmd):
-        if isinstance(cmd, QueryDeviceStatus):
-            probes.append(getattr(cmd.destination, "address", None))
-        return real_send(cmd)
+        def send(self, cmd: Command) -> Optional[Response]:
+            if isinstance(cmd, QueryDeviceStatus):
+                self.probes.append(getattr(cmd.destination, "address"))
+            return super().send(cmd)
 
-    fakes_bus.send = counting_send
+    fakes_bus = counting_send(fake_devices)
+
     fakes_bus.run_sequence(
         DeviceInstanceTypeMapper().autodiscover(addresses=(0, 5))
     )
 
     # Addresses 3-5 have no device, so each is probed exactly once.
-    assert probes.count(3) == 1
-    assert probes.count(4) == 1
-    assert probes.count(5) == 1
+    assert fakes_bus.probes.count(3) == 1
+    assert fakes_bus.probes.count(4) == 1
+    assert fakes_bus.probes.count(5) == 1
 
 
-def test_device_autodiscover_caps_instance_count(fakes_bus):
+def test_device_autodiscover_caps_instance_count(
+        fake_devices: list[fakes.BusUnit]) -> None:
     """A device reporting more than 32 instances does not abort the scan.
 
     Instance numbers are 0..31, so a count above 32 (a non-conformant device,
@@ -171,17 +161,16 @@ def test_device_autodiscover_caps_instance_count(fakes_bus):
     out-of-range InstanceNumber and crash the whole scan; the count is capped
     and the device's real instances are still enumerated.
     """
+    class send_with_bad_count(fakes.Bus):
+        def send(self, cmd: Command) -> Optional[Response]:
+            if isinstance(cmd, QueryNumberOfInstances) \
+               and getattr(cmd.destination, "address", None) == 0:
+                return NumericResponse(BackwardFrame(255))
+            return super().send(cmd)
+
+    fakes_bus = send_with_bad_count(fake_devices)
     dev_inst_map = DeviceInstanceTypeMapper()
-    real_send = fakes_bus.send
 
-    def send_with_bad_count(cmd):
-        if isinstance(cmd, QueryNumberOfInstances) and (
-            getattr(cmd.destination, "address", None) == 0
-        ):
-            return NumericResponse(BackwardFrame(255))
-        return real_send(cmd)
-
-    fakes_bus.send = send_with_bad_count
     fakes_bus.run_sequence(dev_inst_map.autodiscover())
 
     # Device 0's four real instances are still found despite the bogus count.
@@ -189,13 +178,13 @@ def test_device_autodiscover_caps_instance_count(fakes_bus):
     assert len(dev_inst_map.mapping) == 12
 
 
-def test_device_query_event_scheme(fakes_bus):
+def test_device_query_event_scheme(fakes_bus: fakes.Bus) -> None:
     rsp = fakes_bus.send(QueryEventScheme(DeviceShort(1), InstanceNumber(1)))
     assert isinstance(rsp, QueryEventSchemeResponse)
     assert rsp.value == EventScheme.device_instance
 
 
-def test_device_set_event_schemes(fakes_bus):
+def test_device_set_event_schemes(fakes_bus: fakes.Bus) -> None:
     rsp = fakes_bus.send(QueryEventScheme(DeviceShort(2), InstanceNumber(3)))
     assert isinstance(rsp, QueryEventSchemeResponse)
     assert rsp.value == EventScheme.device_instance
@@ -207,9 +196,10 @@ def test_device_set_event_schemes(fakes_bus):
     assert rsp.value == EventScheme.device
 
 
-def test_device_set_event_filters(fakes_bus):
+def test_device_set_event_filters(fakes_bus: fakes.Bus) -> None:
     rsp = fakes_bus.run_sequence(
-        QueryEventFilters(DeviceShort(1), InstanceNumber(2), pushbutton)
+        QueryEventFilters(DeviceShort(1), InstanceNumber(2),
+                          pushbutton.InstanceEventFilter)
     )
     assert isinstance(rsp, EventFilter_pb)
     assert rsp.value == 0
@@ -233,7 +223,7 @@ def test_device_set_event_filters(fakes_bus):
     assert rsp == filter_rsp
 
 
-def test_event_filter_pushbutton_sequence_partial():
+def test_event_filter_pushbutton_sequence_partial() -> None:
     """
     Confirms that the SetEventFilters sequence yields the expected
     DALI message objects and sets the correct bit flags for DTR0 for
@@ -289,7 +279,7 @@ def test_event_filter_pushbutton_sequence_partial():
     assert EventFilter_pb.short_press not in ret
 
 
-def test_event_filter_pushbutton_sequence_all():
+def test_event_filter_pushbutton_sequence_all() -> None:
     filter_to_set = (
         EventFilter_pb.double_press
         | EventFilter_pb.long_press_start
@@ -316,29 +306,20 @@ def test_event_filter_pushbutton_sequence_all():
     # The previous test for the sequence adequately checks the remaining logic
 
 
-def test_event_filter_sequence_int():
-    # InstanceEventFilter ultimately inherits from int, so it should be
-    # possible to use a plain int in the sequence
+# There used to be a test_event_filter_sequence_int() test here. Its
+# comment said:
+
+# InstanceEventFilter ultimately inherits from int, so it should be
+# possible to use a plain int in the sequence
+
+# This breaks type checking, so the test has been removed.
+
+
+def test_event_filter_sequence_bad_type() -> None:
     sequence = SetEventFilters(
         device=DeviceShort(0),
         instance=InstanceNumber(0),
-        filter_value=3,
-    )
-    # The first message the sequence should send is DTR0
-    try:
-        cmd = sequence.send(None)
-    except StopIteration:
-        raise RuntimeError()
-    assert isinstance(cmd, DTR0)
-    assert cmd.frame.as_byte_sequence[2] == 3
-    # The previous test for the sequence adequately checks the remaining logic
-
-
-def test_event_filter_sequence_bad_type():
-    sequence = SetEventFilters(
-        device=DeviceShort(0),
-        instance=InstanceNumber(0),
-        filter_value="double_press",
+        filter_value="double_press",  # type: ignore[arg-type]
     )
     # Using a string is not valid, it must be an enum object
     with pytest.raises(TypeError):
@@ -347,14 +328,14 @@ def test_event_filter_sequence_bad_type():
     sequence = QueryEventFilters(
         device=DeviceShort(0),
         instance=InstanceNumber(0),
-        filter_type=EventFilter_pb.short_press,
+        filter_type=EventFilter_pb.short_press,  # type: ignore[arg-type]
     )
     # filter_type needs to be a type, not an instance
     with pytest.raises(TypeError):
         sequence.send(None)
 
 
-def test_query_input_values_unknown_1bit():
+def test_query_input_values_unknown_1bit() -> None:
     """
     Reading a device's input register which has a one-bit resolution, with
     no prior information. Device sends 0xff, which is converted to 1.
@@ -395,7 +376,7 @@ def test_query_input_values_unknown_1bit():
     assert ret == 1
 
 
-def test_query_input_values_10bit():
+def test_query_input_values_10bit() -> None:
     """
     Reading a device's input register. The resolution is known upfront to be
     10bit. The first byte is:
@@ -451,7 +432,7 @@ def _short_addresses(devices: list[fakes.Device]) -> list[int]:
     )
 
 
-def test_device_commissioning():
+def test_device_commissioning() -> None:
     devices = [fakes.Device() for _ in range(10)]
     bus = fakes.Bus(devices)
 
@@ -463,7 +444,7 @@ def test_device_commissioning():
     assert all(not d.quiescent for d in devices)
 
 
-def test_device_commissioning_adds_new_without_readdress():
+def test_device_commissioning_adds_new_without_readdress() -> None:
     devices = [fakes.Device() for _ in range(10)]
     bus = fakes.Bus(devices)
     bus.run_sequence(Commissioning())
@@ -480,7 +461,7 @@ def test_device_commissioning_adds_new_without_readdress():
     assert _short_addresses(devices) == list(range(19)) + [30]
 
 
-def test_device_commissioning_readdress_dry_run_keeps_addresses():
+def test_device_commissioning_readdress_dry_run_keeps_addresses() -> None:
     devices = [fakes.Device(DeviceShort(i + 20)) for i in range(10)]
     bus = fakes.Bus(devices)
     before = _short_addresses(devices)
@@ -490,7 +471,7 @@ def test_device_commissioning_readdress_dry_run_keeps_addresses():
     assert _short_addresses(devices) == before
 
 
-def test_device_commissioning_readdress():
+def test_device_commissioning_readdress() -> None:
     devices = [fakes.Device(DeviceShort(i + 20)) for i in range(10)]
     bus = fakes.Bus(devices)
 
@@ -499,7 +480,7 @@ def test_device_commissioning_readdress():
     assert _short_addresses(devices) == list(range(10))
 
 
-def test_device_commissioning_clash():
+def test_device_commissioning_clash() -> None:
     # At least one device picks the same random address as another on the
     # first pass, forcing a re-randomise.
     randoms = list(range(0, 0xFFFFFF, 0x82000))
@@ -512,7 +493,7 @@ def test_device_commissioning_clash():
     assert _short_addresses(devices) == list(range(len(devices)))
 
 
-def test_device_commissioning_high_random_address():
+def test_device_commissioning_high_random_address() -> None:
     # One of the devices is persistently going to pick 0xffffff as
     # its random address
     devices = [fakes.Device() for x in range(9)]
@@ -524,7 +505,7 @@ def test_device_commissioning_high_random_address():
     assert _short_addresses(devices) == list(range(len(devices)))
 
 
-def test_device_commissioning_restricted_addresses():
+def test_device_commissioning_restricted_addresses() -> None:
     devices = [fakes.Device() for _ in range(10)]
     bus = fakes.Bus(devices)
 

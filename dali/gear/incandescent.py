@@ -1,6 +1,7 @@
 """Commands and responses from IEC 62386 part 205."""
 
-from dali import command
+from typing import Optional
+from dali import command, frame
 from dali.gear.general import _StandardCommand, QueryExtendedVersionNumberMixin
 
 
@@ -104,9 +105,11 @@ class FeaturesByte3Response(command.BitmapResponse):
                         "trailing only", "sine wave"]
 
     @property
-    def dimming_method(self):
-        if self._value:
-            return self._dimming_methods[self._value[1:0]]
+    def dimming_method(self) -> Optional[str]:
+        if not self.value:
+            return None
+        assert isinstance(self.value, frame.BackwardFrame)
+        return self._dimming_methods[self.value[1:0]]
 
 
 class QueryFeatures(_IncandescentCommand):

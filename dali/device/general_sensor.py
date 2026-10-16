@@ -1,8 +1,11 @@
 """Commands and events from IEC 62386 part 306: General sensors."""
 
+from __future__ import annotations
+
+from typing import Optional
 from enum import IntEnum
 
-from dali import command
+from dali import command, frame
 from dali.device import general
 
 # IEC 62386-306 instance type.
@@ -196,7 +199,9 @@ class GeneralSensorEvent(general._Event):
     _event_info = 0x20000
 
     @classmethod
-    def from_event_data(cls, event_data: int):
+    def from_event_data(
+            cls, event_data: int
+    ) -> Optional[type[GeneralSensorEvent]]:
         """Return this event class for a measurement event."""
         return cls if event_data & 0x200 else None
 
@@ -210,7 +215,7 @@ class GeneralSensorEvent(general._Event):
         """Return the encoded event information."""
         return self._event_info
 
-    def _set_event_data(self, set_data: int, set_frame) -> None:
+    def _set_event_data(self, set_data: int, set_frame: frame.Frame) -> None:
         """Encode the measured value into a Part 306 event frame."""
         if not isinstance(set_data, int) or not 0 <= set_data <= 0x3FF:
             raise ValueError("GeneralSensorEvent requires 9-bit event data")
