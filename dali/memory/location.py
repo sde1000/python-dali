@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from typing import Optional, Iterable, Generator, Any, Generic, TypeVar, ClassVar, Literal
 from collections import namedtuple
 from enum import Enum, auto
+from decimal import Decimal
+from abc import ABCMeta, abstractmethod
 
-from dali import device, gear
+from dali import command, device, gear
+from dali.sequences import DALISequence
 from dali.address import Address, DeviceAddress, DeviceShort, GearAddress, GearShort
 from dali.exceptions import (
     LatchingNotSupported,
@@ -15,7 +19,7 @@ from dali.exceptions import (
 )
 
 
-def _DTR0(addr: Address, value: int):
+def _DTR0(addr: Address, value: int) -> command.Command:
     """Returns either a Gear or Device version of DTR0"""
     if isinstance(addr, GearAddress):
         return gear.general.DTR0(value)
@@ -25,7 +29,7 @@ def _DTR0(addr: Address, value: int):
         raise TypeError(f"Invalid addr: {addr}, expected GearAddress or DeviceAddress")
 
 
-def _DTR1(addr: Address, value: int):
+def _DTR1(addr: Address, value: int) -> command.Command:
     """Returns either a Gear or Device version of DTR1"""
     if isinstance(addr, GearAddress):
         return gear.general.DTR1(value)
@@ -35,7 +39,7 @@ def _DTR1(addr: Address, value: int):
         raise TypeError(f"Invalid addr: {addr}, expected GearAddress or DeviceAddress")
 
 
-def _EnableWriteMemory(addr: Address):
+def _EnableWriteMemory(addr: Address) -> command.Command:
     """Returns either a Gear or Device version of EnableWriteMemory"""
     if isinstance(addr, GearAddress):
         return gear.general.EnableWriteMemory(addr)
@@ -45,7 +49,7 @@ def _EnableWriteMemory(addr: Address):
         raise TypeError(f"Invalid addr: {addr}, expected GearAddress or DeviceAddress")
 
 
-def _ReadMemoryLocation(addr: GearShort | DeviceShort):
+def _ReadMemoryLocation(addr: Address) -> command.Command:
     """Returns either a Gear or Device version of ReadMemoryLocation"""
     if isinstance(addr, GearAddress):
         return gear.general.ReadMemoryLocation(addr)
@@ -55,7 +59,7 @@ def _ReadMemoryLocation(addr: GearShort | DeviceShort):
         raise TypeError(f"Invalid addr: {addr}, expected GearAddress or DeviceAddress")
 
 
-def _WriteMemoryLocation(addr: Address, value: int):
+def _WriteMemoryLocation(addr: Address, value: int) -> command.Command:
     """Returns either a Gear or Device version of WriteMemoryLocation"""
     if isinstance(addr, GearAddress):
         return gear.general.WriteMemoryLocation(value)
@@ -65,7 +69,7 @@ def _WriteMemoryLocation(addr: Address, value: int):
         raise TypeError(f"Invalid addr: {addr}, expected GearAddress or DeviceAddress")
 
 
-def _WriteMemoryLocationNoReply(addr: Address, value: int):
+def _WriteMemoryLocationNoReply(addr: Address, value: int) -> command.Command:
     """Returns either a Gear or Device version of WriteMemoryLocationNoReply"""
     if isinstance(addr, GearAddress):
         return gear.general.WriteMemoryLocationNoReply(value)
@@ -75,7 +79,7 @@ def _WriteMemoryLocationNoReply(addr: Address, value: int):
         raise TypeError(f"Invalid addr: {addr}, expected GearAddress or DeviceAddress")
 
 
-def _QueryContentDTR0(addr: Address):
+def _QueryContentDTR0(addr: Address) -> command.Command:
     """Returns either a Gear or Device version of QueryContentDTR0"""
     if isinstance(addr, GearAddress):
         return gear.general.QueryContentDTR0(addr)
@@ -106,16 +110,18 @@ class LockingNotSupported(Exception):
     pass
 
 
-class MemoryBank:
-    MemoryBankEntry = namedtuple(
-        'MemoryBankEntry', ['memory_location', 'memory_value'])
+MemoryBankEntry = namedtuple(
+    'MemoryBankEntry', ['memory_location', 'memory_value'])
 
-    def __init__(self, address, last_address, has_lock=False, has_latch=False):
+
+class MemoryBank:
+    def __init__(self, address: int, last_address: int,
+                 has_lock: bool = False, has_latch: bool = False) -> None:
         """Declares a memory bank at a given address
         """
         self.__address = address
-        self.locations = {x: None for x in range(0xff)}
-        self.values = []
+        self.locations: dict[int, Optional[MemoryBankEntry]] = {x: None for x in range(0xff)}
+        self.values: list[type[MemoryValue[Any]]] = []
 
         # add value for last addressable location
         class LastAddress(NumericValue):
@@ -132,40 +138,47 @@ class MemoryBank:
                 latch = has_latch
                 locations = (MemoryLocation(
                     0x02, reset=0xff, default=0xff, type_=MemoryType.RAM_RW),)
-            self.LockByte = LockByte
+            self.LockByte: Optional[type[LockByte]] = LockByte
         else:
             self.LockByte = None
 
     @property
-    def address(self):
+    def address(self) -> int:
         return self.__address
 
     @property
-    def has_lock(self):
+    def has_lock(self) -> bool:
         return bool(self.LockByte and self.LockByte.lock)
 
     @property
-    def has_latch(self):
+    def has_latch(self) -> bool:
         return bool(self.LockByte and self.LockByte.latch)
 
-    def _add_memory_value(self, memory_value):
+    def _add_memory_value(self, memory_value: type[MemoryValue[Any]]) -> None:
         self.values.append(memory_value)
-        for location in memory_value.locations:
+        for location in memory_value._locations:
             if self.locations[location.address]:
                 raise MemoryLocationOverlap(
                     f'Overlapping MemoryLocation at address {location.address}')
             if location.type_ == MemoryType.NVM_RW_L and not self.has_lock:
                 raise LockingNotSupported()
-            self.locations[location.address] = self.MemoryBankEntry(
+            self.locations[location.address] = MemoryBankEntry(
                 location, memory_value)
 
-    def last_address(self, addr):
+    def last_address(
+            self, addr: Address
+    ) -> DALISequence[int]:
         """Sequence that returns the last available address in this bank
         """
         la = yield from self.LastAddress.read(addr)
+        if isinstance(la, FlagValue):
+            raise MemoryLocationNotImplemented(
+                f"Could not determine last address in bank {self}")
         return la
 
-    def read_all(self, addr: Address, use_latch: bool = True):
+    def read_all(
+            self, addr: Address, use_latch: bool = True
+    ) -> DALISequence[dict[type[MemoryValue[T]], FlagValue | T]]:
         """Read all available memory values from this memory bank.
 
         If the memory bank has a latch, the latch is set during the
@@ -177,7 +190,8 @@ class MemoryBank:
             addr = GearShort(addr)
         elif not isinstance(addr, (GearShort, DeviceShort)):
             raise TypeError(f"Invalid addr: {addr}, expected GearShort or DeviceShort")
-        last_address = yield from self.LastAddress.read(addr)
+        last_address = yield from self.last_address(addr)
+
         # Reading the last address also sets DTR1 appropriately
         dtr0 = 1
         if use_latch and self.has_latch:
@@ -190,9 +204,10 @@ class MemoryBank:
         start_address = 0x02 if self.address == 0 else 0x03
         if dtr0 != start_address:
             yield _DTR0(addr, start_address)
-        raw_data = [None] * start_address
+        raw_data: list[Optional[int]] = [None] * start_address
         for loc in range(start_address, last_address + 1):
             r = yield _ReadMemoryLocation(addr)
+            assert isinstance(r, command.Response)
             if r.raw_value is not None:
                 if r.raw_value.error:
                     raise ResponseError(
@@ -208,54 +223,59 @@ class MemoryBank:
         result = {}
         for memory_value in self.values:
             try:
-                r = memory_value.from_list(raw_data)
+                value = memory_value.from_list(raw_data)
             except MemoryLocationNotImplemented:
                 pass
             else:
-                result[memory_value] = r
+                result[memory_value] = value
         return result
 
-    def latch(self, addr):
+    def latch(self, addr: Address) -> DALISequence:
         """(Re-)latch all memory locations of this bank.
 
         Raises LatchingNotSupported exception if bank does not support
         latching.
         """
         if self.has_latch:
+            assert self.LockByte
             yield from self.LockByte.write(addr, 0xaa, ignore_feedback=True)
         else:
             raise LatchingNotSupported(
                 f'Latching not supported for {str(self)}.')
 
-    def unlatch(self, addr):
+    def unlatch(self, addr: Address) -> DALISequence:
         """Unlatch all memory locations of this bank.
 
         Raises LatchingNotSupported exception if bank does not support
         latching.
         """
         if self.has_latch:
+            assert self.LockByte
             yield from self.LockByte.write(addr, 0xff, ignore_feedback=True)
         else:
             raise LatchingNotSupported(
                 f'Latching not supported for {str(self)}.')
 
-    def is_locked(self, addr):
+    def is_locked(
+            self, addr: Address
+    ) -> DALISequence[bool]:
         """Check whether this bank is locked
         """
         if self.has_lock:
+            assert self.LockByte
             r = yield from self.LockByte.read(addr)
             return r != 0x55
         else:
             return False
 
-    def factory_default_contents(self):
+    def factory_default_contents(self) -> Generator[Optional[int]]:
         """Return factory default contents for known memory locations
         """
         for address in range(0xff):
             loc = self.locations[address]
             yield loc.memory_location.default if loc else None
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'MemoryBank(address={self.address}, ' \
             f'has_lock={bool(self.LockByte and self.LockByte.lock)}, ' \
             f'has_latch={bool(self.LockByte and self.LockByte.latch)})'
@@ -271,80 +291,53 @@ class MemoryBank:
 # Python 3.7
 
 class MemoryLocation:
-    def __init__(self, address, default=None, reset=None, type_=None):
+    def __init__(self, address: int, default: Optional[int] = None,
+                 reset: Optional[int] = None,
+                 type_: Optional[MemoryType] = None) -> None:
         self.__address = address
         self.__type_ = type_
         self.__default = default
         self.__reset = reset
 
     @property
-    def address(self):
+    def address(self) -> int:
         return self.__address
 
     @property
-    def type_(self):
+    def type_(self) -> Optional[MemoryType]:
         return self.__type_
 
     @property
-    def default(self):
+    def default(self) -> Optional[int]:
         return self.__default
 
     @property
-    def reset(self):
+    def reset(self) -> Optional[int]:
         return self.__reset
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'MemoryLocation(address=0x{self.address:02x}, ' \
             f'default={f"0x{self.default:02x}" if self.default is not None else None}, ' \
             f'reset={f"0x{self.reset:02x}" if self.reset is not None else None}, ' \
             f'type_={self.type_})'
 
 
-def MemoryRange(start, end, **kwargs):
+def MemoryRange(start: int, end: int, **kwargs: Any
+                ) -> tuple[MemoryLocation, ...]:
     return tuple(
         MemoryLocation(address, **kwargs) for address in range(start, end + 1)
     )
 
 
-class _RegisterMemoryValue(type):
-    """Metaclass to register new MemoryValue classes
+class _MemoryValueType(ABCMeta):
+    """Metaclass for MemoryValue to override str() on the class and
+    declare that MemoryValue is an abtract base class
     """
-    def __init__(cls, name, bases, attrs):
-        # cls is the new MemoryValue subclass; it already exists, it's
-        # being initialised
-        if hasattr(cls, 'locations'):
-            if not hasattr(cls, 'bank'):
-                raise Exception(
-                    f"MemoryValue subclass {name} missing 'bank' attribute")
-            cls.name = name
-            # Shorthand: locations can be a single MemoryLoction instance
-            if isinstance(cls.locations, MemoryLocation):
-                cls.locations = (cls.locations, )
-            cls.bank._add_memory_value(cls)
+    name: str
 
-            # Some types of value may need to adjust the number of
-            # bytes for 'mas' or 'tmask'
-            num_loc = len(cls.locations) + getattr(cls, 'mask_length_adjust', 0)
-
-            if cls.mask_supported:
-                if cls.signed:
-                    cls.mask = (pow(2, num_loc * 8 - 1) - 1).to_bytes(
-                        num_loc, 'big', signed=True)
-                else:
-                    cls.mask = (pow(2, num_loc * 8) - 1).to_bytes(
-                        num_loc, 'big')
-
-            if cls.tmask_supported:
-                if cls.signed:
-                    cls.tmask = (pow(2, num_loc * 8 - 1) - 2).to_bytes(
-                        num_loc, 'big', signed=True)
-                else:
-                    cls.tmask = (pow(2, num_loc * 8) - 2).to_bytes(
-                        num_loc, 'big')
-
-    def __str__(cls):
-        if hasattr(cls, 'name'):
-            return cls.name
+    def __str__(self) -> str:
+        if hasattr(self, 'name'):
+            return self.name
         return super().__str__()
 
 
@@ -354,7 +347,10 @@ class FlagValue(Enum):
     TMASK = "TMASK"      # Memory value temporarily unavailable
 
 
-class MemoryValue(metaclass=_RegisterMemoryValue):
+T = TypeVar("T")
+
+
+class MemoryValue(Generic[T], metaclass=_MemoryValueType):
     """A group of memory locations that together represent a value
 
     This is an abstract base class. Concrete classes should declare
@@ -378,30 +374,75 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
     # and/or TMASK?
     signed = False
 
+    bank: MemoryBank
+    locations: MemoryLocation | Iterable[MemoryLocation]
+    mask: ClassVar[bytes]
+    tmask: ClassVar[bytes]
+    _locations: ClassVar[list[MemoryLocation]]
+
+    def __init_subclass__(cls) -> None:
+        # cls is the new MemoryValue subclass; it already exists, it's
+        # being initialised
+        if hasattr(cls, 'locations'):
+            if not hasattr(cls, 'bank'):
+                raise Exception(
+                    f"MemoryValue subclass {cls.__name__} missing 'bank' attribute")
+
+            cls.name = cls.__name__
+
+            if isinstance(cls.locations, MemoryLocation):
+                cls._locations = [cls.locations]
+            else:
+                cls._locations = list(cls.locations)
+
+            cls.bank._add_memory_value(cls)
+
+            # Some types of value may need to adjust the number of
+            # bytes for 'mask' or 'tmask'
+            num_loc = len(cls._locations) + getattr(cls, 'mask_length_adjust', 0)
+
+            if cls.mask_supported:
+                if cls.signed:
+                    cls.mask = (pow(2, num_loc * 8 - 1) - 1).to_bytes(
+                        num_loc, 'big', signed=True)
+                else:
+                    cls.mask = (pow(2, num_loc * 8) - 1).to_bytes(
+                        num_loc, 'big')
+
+            if cls.tmask_supported:
+                if cls.signed:
+                    cls.tmask = (pow(2, num_loc * 8 - 1) - 2).to_bytes(
+                        num_loc, 'big', signed=True)
+                else:
+                    cls.tmask = (pow(2, num_loc * 8) - 2).to_bytes(
+                        num_loc, 'big')
+
     @classmethod
-    def raw_to_value(cls, raw):
+    @abstractmethod
+    def raw_to_value(cls, raw: bytes) -> T:
         """Converts raw bytes to the wanted result
 
         This method should only be called with valid values for 'raw'.
         Checks for invalid and special values should be performed first.
         """
-        return raw
+        ...
 
     @classmethod
-    def value_to_raw(cls, value):
+    @abstractmethod
+    def value_to_raw(cls, value: T) -> bytes:
         """Converts a value to raw bytes to write to the memory bank
 
         If the conversion cannot be performed, raises ValueError
         """
-        raise ValueError
+        ...
 
     @classmethod
-    def is_valid(cls, raw):
+    def is_valid(cls, raw: bytes) -> bool:
         """Check whether raw bytes are valid for this memory value"""
         return True
 
     @classmethod
-    def check_raw(cls, raw):
+    def check_raw(cls, raw: bytes) -> Optional[FlagValue]:
         """Check for invalid or special patterns in raw bytes
 
         Returns None if no invalid or special patterns were found, otherwise
@@ -415,9 +456,12 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
                 return FlagValue.TMASK
         if not cls.is_valid(raw):
             return FlagValue.Invalid
+        return None
 
     @classmethod
-    def read_raw(cls, addr: Address):
+    def read_raw(
+            cls, addr: Address
+    ) -> DALISequence[bytes]:
         """Read the value from the bus unit without interpretation
 
         Raises MemoryLocationNotImplemented if the device does
@@ -428,18 +472,19 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
         if isinstance(addr, int):
             # Assume 16-bit DALI, if not explicit
             addr = GearShort(addr)
-        elif not isinstance(addr, (GearShort, DeviceShort)):
-            raise TypeError(f"Invalid addr: {addr}, expected GearShort or DeviceShort")
-        result = []
+        elif not isinstance(addr, (GearAddress, DeviceAddress)):
+            raise TypeError(f"Invalid addr: {addr}, expected GearAddress or DeviceAddress")
+        result: list[int] = []
         dtr0 = None
         yield _DTR1(addr, cls.bank.address)
-        for location in cls.locations:
+        for location in cls._locations:
             # select correct memory location
             if location.address != dtr0:
                 dtr0 = location.address
                 yield _DTR0(addr, location.address)
             # read back value of the memory location
             r = yield _ReadMemoryLocation(addr)
+            assert isinstance(r, command.Response)
             # increase DTR0 to reflect the internal state of the driver
             dtr0 = min(dtr0 + 1, 255)
             if r.raw_value is None:
@@ -455,7 +500,9 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
         return bytes(result)
 
     @classmethod
-    def read(cls, addr):
+    def read(
+            cls, addr: Address
+    ) -> DALISequence[FlagValue | T]:
         """Read the value from the bus unit
 
         Raises MemoryLocationNotImplemented if the device does not respond.
@@ -466,11 +513,11 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
         return cls.check_raw(raw) or cls.raw_to_value(raw)
 
     @classmethod
-    def from_list(cls, list_):
+    def from_list(cls, list_: list[int | None]) -> FlagValue | T:
         """Extracts the value from a list containing all values of the memory bank.
         """
-        raw = []
-        for location in cls.locations:
+        raw: list[int] = []
+        for location in cls._locations:
             try:
                 r = list_[location.address]
             except IndexError:
@@ -478,18 +525,18 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
             if r is None:
                 raise MemoryLocationNotImplemented(f'List is missing memory location {str(location)}.')
             raw.append(r)
-        raw = bytes(raw)
-        return cls.check_raw(raw) or cls.raw_to_value(raw)
+        raw_bytes = bytes(raw)
+        return cls.check_raw(raw_bytes) or cls.raw_to_value(raw_bytes)
 
     @classmethod
     def write_raw(
         cls,
         addr: Address,
-        raw,
-        allow_short_write=False,
-        force_unlock=False,
-        ignore_feedback=False,
-    ):
+        raw: bytes,
+        allow_short_write: bool = False,
+        force_unlock: bool = False,
+        ignore_feedback: bool = False,
+    ) -> DALISequence:
         """Write a value to the bus unit without interpretation
 
         Raises MemoryLocationNotWriteable if the memory location is
@@ -513,18 +560,18 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
         if isinstance(addr, int):
             # Assume 16-bit DALI, if not explicit
             addr = GearShort(addr)
-        elif not isinstance(addr, (GearShort, DeviceShort)):
-            raise TypeError(f"Invalid addr: {addr}, expected GearShort or DeviceShort")
+        elif not isinstance(addr, (GearAddress, DeviceAddress)):
+            raise TypeError(f"Invalid addr: {addr}, expected GearAddress or DeviceAddress")
 
         if allow_short_write:
-            if len(raw) > len(cls.locations):
+            if len(raw) > len(cls._locations):
                 raise ValueError("Raw data too long")
         else:
-            if len(raw) != len(cls.locations):
+            if len(raw) != len(cls._locations):
                 raise ValueError("Incorrect raw data length")
         unlock_required = force_unlock
         # Check that all locations are writeable
-        for location in cls.locations:
+        for location in cls._locations:
             if location.type_ not in (
                 MemoryType.RAM_RW,
                 MemoryType.NVM_RW,
@@ -545,7 +592,7 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
             yield _DTR0(addr, 2)
             yield _WriteMemoryLocationNoReply(addr, 0x55)
             dtr0 = 3
-        for location, value in zip(cls.locations, raw):
+        for location, value in zip(cls._locations, raw):
             if location.address != dtr0:
                 yield _DTR0(addr, location.address)
                 dtr0 = location.address
@@ -553,6 +600,7 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
                 yield _WriteMemoryLocationNoReply(addr, value)
             else:
                 r = yield _WriteMemoryLocation(addr, value)
+                assert isinstance(r, command.Response)
                 if r.raw_value is None:
                     raise MemoryLocationNotWriteable(
                         f'Bus unit at address "{str(addr)}" responded NO to '
@@ -576,6 +624,7 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
             # verify it is at the expected location, with any mismatch
             # indicating an error while writing.
             r = yield _QueryContentDTR0(addr)
+            assert isinstance(r, command.NumericResponse)
             if r.raw_value is None:
                 raise ResponseError(
                     f'Bus unit at address "{str(addr)}" responded NO to '
@@ -595,18 +644,18 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
             yield _WriteMemoryLocationNoReply(addr, 0xff)
 
     @classmethod
-    def write(cls, addr, value, **kwargs):
+    def write(cls, addr: Address, value: T, **kwargs: bool) -> DALISequence:
         raw = cls.value_to_raw(value)
         yield from cls.write_raw(addr, raw, **kwargs)
 
     @classmethod
-    def is_addressable(cls, addr):
+    def is_addressable(cls, addr: Address) -> DALISequence[bool]:
         """Checks whether this value is addressable
 
         Queries the value of the last addressable memory location for
         this memory bank
         """
-        last_location = max(loc.address for loc in cls.locations)
+        last_location = max(loc.address for loc in cls._locations)
         try:
             last_address = yield from cls.bank.last_address(addr)
         except MemoryLocationNotImplemented:
@@ -614,39 +663,44 @@ class MemoryValue(metaclass=_RegisterMemoryValue):
         return last_address >= last_location
 
     @classmethod
-    def is_locked(cls, addr):
+    def is_locked(
+            cls, addr: Address
+    ) -> DALISequence[bool]:
         """Checks whether this value is locked
         """
-        if cls.locations[0].type_ == MemoryType.NVM_RW_L:
+        if cls._locations[0].type_ == MemoryType.NVM_RW_L:
             locked = yield from cls.bank.is_locked(addr)
             return locked
         else:
             return False
 
 
-class NumericValue(MemoryValue):
+class NumericValue(MemoryValue[int]):
     """Numeric value stored with MSB at the first location
     """
     unit = ''
-    min_value = None
-    max_value = None
+    min_value: Optional[int] = None
+    max_value: Optional[int] = None
 
     @classmethod
-    def raw_to_value(cls, raw):
+    def raw_to_value(cls, raw: bytes) -> int:
         return int.from_bytes(raw, 'big', signed=cls.signed)
 
     @classmethod
-    def value_to_raw(cls, value):
-        if cls.mask_supported and value == 'MASK':
+    def value_to_raw(
+            cls, value: int | Literal[FlagValue.MASK]
+            | Literal[FlagValue.TMASK] | Literal["MASK"] | Literal["TMASK"]
+    ) -> bytes:
+        if cls.mask_supported and value in (FlagValue.MASK, "MASK"):
             return cls.mask
-        if cls.tmask_supported and value == 'TMASK':
+        if cls.tmask_supported and value in (FlagValue.TMASK, "TMASK"):
             return cls.tmask
         if not isinstance(value, int):
             raise ValueError("An int is required here")
-        return value.to_bytes(len(cls.locations), 'big', signed=cls.signed)
+        return value.to_bytes(len(cls._locations), 'big', signed=cls.signed)
 
     @classmethod
-    def is_valid(cls, raw):
+    def is_valid(cls, raw: bytes) -> bool:
         trial = int.from_bytes(raw, 'big', signed=cls.signed)
         if cls.min_value is not None:
             if trial < cls.min_value:
@@ -657,17 +711,48 @@ class NumericValue(MemoryValue):
         return True
 
 
-class FixedScaleNumericValue(NumericValue):
+ST = TypeVar('ST', int, float, Decimal)
+
+
+class FixedScaleNumericValue(MemoryValue[ST]):
     """Numeric value with fixed scaling factor
+
+    The type of the scaling_factor determines the type of the
+    value. When subclassing you must specify the type,
+    eg. FixedScaleNumericValue[float]
     """
-    scaling_factor = 1
+    unit = ''
+    min_value: Optional[ST] = None
+    max_value: Optional[ST] = None
+    min_raw_value: Optional[int] = None
+    max_raw_value: Optional[int] = None
+    scaling_factor: ST
 
     @classmethod
-    def raw_to_value(cls, raw):
-        return cls.scaling_factor * super().raw_to_value(raw)
+    def raw_to_value(cls, raw: bytes) -> ST:
+        return cls.scaling_factor * int.from_bytes(
+            raw, 'big', signed=cls.signed)
+
+    @classmethod
+    def is_valid(cls, raw: bytes) -> bool:
+        itrial = int.from_bytes(raw, 'big', signed=cls.signed)
+        if cls.min_raw_value is not None:
+            if itrial < cls.min_raw_value:
+                return False
+        if cls.max_raw_value is not None:
+            if itrial > cls.max_raw_value:
+                return False
+        trial = cls.scaling_factor * itrial
+        if cls.min_value is not None:
+            if trial < cls.min_value:
+                return False
+        if cls.max_value is not None:
+            if trial > cls.max_value:
+                return False
+        return True
 
 
-class StringValue(MemoryValue):
+class StringValue(MemoryValue[str]):
     """An ASCII string, possibly NULL terminated
 
     Valid ASCII characters are in the range 1..0x7f. If values outside
@@ -675,37 +760,44 @@ class StringValue(MemoryValue):
     FlagValue.Invalid will be returned.
     """
     @classmethod
-    def raw_to_value(cls, raw):
-        try:
-            return raw.split(b'\x00')[0].decode('ascii')
-        except UnicodeDecodeError:
-            return FlagValue.Invalid
+    def raw_to_value(cls, raw: bytes) -> str:
+        return raw.split(b'\x00')[0].decode('ascii')
 
     @classmethod
-    def value_to_raw(cls, value):
+    def value_to_raw(cls, value: str) -> bytes:
         raw = value.encode('ascii')
-        if len(raw) > len(cls.locations):
+        if len(raw) > len(cls._locations):
             raise ValueError("String is too long to write to location")
-        if len(raw) < len(cls.locations):
+        if len(raw) < len(cls._locations):
             raw = raw + b'\x00'
         return raw
 
     @classmethod
-    def write(cls, addr, value, **kwargs):
+    def is_valid(cls, raw: bytes) -> bool:
+        try:
+            raw.split(b'\x00')[0].decode('ascii')
+        except UnicodeDecodeError:
+            return False
+        return True
+
+    @classmethod
+    def write(
+            cls, addr: Address, value: str, **kwargs: bool
+    ) -> DALISequence:
         kwargs['allow_short_write'] = True
         return super().write(addr, value, **kwargs)
 
 
-class BinaryValue(MemoryValue):
+class BinaryValue(MemoryValue[bool]):
     @classmethod
-    def raw_to_value(cls, raw):
+    def raw_to_value(cls, raw: bytes) -> bool:
         if raw[0] == 1:
             return True
         else:
             return False
 
     @classmethod
-    def is_valid(cls, raw):
+    def is_valid(cls, raw: bytes) -> bool:
         return raw[0] in (0, 1)
 
 
@@ -714,11 +806,11 @@ class TemperatureValue(NumericValue):
     offset = 60
 
     @classmethod
-    def raw_to_value(cls, raw):
+    def raw_to_value(cls, raw: bytes) -> int:
         return int.from_bytes(raw, 'big') - cls.offset
 
 
-class VersionNumberValue(NumericValue):
+class VersionNumberValue(MemoryValue[str]):
     """A version number
 
     When encoded into a byte, IEC 62386 part 102 section 4.2 states
@@ -733,9 +825,9 @@ class VersionNumberValue(NumericValue):
     first byte and the minor version number is in the second byte.
     """
     @classmethod
-    def raw_to_value(cls, raw):
+    def raw_to_value(cls, raw: bytes) -> str:
         if len(raw) == 1:
-            n = super().raw_to_value(raw)
+            n = raw[0]
             if n == 0xff:
                 return "not implemented"
             return f"{n >> 2}.{n & 0x3}"

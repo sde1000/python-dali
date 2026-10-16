@@ -146,7 +146,7 @@ class CRI(NumericValue):
     mask_supported = True
 
 
-class CCT(NumericValue):
+class CCT(MemoryValue[int | str]):
     """CCT in K
 
     Valid when in the range 0..17000
@@ -161,19 +161,23 @@ class CCT(NumericValue):
     max_value = 17000
 
     @classmethod
-    def raw_to_value(cls, raw):
+    def raw_to_value(cls, raw: bytes) -> int | str:
         if raw == bytes([0xff, 0xfe]):
             return "Part 209 implemented"
-        return super().raw_to_value(raw)
+        return int.from_bytes(raw, 'big', signed=cls.signed)
 
     @classmethod
-    def is_valid(cls, raw):
+    def is_valid(cls, raw: bytes) -> bool:
         if raw == bytes([0xff, 0xfe]):
             return True
-        return super().is_valid(raw)
+        trial = int.from_bytes(raw, 'big', signed=cls.signed)
+        if cls.max_value is not None:
+            if trial > cls.max_value:
+                return False
+        return True
 
 
-class LightDistributionType(MemoryValue):
+class LightDistributionType(MemoryValue[str]):
     """Light Distribution Type
 
     0 = not specified
@@ -190,7 +194,7 @@ class LightDistributionType(MemoryValue):
     mask_supported = True
 
     @classmethod
-    def raw_to_value(cls, r):
+    def raw_to_value(cls, r: bytes) -> str:
         light_distribution_type = r[0]
         if light_distribution_type == 0:
             return 'not specified'

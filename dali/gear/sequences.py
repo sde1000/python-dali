@@ -4,9 +4,10 @@ Sequence for simplifying certain interactions with 16-bit DALI gear
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Generator, Optional
+from typing import Optional, TypeVar
 
-from dali import command
+from dali import command, sequences
+from dali.sequences import DALISequence
 from dali.address import GearAddress, GearShort
 from dali.exceptions import DALISequenceError
 from dali.gear.colour import (
@@ -35,10 +36,18 @@ from dali.gear.emergency import (
 from dali.gear.general import DTR0, DTR1, DTR2, QueryActualLevel, QueryContentDTR0
 
 
+# Gear-related sequences will be moved here from dali.sequences at
+# some point. Make the new locations work now.
+QueryDeviceTypes = sequences.QueryDeviceTypes
+QueryGroups = sequences.QueryGroups
+SetGroups = sequences.SetGroups
+Commissioning = sequences.Commissioning
+
+
 def SetDT8ColourValueTc(
     address: GearAddress,
     tc_mired: int,
-) -> Generator[command.Command, Optional[command.Response], None]:
+) -> DALISequence:
     """
     A generator sequence to set the Colour Temperature of a DT8 control
     gear. Note that this sequence assumes that the address being targeted
@@ -63,7 +72,7 @@ def SetDT8ColourValueTc(
 def QueryDT8ColourValue(
     address: GearShort,
     query: QueryColourValueDTR,
-) -> Generator[command.Command, Optional[command.Response], Optional[int]]:
+) -> DALISequence[Optional[int]]:
     """
     A generator sequence to query the Colour Value of a DT8 control gear,
     from the list of numerous options in QueryColourValueDTR.
@@ -97,6 +106,7 @@ def QueryDT8ColourValue(
         isinstance(msb, command.NumericResponseMask)
         and isinstance(lsb, command.NumericResponse)
         and isinstance(msb.value, int)
+        and isinstance(lsb.value, int)
     ):
         try:
             col_val = int.from_bytes((lsb.value, msb.value), "little")
@@ -110,7 +120,7 @@ def SetDT8TcLimit(
     address: GearAddress,
     what_limit: int,
     tc_mired: int,
-) -> Generator[command.Command, Optional[command.Response], None]:
+) -> DALISequence:
     """
     A generator sequence to set the Colour Temperature limit of a DT8 control
     gear. Note that this sequence assumes that the address being targeted
@@ -155,9 +165,17 @@ class EmergencyInformation:
     rated_duration: command.NumericResponse
 
 
-def _require(response: command.Response, what: str) -> command.Response:
+_ResponseType = TypeVar("_ResponseType", bound=command.Response)
+
+
+def _require(response: Optional[command.Response],
+             responsetype: type[_ResponseType],
+             what: str) -> _ResponseType:
     """Return the response, or abort the sequence if the gear did not answer
     or replied with a framing error."""
+    if response is None:
+        raise DALISequenceError(f"Missing response to {what}")
+    assert isinstance(response, responsetype)
     raw = response.raw_value
     if raw is None:
         raise DALISequenceError(f"No response to {what}")
@@ -168,7 +186,7 @@ def _require(response: command.Response, what: str) -> command.Response:
 
 def QueryEmergencyInformation(
     address: GearAddress,
-) -> Generator[command.Command, Optional[command.Response], EmergencyInformation]:
+) -> DALISequence[EmergencyInformation]:
     """Read the DT1 (IEC 62386-202) status and measurement values of an
     emergency control gear in a single sequence.
 
@@ -192,35 +210,43 @@ def QueryEmergencyInformation(
 
     return EmergencyInformation(
         emergency_mode=_require(
-            (yield QueryEmergencyMode(address)), "QueryEmergencyMode"
+            (yield QueryEmergencyMode(address)), QueryEmergencyModeResponse,
+            "QueryEmergencyMode"
         ),
         emergency_features=_require(
-            (yield QueryEmergencyFeatures(address)), "QueryEmergencyFeatures"
+            (yield QueryEmergencyFeatures(address)),
+            QueryEmergencyFeaturesResponse, "QueryEmergencyFeatures"
         ),
         emergency_failure_status=_require(
             (yield QueryEmergencyFailureStatus(address)),
-            "QueryEmergencyFailureStatus",
+            QueryEmergencyFailureStatusResponse, "QueryEmergencyFailureStatus"
         ),
         emergency_status=_require(
-            (yield QueryEmergencyStatus(address)), "QueryEmergencyStatus"
+            (yield QueryEmergencyStatus(address)),
+            QueryEmergencyStatusResponse, "QueryEmergencyStatus"
         ),
         battery_charge=_require(
-            (yield QueryBatteryCharge(address)), "QueryBatteryCharge"
+            (yield QueryBatteryCharge(address)),
+            command.NumericResponseMask, "QueryBatteryCharge"
         ),
         emergency_level=_require(
-            (yield QueryEmergencyLevel(address)), "QueryEmergencyLevel"
+            (yield QueryEmergencyLevel(address)),
+            command.NumericResponseMask, "QueryEmergencyLevel"
         ),
         duration_test_result=_require(
-            (yield QueryDurationTestResult(address)), "QueryDurationTestResult"
+            (yield QueryDurationTestResult(address)),
+            command.NumericResponse, "QueryDurationTestResult"
         ),
         lamp_emergency_time=_require(
-            (yield QueryLampEmergencyTime(address)), "QueryLampEmergencyTime"
+            (yield QueryLampEmergencyTime(address)),
+            command.NumericResponse, "QueryLampEmergencyTime"
         ),
         lamp_total_operation_time=_require(
             (yield QueryLampTotalOperationTime(address)),
-            "QueryLampTotalOperationTime",
+            command.NumericResponse, "QueryLampTotalOperationTime"
         ),
         rated_duration=_require(
-            (yield QueryRatedDuration(address)), "QueryRatedDuration"
+            (yield QueryRatedDuration(address)),
+            command.NumericResponse, "QueryRatedDuration"
         ),
     )

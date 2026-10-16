@@ -4,9 +4,7 @@ Occupancy sensor"
 """
 from __future__ import annotations
 
-from typing import NamedTuple
-# TODO: If support for Python 3.7 is dropped then a Literal type can be used
-# from typing import Literal
+from typing import NamedTuple, Literal, Optional
 
 from dali import command, frame
 from dali.device import general
@@ -50,28 +48,26 @@ class OccupancyEvent(general._Event):
         movement: bool
         occupied: bool
         repeat: bool = False
-        # TODO: If Literal is supported then this type hint can be improved
-        # sensor_type: Literal["presence", "movement"] = "movement"
-        sensor_type: str = "movement"
+        sensor_type: Literal["presence", "movement"] = "movement"
 
     # "3" corresponds with "Part 303", as per Table 4 of IEC 62386 part 103
     _instance_type = instance_type
 
     # Occupancy events contain some extra information, wrapped in a dataclass
-    _extra_data: EventData = None
+    _extra_data: EventData
 
     # Event info is set based on the named tuple passed in as data
     _event_info = 0
 
     @classmethod
-    def _register_subclass(cls, subclass):
+    def _register_subclass(cls, subclass: type[command.Command]) -> None:
         raise RuntimeError(
             "Called OccupancyEvent._register_subclass()! There should be no "
             "subclasses of OccupancyEvent."
         )
 
     @classmethod
-    def from_event_data(cls, event_data: int):
+    def from_event_data(cls, event_data: int) -> Optional[type[OccupancyEvent]]:
         # Check that the data is valid for an occupancy sensor - only the lowest
         # 4 bits are used, make sure the high 6 bits are zero
         if event_data | 0b1111 != 0b1111:
@@ -80,12 +76,14 @@ class OccupancyEvent(general._Event):
         return OccupancyEvent
 
     @property
-    def event_data(self):
+    def event_data(self) -> EventData:
         return self._extra_data
 
     def _set_event_data(
-        self, set_data: int | EventData, set_frame: frame.Frame
-    ):
+        self, set_data: int | EventData,
+        set_frame: frame.ForwardFrame
+    ) -> None:
+        sensor: Literal["presence", "movement"]
         if set_data is None:
             raise ValueError("OccupancyEvent requires 'data' to be set")
 
@@ -108,7 +106,7 @@ class OccupancyEvent(general._Event):
                 movement=movement,
                 occupied=occupied,
                 repeat=repeat,
-                sensor_type=sensor,  # noqa
+                sensor_type=sensor,
             )
 
         # If data is already an OccupancyEvent.EventData then just store that
@@ -180,8 +178,7 @@ class _OccupancyCommand(general._StandardInstanceCommand):
     An extension of the standard commands, addressed to an occupancy control
     device instance
     """
-
-    _opcode = None
+    pass
 
 
 class CatchMovement(_OccupancyCommand):

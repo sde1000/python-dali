@@ -50,41 +50,58 @@ interpreted as an "UnknownEvent" object.
 from __future__ import annotations
 
 from enum import IntEnum, IntFlag
-from typing import Any, Optional, TYPE_CHECKING, Type
+from typing import Any, Optional, Type
 
 from dali import address, command, frame
-
-if TYPE_CHECKING:
-    from dali.device.helpers import DeviceInstanceTypeMapper
 
 
 class _DeviceCommand(command.Command):
     """A command addressed to a control device."""
     _framesize = 24
-    _devicecommands = []
+    _devicecommands: list[type[_DeviceCommand]] = []
 
     @classmethod
-    def _register_subclass(cls, subclass):
+    def _register_subclass(cls, subclass: type[command.Command]) -> None:
+        assert issubclass(subclass, _DeviceCommand)
         cls._devicecommands.append(subclass)
 
     @classmethod
-    def from_frame(cls, f, devicetype=0, dev_inst_map=None):
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+                   dev_inst_map: Optional[command.DITM] = None
+                   ) -> Optional[_DeviceCommand]:
         # In 24-bit frames, bit 16 is 1 for "commands" (as opposed to "events")
         if not f[16]:
-            return
+            return None
         for dc in cls._devicecommands:
             r = dc.from_frame(f, dev_inst_map=dev_inst_map)
             if r:
                 return r
         return UnknownDeviceCommand(f)
 
+    @staticmethod
+    def _check_destination(
+            destination: int | address.DeviceAddress) -> address.DeviceAddress:
+        """Check that a valid destination has been specified.
+
+        destination can be a dali.address.Address object with
+        add_to_frame method, or an integer which will be wrapped in a
+        dali.address.Address object.
+        """
+        if isinstance(destination, int):
+            destination = address.DeviceShort(destination)
+        if isinstance(destination, address.DeviceAddress):
+            return destination
+        raise ValueError('destination must be an integer or '
+                         'dali.address.DeviceAddress object')
+
 
 class UnknownDeviceCommand(_DeviceCommand):
     """An unknown command addressed to a control device.
     """
     @classmethod
-    def from_frame(cls, f, devicetype=0, dev_inst_map=None):
-        return
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+                   dev_inst_map: Optional[command.DITM] = None) -> None:
+        return None
 
 
 class InstanceEventFilter(IntFlag):
@@ -126,10 +143,10 @@ class _StandardDeviceCommand(_DeviceCommand):
     addressed to the device as a whole, not to any particular
     instance.
     """
-    _opcode = None
+    _opcode = -1
 
-    def __init__(self, device):
-        if self._opcode is None:
+    def __init__(self, device: int | address.DeviceAddress) -> None:
+        if self._opcode == -1:
             raise NotImplementedError
 
         self.destination = self._check_destination(device)
@@ -139,21 +156,25 @@ class _StandardDeviceCommand(_DeviceCommand):
 
         super().__init__(f)
 
-    _opcodes = {}
+    _opcodes: dict[int, type[_StandardDeviceCommand]] = {}
 
     @classmethod
-    def _register_subclass(cls, subclass):
+    def _register_subclass(cls, subclass: type[command.Command]) -> None:
+        assert issubclass(subclass, _StandardDeviceCommand)
         cls._opcodes[subclass._opcode] = subclass
 
     @classmethod
-    def from_frame(cls, f, devicetype=0, dev_inst_map=None):
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+                   dev_inst_map: Optional[command.DITM] = None
+                   ) -> Optional[_DeviceCommand]:
         if f[16:8] != 0x1FE:
-            return
+            return None
 
         addr = address.from_frame(f)
 
         if addr is None:
-            return
+            return None
+        assert isinstance(addr, address.DeviceAddress)
 
         cc = cls._opcodes.get(f[7:0])
         if not cc:
@@ -161,7 +182,7 @@ class _StandardDeviceCommand(_DeviceCommand):
 
         return cc(addr)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "%s(%s)" % (self.__class__.__name__, self.destination)
 
 
@@ -512,10 +533,11 @@ class QueryResetState(_StandardDeviceCommand):
 class _StandardInstanceCommand(_DeviceCommand):
     """A standard command addressed to a control device instance."""
 
-    _opcode = None
+    _opcode = -1
 
-    def __init__(self, device, instance):
-        if self._opcode is None:
+    def __init__(self, device: int | address.DeviceAddress,
+                 instance: address.Instance) -> None:
+        if self._opcode == -1:
             raise NotImplementedError
 
         self.destination = self._check_destination(device)
@@ -532,19 +554,25 @@ class _StandardInstanceCommand(_DeviceCommand):
     _opcodes: dict[int, Type[_StandardInstanceCommand]] = dict()
 
     @classmethod
-    def _register_subclass(cls, subclass: Type[_StandardInstanceCommand]):
+    def _register_subclass(cls, subclass: type[command.Command]) -> None:
+        assert issubclass(subclass, _StandardInstanceCommand)
         cls._opcodes[subclass._opcode] = subclass
 
     @classmethod
-    def from_frame(cls, f, devicetype=0, dev_inst_map=None):
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+                   dev_inst_map: Optional[command.DITM] = None
+                   ) -> Optional[_DeviceCommand]:
         # In 24-bit frames, bit 16 is 1 for "commands" (as opposed to "events")
         if not f[16]:
-            return
+            return None
+
         addr = address.from_frame(f)
         instance = address.instance_from_frame(f)
 
         if addr is None or instance is None:
-            return
+            return None
+
+        assert isinstance(addr, address.DeviceAddress)
 
         cc = cls._opcodes.get(f[7:0])
         if not cc:
@@ -552,7 +580,7 @@ class _StandardInstanceCommand(_DeviceCommand):
 
         return cc(addr, instance)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{}({}, {})".format(
             self.__class__.__name__, self.destination, self.instance)
 
@@ -761,30 +789,34 @@ QueryEventFilterH = QueryEventFilterSixteenToTwentyThree
 
 
 class _SpecialDeviceCommand(_DeviceCommand):
-    _addr = None
-    _instance = None
+    _addr = -1
+    _instance = -1
     _opcode = 0x00
 
-    def __init__(self):
-        if self._addr is None or self._instance is None:
+    def __init__(self) -> None:
+        if self._addr == -1 or self._instance == -1:
             raise NotImplementedError
         super().__init__(
             frame.ForwardFrame(24, (self._addr, self._instance, self._opcode))
         )
 
     @classmethod
-    def from_frame(cls, f, devicetype=0, dev_inst_map=None):
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+                   dev_inst_map: Optional[command.DITM] = None
+                   ) -> Optional[_SpecialDeviceCommand]:
         if cls == _SpecialDeviceCommand:
-            return
-        if f[23:16] == cls._addr and f[15:8] == cls._instance and f[7:0] == 0x00:
+            return None
+        if f[23:16] == cls._addr and f[15:8] == cls._instance \
+           and f[7:0] == 0x00:
             return cls()
+        return None
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{}()".format(self.__class__.__name__)
 
 
 class _SpecialDeviceCommandOneParam(_SpecialDeviceCommand):
-    def __init__(self, param):
+    def __init__(self, param: int) -> None:
         if not isinstance(param, int):
             raise ValueError("parameter must be an integer")
         if param < 0 or param > 255:
@@ -793,22 +825,25 @@ class _SpecialDeviceCommandOneParam(_SpecialDeviceCommand):
         super().__init__()
 
     @classmethod
-    def from_frame(cls, f, devicetype=0, dev_inst_map=None):
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+                   dev_inst_map: Optional[command.DITM] = None
+                   ) -> Optional[_SpecialDeviceCommandOneParam]:
         if cls == _SpecialDeviceCommandOneParam:
-            return
+            return None
         if f[23:16] == cls._addr and f[15:8] == cls._instance:
             return cls(f[7:0])
+        return None
 
     @property
     def param(self) -> int:
         return self._opcode
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{}({:02x})".format(self.__class__.__name__, self._opcode)
 
 
 class _SpecialDeviceCommandTwoParam(_SpecialDeviceCommand):
-    def __init__(self, a, b):
+    def __init__(self, a: int, b: int) -> None:
         if not isinstance(a, int) or not isinstance(b, int):
             raise ValueError("parameters must be integers")
         if a < 0 or a > 255 or b < 0 or b > 255:
@@ -818,11 +853,14 @@ class _SpecialDeviceCommandTwoParam(_SpecialDeviceCommand):
         super().__init__()
 
     @classmethod
-    def from_frame(cls, f, devicetype=0, dev_inst_map=None):
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+                   dev_inst_map: Optional[command.DITM] = None
+                   ) -> Optional[_SpecialDeviceCommandTwoParam]:
         if cls == _SpecialDeviceCommandTwoParam:
-            return
+            return None
         if f[23:16] == cls._addr:
             return cls(f[15:8], f[7:0])
+        return None
 
     @property
     def param_1(self) -> int:
@@ -832,7 +870,7 @@ class _SpecialDeviceCommandTwoParam(_SpecialDeviceCommand):
     def param_2(self) -> int:
         return self._opcode
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{}({:02x}, {:02x})".format(
             self.__class__.__name__, self._instance, self._opcode)
 
@@ -971,16 +1009,16 @@ class _Event(command.Command):
     # The metaclass will call '_register_subclass()', which then adds to this
     # dict to maintain a mapping of 'instance type' codes to the Python class
     # which implements that type
-    _instance_types: dict[int, Type[_Event]] = {}
+    _instance_types: dict[int, type[_Event]] = {}
 
     # Identifying information, not all will be present for each message
-    _short_address = None
+    _short_address: Optional[address.DeviceShort] = None
     _instance_number = None
     _instance_group = None
     _device_group = None
     # Instance Type and Event Info will be overridden in subclasses
-    _instance_type = None
-    _event_info = None
+    _instance_type: Optional[int] = None
+    _event_info = -1
 
     def __init__(
         self,
@@ -990,12 +1028,12 @@ class _Event(command.Command):
         instance_group: Optional[int] = None,
         device_group: Optional[int] = None,
         data: Any = None,
-    ):
+    ) -> None:
         if isinstance(self, (AmbiguousInstanceType, UnknownEvent)):
             # Start with an empty frame for these edge-case types, the rest will
             # be filled in later to make the frame survive a round-trip
             f = frame.ForwardFrame(24, 0)
-        elif self._event_info is None:
+        elif self._event_info == -1:
             raise NotImplementedError
         else:
             f = frame.ForwardFrame(24, self._event_info)
@@ -1030,6 +1068,7 @@ class _Event(command.Command):
                 self._short_address = short_address
             else:
                 self._short_address = address.DeviceShort(short_address)
+            assert self.short_address is not None
             self.short_address.add_to_frame(f)
 
         elif device_group is not None:
@@ -1098,7 +1137,10 @@ class _Event(command.Command):
 
         super().__init__(f)
 
-    def _set_event_data(self, set_data: Optional[int], set_frame: frame.Frame):
+    def _set_event_data(
+            self,
+            set_data: Any,
+            set_frame: frame.ForwardFrame) -> None:
         """
         Overridden in subclasses which have data to include in the 10 bits of
         event information, by default does nothing
@@ -1106,7 +1148,7 @@ class _Event(command.Command):
         return
 
     @property
-    def event_data(self):
+    def event_data(self) -> Any:
         """
         Overridden in subclasses which have data, primarily used to format
         data in a suitable way for the __repr__ method
@@ -1119,6 +1161,7 @@ class _Event(command.Command):
 
     @property
     def instance_type(self) -> int:
+        assert self._instance_type is not None
         return self._instance_type
 
     @property
@@ -1134,31 +1177,30 @@ class _Event(command.Command):
         return self._instance_number
 
     @classmethod
-    def _register_subclass(cls, subclass):
-        if not issubclass(subclass, _Event):
-            raise RuntimeError(
-                "Somehow called _Event._register_subclass() "
-                "without a subclass of _Event"
-            )
+    def _register_subclass(cls, subclass: type[command.Command]) -> None:
+        assert issubclass(subclass, _Event)
         # Don't register UnknownEvent, no message should be decoded as this
         if subclass.__name__ == "UnknownEvent":
             return
-        cls._instance_types[subclass._instance_type] = subclass
+        if subclass._instance_type is not None:
+            cls._instance_types[subclass._instance_type] = subclass
 
     @classmethod
     def get_instance_type_class(
         cls, instance_type: int
-    ) -> Optional[Type[_Event]]:
+    ) -> Optional[type[_Event]]:
         return cls._instance_types.get(instance_type)
 
     @classmethod
-    def from_event_data(cls, event_data: int) -> Type[_Event]:
+    def from_event_data(cls, event_data: int) -> Optional[type[_Event]]:
         """
         Takes a given set of event data, and returns a class which is
         intended to contain that data. For some event types this might just
         be a mapping, i.e. for events where each possible value represents a
         different event. For some other events which have data, the returned
         class could be the same for multiple data.
+
+        If the event_data is not valid, returns None.
         """
         raise NotImplementedError(
             "'from_event_data()' must be implemented in a subclass"
@@ -1166,18 +1208,17 @@ class _Event(command.Command):
 
     @classmethod
     def from_frame(
-        cls,
-        f: frame.Frame,
-        devicetype: int = 0,
-        dev_inst_map: DeviceInstanceTypeMapper = None,
-    ):
+        cls, f: frame.ForwardFrame, devicetype: int = 0,
+        dev_inst_map: Optional[command.DITM] = None
+    ) -> Optional[_Event]:
         # In 24-bit frames, bit 16 is 0 for "events"
         if f[16] != 0:
-            return
+            return None
 
         short_address = None
         instance_number = None
         instance_group = None
+        instance_type = None
         device_group = None
         data = f[9:0]
 
@@ -1227,7 +1268,7 @@ class _Event(command.Command):
             instance_group = f[21:17]
         else:
             # This message is not an event message
-            return
+            return None
 
         instance_type_class = cls.get_instance_type_class(instance_type)
         if instance_type_class is not None:
@@ -1252,10 +1293,10 @@ class _Event(command.Command):
             data=data,
         )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.__repr__()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         rep_str = f"{self.__class__.__name__}("
         if self.short_address:
             rep_str += f"short_address={self.short_address.address}, "
@@ -1280,11 +1321,12 @@ class UnknownEvent(_Event):
     in this library
     """
 
-    def __init__(self, instance_type: int = 0, **kwargs):
+    def __init__(self, instance_type: int = 0, **kwargs: Any) -> None:
         self._instance_type = instance_type
         super().__init__(**kwargs)
 
-    def _set_event_data(self, set_data: Any, set_frame: frame.Frame):
+    def _set_event_data(self, set_data: Optional[int],
+                        set_frame: frame.Frame) -> None:
         """
         Even though the event information can't be decoded because the
         event type is not understood, the information can still be stored into
@@ -1295,11 +1337,12 @@ class UnknownEvent(_Event):
             set_frame[9:0] = set_data
 
     @property
-    def event_data(self):
+    def event_data(self) -> int:
         return self._unhandled_data
 
     @classmethod
-    def from_frame(cls, f, devicetype=0, dev_inst_map=None):
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+                   dev_inst_map: Optional[command.DITM] = None) -> None:
         return
 
 
@@ -1316,7 +1359,7 @@ class AmbiguousInstanceType(_Event):
     `DiscoverInstanceTypes()`.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         short_address = kwargs.pop("short_address")
         if short_address is None:
             raise ValueError(
@@ -1328,7 +1371,7 @@ class AmbiguousInstanceType(_Event):
                 "'instance_number' is required for AmbiguousInstanceType"
             )
         data = kwargs.pop("data", None)
-        self._unhandled_data = None
+        self._unhandled_data: Optional[int] = None
         super().__init__(
             short_address=short_address,
             instance_number=instance_number,
@@ -1336,10 +1379,11 @@ class AmbiguousInstanceType(_Event):
         )
 
     @classmethod
-    def from_event_data(cls, event_data: int) -> Type[_Event]:
+    def from_event_data(cls, event_data: int) -> type[_Event]:
         return cls
 
-    def _set_event_data(self, set_data: Optional[int], set_frame: frame.Frame):
+    def _set_event_data(self, set_data: Optional[int],
+                        set_frame: frame.Frame) -> None:
         """
         Even though the event information can't be decoded because the
         instance type is not known, the information can still be stored into
@@ -1350,11 +1394,11 @@ class AmbiguousInstanceType(_Event):
             set_frame[9:0] = set_data
 
     @property
-    def event_data(self):
+    def event_data(self) -> Optional[int]:
         return self._unhandled_data
 
     def retry_decode(
-        self, dev_inst_map: DeviceInstanceTypeMapper
+        self, dev_inst_map: command.DITM
     ) -> Optional[_Event]:
         """
         Tries to decode this ambiguous instance message, using the additional
@@ -1369,8 +1413,9 @@ class AmbiguousInstanceType(_Event):
         additional information then a new event object will be returned,
         otherwise None
         """
-        retried = command.Command.from_frame(
+        retried = _Event.from_frame(
             self.frame, devicetype=self.devicetype, dev_inst_map=dev_inst_map
         )
         if not isinstance(retried, AmbiguousInstanceType):
             return retried
+        return None

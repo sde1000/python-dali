@@ -1,3 +1,8 @@
+from __future__ import annotations
+
+from collections.abc import Iterable
+
+
 class Frame:
     """A DALI frame.
 
@@ -7,7 +12,7 @@ class Frame:
     Instances of this object are mutable.
     """
 
-    def __init__(self, bits, data=0):
+    def __init__(self, bits: int, data: int | Iterable[int] = 0) -> None:
         """Initialise a Frame with the supplied number of data bits.
 
         :parameter bits: the number of data bits in the Frame
@@ -34,26 +39,30 @@ class Frame:
         self._error = False
 
     @property
-    def error(self):
+    def error(self) -> bool:
         """Frame was received with a framing error."""
         return self._error
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self._bits
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Frame):
+            return False
         try:
             return self._bits == other._bits and self._data == other._data
         except Exception:
             return False
 
-    def __ne__(self, other):
+    def __ne__(self, other: object) -> bool:
+        if not isinstance(other, Frame):
+            return True
         try:
             return self._bits != other._bits or self._data != other._data
         except Exception:
             return True
 
-    def _readslice(self, key):
+    def _readslice(self, key: slice) -> tuple[int, int]:
         """Check that a slice is valid, return indices
 
         The slice must have indices that are integers.  The indices
@@ -71,10 +80,10 @@ class Frame:
             raise IndexError("slice index out of range")
         return hi, lo
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: slice | int) -> int:
         """Read a bit or group of bits from the frame
 
-        If the key is an integer, return that bit as True or False or
+        If the key is an integer, return that bit as 1 or 0 or
         raise IndexError if the key is out of bounds.
 
         If the key is a slice, return that slice as an integer or
@@ -93,7 +102,7 @@ class Frame:
             return (self._data & (1 << key)) != 0
         raise TypeError
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: slice | int, value: int) -> None:
         """Write a bit or a group of bits to the frame
 
         If the key is an integer, set that bit to the truth value of
@@ -127,27 +136,26 @@ class Frame:
         else:
             raise TypeError
 
-    def __contains__(self, item):
+    def __contains__(self, item: object) -> bool:
         if item is True:
             return self._data != 0
         if item is False:
             return self._data != (1 << self._bits) - 1
         return False
 
-    def __add__(self, other):
-        try:
-            return Frame(self._bits + other._bits,
-                         self._data << other._bits | other._data)
-        except Exception:
+    def __add__(self, other: object) -> Frame:
+        if not isinstance(other, Frame):
             raise TypeError("Frame can only be added to another Frame")
+        return Frame(self._bits + other._bits,
+                     self._data << other._bits | other._data)
 
     @property
-    def as_integer(self):
+    def as_integer(self) -> int:
         """The contents of the frame represented as an integer."""
         return self._data
 
     @property
-    def as_byte_sequence(self):
+    def as_byte_sequence(self) -> Iterable[int]:
         """The contents of the frame represented as a sequence.
 
         Returns a sequence of integers each in the range 0..255
@@ -159,7 +167,7 @@ class Frame:
         return list(self.pack)
 
     @property
-    def pack(self):
+    def pack(self) -> bytes:
         """The contents of the frame represented as a byte string.
 
         If the frame is not an exact multiple of 8 bits long, the
@@ -169,7 +177,7 @@ class Frame:
             (len(self) // 8) + (1 if len(self) % 8 else 0),
             'big')
 
-    def pack_len(self, l):
+    def pack_len(self, l: int) -> bytes:
         """The contents of the frame represented as a fixed length byte string.
 
         The least significant bit of the frame is aligned to the end
@@ -181,7 +189,7 @@ class Frame:
         """
         return self._data.to_bytes(l, 'big')
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{}({},{})".format(self.__class__.__name__, len(self),
                                   self.as_byte_sequence)
 
@@ -198,11 +206,11 @@ class ForwardFrame(Frame):
     """
 
     @property
-    def is_reserved(self):
+    def is_reserved(self) -> bool:
         return len(self) == 20 or len(self) == 32
 
     @property
-    def is_proprietary(self):
+    def is_proprietary(self) -> bool:
         return len(self) not in (16, 20, 24, 32)
 
 
@@ -218,10 +226,10 @@ class BackwardFrame(Frame):
     BackwardFrameError instead.
     """
 
-    def __init__(self, data):
+    def __init__(self, data: int | Iterable[int]) -> None:
         super().__init__(8, data)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{}({})".format(self.__class__.__name__, self._data)
 
 
@@ -234,6 +242,6 @@ class BackwardFrameError(BackwardFrame):
     interpreted as "more than one device responded Yes".
     """
 
-    def __init__(self, data):
+    def __init__(self, data: int | Iterable[int]) -> None:
         super().__init__(data)
         self._error = True

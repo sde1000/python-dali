@@ -7,6 +7,9 @@ Where a command name is or contains an abbreviation, for example DAPC
 or DTR0, the abbreviation has been kept in capitals.
 """
 
+from __future__ import annotations
+
+from typing import Optional, Literal
 from dali import command
 from dali import address
 from dali import frame
@@ -15,14 +18,17 @@ from dali import frame
 class _GearCommand(command.Command):
     _framesize = 16
 
-    _gearcommands = []
+    _gearcommands: list[type[_GearCommand]] = []
 
     @classmethod
-    def _register_subclass(cls, subclass):
+    def _register_subclass(cls, subclass: type[command.Command]) -> None:
+        assert issubclass(subclass, _GearCommand)
         cls._gearcommands.append(subclass)
 
     @classmethod
-    def from_frame(cls, f, devicetype=0, dev_inst_map=None):
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+                   dev_inst_map: Optional[command.DITM] = None
+                   ) -> Optional[_GearCommand]:
         for gc in cls._gearcommands:
             r = gc.from_frame(
                 f, devicetype=devicetype, dev_inst_map=dev_inst_map
@@ -31,13 +37,30 @@ class _GearCommand(command.Command):
                 return r
         return UnknownGearCommand(f)
 
+    @staticmethod
+    def _check_destination(
+            destination: int | address.GearAddress) -> address.GearAddress:
+        """Check that a valid destination has been specified.
+
+        destination can be a dali.address.Address object with
+        add_to_frame method, or an integer which will be wrapped in a
+        dali.address.Address object.
+        """
+        if isinstance(destination, int):
+            destination = address.GearShort(destination)
+        if isinstance(destination, address.GearAddress):
+            return destination
+        raise ValueError('destination must be an integer or '
+                         'dali.address.GearAddress object')
+
 
 class UnknownGearCommand(_GearCommand):
     """An unknown command addressed to control gear.
     """
     @classmethod
-    def from_frame(cls, f, devicetype=0, dev_inst_map=None):
-        return
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+                   dev_inst_map: Optional[command.DITM] = None) -> None:
+        return None
 
 
 ###############################################################################
@@ -58,10 +81,12 @@ class _StandardCommand(_GearCommand):
     4-bit parameter is to be used as the least significant 4 bits of
     the opcode byte.
     """
-    _cmdval = None
+    _cmdval = -1
     _hasparam = False
+    param: int
 
-    def __init__(self, destination, *args):
+    def __init__(self, destination: address.GearAddress | int,
+                 *args: int) -> None:
         if self._cmdval is None:
             raise NotImplementedError
 
@@ -96,29 +121,36 @@ class _StandardCommand(_GearCommand):
         super().__init__(f)
 
     # (devicetype, opcode) -> commandclass
-    _opcodes = {}
+    _opcodes: dict[tuple[int, int], type[_StandardCommand]] = {}
 
     @classmethod
-    def _register_subclass(cls, subclass):
+    def _register_subclass(cls, subclass: type[command.Command]) -> None:
+        assert issubclass(subclass, _StandardCommand)
         if subclass.__name__[0] == '_':
             return
+        assert subclass._cmdval != -1
         if subclass._hasparam:
             for x in range(0, 0x10):
-                cls._opcodes[(subclass.devicetype, subclass._cmdval + x)] = subclass
+                cls._opcodes[(subclass.devicetype, subclass._cmdval + x)] \
+                    = subclass
         else:
             cls._opcodes[(subclass.devicetype, subclass._cmdval)] = subclass
 
     @classmethod
-    def from_frame(cls, f, devicetype=0, dev_inst_map=None):
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+                   dev_inst_map: Optional[command.DITM] = None
+                   ) -> Optional[_GearCommand]:
         if not f[8]:
             # It's a direct arc power control command
-            return
+            return None
 
         addr = address.from_frame(f)
 
         if addr is None:
             # It's probably a _SpecialCommand
-            return
+            return None
+
+        assert isinstance(addr, address.GearAddress)
 
         opcode = f[7:0]
 
@@ -131,7 +163,7 @@ class _StandardCommand(_GearCommand):
 
         return cc(addr)
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self._hasparam:
             return "%s(%s,%s)" % (
                 self.__class__.__name__,
@@ -155,7 +187,8 @@ class DAPC(_GearCommand):
     be respected.
     """
 
-    def __init__(self, destination, power):
+    def __init__(self, destination: address.GearAddress | int,
+                 power: int | str) -> None:
         if power == "OFF":
             power = 0
 
@@ -176,15 +209,19 @@ class DAPC(_GearCommand):
         super().__init__(f)
 
     @classmethod
-    def from_frame(cls, f, devicetype=0, dev_inst_map=None):
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+                   dev_inst_map: Optional[command.DITM] = None
+                   ) -> Optional[_GearCommand]:
         if f[8]:
-            return
+            return None
         addr = address.from_frame(f)
         if addr is None:
-            return
+            return None
+        assert isinstance(addr, address.GearAddress)
         return cls(addr, f[7:0])
 
-    def __str__(self):
+    def __str__(self) -> str:
+        power: str | int
         if self.power == 0:
             power = "OFF"
         elif self.power == 255:
@@ -585,12 +622,12 @@ class QueryStatusResponse(command.BitmapResponse):
             "power failure"]
 
     @property
-    def error(self):
+    def error(self) -> bool:
         """Is the ballast in any kind of error state?
         (Ballast not ok, lamp fail, missing short address)
         """
         return self.ballast_status or self.lamp_failure \
-            or self.missing_short_address
+            or self.missing_short_address or False
 
 
 class QueryStatus(_StandardCommand):
@@ -685,9 +722,10 @@ class QueryDeviceTypeResponse(command.Response):
               254: "none / end",
               255: "multiple"}
 
-    def __str__(self):
-        if self.value and self.value.as_integer in self._types:
-            return self._types[self.value.as_integer]
+    def __str__(self) -> str:
+        if self.raw_value and not self.raw_value.error \
+           and self.raw_value.as_integer in self._types:
+            return self._types[self.raw_value.as_integer]
 
         return "{}".format(self.value)
 
@@ -827,16 +865,18 @@ class QuerySystemFailureLevel(_StandardCommand):
 
 class QueryFadeTimeAndRateResponse(command.NumericResponse):
     @property
-    def fade_time(self):
-        if self._value:
-            return self._value[7:4]
+    def fade_time(self) -> Optional[int]:
+        if self.raw_value and not self.raw_value.error:
+            return self.raw_value[7:4]
+        return None
 
     @property
-    def fade_rate(self):
-        if self._value:
-            return self._value[3:0]
+    def fade_rate(self) -> Optional[int]:
+        if self.raw_value and not self.raw_value.error:
+            return self.raw_value[3:0]
+        return None
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Fade time: {0}; Fade rate: {1}".format(
             self.fade_time,
             self.fade_rate
@@ -978,7 +1018,7 @@ class QueryExtendedVersionNumberMixin:
     of QueryExtendedVersionNumber using this mixin.
     """
     _cmdval = 0xff
-    response = command.NumericResponse
+    response: Optional[type[command.Response]] = command.NumericResponse
 
 
 class QueryExtendedVersionNumber(QueryExtendedVersionNumberMixin,
@@ -1001,9 +1041,10 @@ class _SpecialCommand(_GearCommand):
     Special commands are broadcast and are received by all devices.
     """
     _hasparam = False
-    _cmdval = None
+    _cmdval = -1
 
-    def __init__(self, *args):
+    def __init__(self, *args: int) -> None:
+        param: int
         if self._hasparam:
             if len(args) != 1:
                 raise TypeError(
@@ -1021,19 +1062,23 @@ class _SpecialCommand(_GearCommand):
                         self.__class__.__name__, len(args) + 1))
             param = 0
         self.param = param
+        assert self._cmdval != -1
         super().__init__(frame.ForwardFrame(16, (self._cmdval, self.param)))
 
     # dict of f[15:8] to cls
-    _opcodes = {}
+    _opcodes: dict[int, type[_SpecialCommand]] = {}
 
     @classmethod
-    def _register_subclass(cls, subclass):
+    def _register_subclass(cls, subclass: type[command.Command]) -> None:
         if subclass.__name__[0] == '_':
             return
+        assert issubclass(subclass, _SpecialCommand)
         cls._opcodes[subclass._cmdval] = subclass
 
     @classmethod
-    def from_frame(cls, f, devicetype=0, dev_inst_map=None):
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+                   dev_inst_map: Optional[command.DITM] = None
+                   ) -> Optional[_GearCommand]:
         opcode = f[15:8]
         if opcode == cls._cmdval:
             if cls._hasparam:
@@ -1048,7 +1093,7 @@ class _SpecialCommand(_GearCommand):
             return UnknownGearCommand(f)
         return cc.from_frame(f, devicetype=devicetype)
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self._hasparam:
             return "{}({})".format(self.__class__.__name__, self.param)
         return "{}()".format(self.__class__.__name__)
@@ -1057,30 +1102,34 @@ class _SpecialCommand(_GearCommand):
 class _ShortAddrSpecialCommand(_SpecialCommand):
     """A special command that has a short address as its parameter."""
     _hasparam = True
+    address: int | Literal["MASK"]
 
-    def __init__(self, address):
+    def __init__(self, address: int | Literal["MASK"]) -> None:
         if address == "MASK":
             self.address = address
+            super().__init__(0xff)
         else:
             if not isinstance(address, int):
                 raise ValueError("address must be an integer or 'MASK'")
             if address < 0 or address > 63:
                 raise ValueError("address must be in the range 0..63")
-        self.address = address
-        data = 0xff if self.address == "MASK" else ((self.address << 1) | 1)
-        super().__init__(data)
+            self.address = address
+            super().__init__((self.address << 1) | 1)
 
     @classmethod
-    def from_frame(cls, f, devicetype=0, dev_inst_map=None):
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+                   dev_inst_map: Optional[command.DITM] = None
+                   ) -> Optional[_ShortAddrSpecialCommand]:
         if cls == _ShortAddrSpecialCommand:
-            return
+            return None
         if f[15:8] == cls._cmdval:
             if f[7:0] == 0xff:
                 return cls("MASK")
             if f[7] is False and f[0] is True:
                 return cls(f[6:1])
+        return None
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{}({})".format(self.__class__.__name__, self.address)
 
 
@@ -1117,7 +1166,8 @@ class Initialise(_SpecialCommand):
     _hasparam = True
     sendtwice = True
 
-    def __init__(self, broadcast=False, address=None):
+    def __init__(self, broadcast: bool = False,
+                 address: Optional[int] = None) -> None:
         if broadcast and address is not None:
             raise ValueError("can't specify address when broadcasting")
         if address is not None:
@@ -1136,7 +1186,9 @@ class Initialise(_SpecialCommand):
         super().__init__(b)
 
     @classmethod
-    def from_frame(cls, f, devicetype=0, dev_inst_map=None):
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+                   dev_inst_map: Optional[command.DITM] = None
+                   ) -> Optional[_SpecialCommand]:
         if f[15:8] == cls._cmdval:
             if f[7:0] == 0:
                 return cls(broadcast=True)
@@ -1144,8 +1196,9 @@ class Initialise(_SpecialCommand):
                 return cls(address=None)
             if f[7] is False and f[0] is True:
                 return cls(address=f[6:1])
+        return None
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.broadcast:
             return "Initialise(broadcast=True)"
         return "Initialise(address={})".format(self.address)

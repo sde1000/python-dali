@@ -4,8 +4,7 @@ Push buttons"
 """
 from __future__ import annotations
 
-from typing import Dict, Type
-
+from typing import Optional
 from dali import command
 from dali.device import general
 
@@ -23,19 +22,15 @@ class _PushbuttonEvent(general._Event):
 
     # "1" corresponds with "Part 301", as per Table 4 of IEC 62386 part 103
     _instance_type = instance_type
-    _event_classes: Dict[int, Type[_PushbuttonEvent]] = {}
+    _event_classes: dict[int, type[_PushbuttonEvent]] = {}
 
     @classmethod
-    def _register_subclass(cls, subclass):
-        if not issubclass(subclass, _PushbuttonEvent):
-            raise RuntimeError(
-                "Somehow called _PushbuttonEvent._register_subclass() "
-                "without a subclass of _PushbuttonEvent"
-            )
+    def _register_subclass(cls, subclass: type[command.Command]) -> None:
+        assert issubclass(subclass, _PushbuttonEvent)
         cls._event_classes[subclass._event_info] = subclass
 
     @classmethod
-    def from_event_data(cls, event_data: int):
+    def from_event_data(cls, event_data: int) -> Optional[type[_PushbuttonEvent]]:
         return cls._event_classes.get(event_data)
 
 
@@ -189,8 +184,7 @@ class _PushbuttonCommand(general._StandardInstanceCommand):
     An extension of the standard commands, addressed to a push button control
     device instance
     """
-
-    _opcode = None
+    pass
 
 
 class SetShortTimer(_PushbuttonCommand):

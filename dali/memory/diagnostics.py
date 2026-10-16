@@ -57,7 +57,7 @@ class ControlGearStartCounter(NumericValue):
     max_value = 0xfffffd
 
 
-class ControlGearExternalSupplyVoltage(FixedScaleNumericValue):
+class ControlGearExternalSupplyVoltage(FixedScaleNumericValue[Decimal]):
     """Control Gear External Supply Voltage in Vrms
 
     RMS value of external supply voltage
@@ -69,7 +69,7 @@ class ControlGearExternalSupplyVoltage(FixedScaleNumericValue):
                             type_=MemoryType.RAM_RO)
     tmask_supported = True
     mask_supported = True
-    max_value = 0xfffd
+    max_raw_value = 0xfffd
 
 
 class ControlGearExternalSupplyVoltageFrequency(NumericValue):
@@ -93,7 +93,7 @@ class ControlGearExternalSupplyVoltageFrequency(NumericValue):
     max_value = 0xfd
 
 
-class ControlGearPowerFactor(FixedScaleNumericValue):
+class ControlGearPowerFactor(FixedScaleNumericValue[Decimal]):
     """Control Gear Power Factor
     """
     bank = BANK_205
@@ -101,7 +101,7 @@ class ControlGearPowerFactor(FixedScaleNumericValue):
     locations = MemoryLocation(address=0x0e, type_=MemoryType.RAM_RO)
     tmask_supported = True
     mask_supported = True
-    max_value = 100
+    max_raw_value = 100
 
 
 class ControlGearOverallFailureCondition(BinaryValue):
@@ -501,7 +501,7 @@ class LightSourceOnTime(NumericValue):
     max_value = 0xfffffffd
 
 
-class LightSourceVoltage(FixedScaleNumericValue):
+class LightSourceVoltage(FixedScaleNumericValue[Decimal]):
     """Light Source Voltage in V
 
     Indicates the actual control gear output voltage
@@ -514,10 +514,10 @@ class LightSourceVoltage(FixedScaleNumericValue):
     locations = MemoryRange(start=0x12, end=0x13,
                             type_=MemoryType.RAM_RO)
     tmask_supported = True
-    max_value = 0xfffd
+    max_raw_value = 0xfffd
 
 
-class LightSourceCurrent(FixedScaleNumericValue):
+class LightSourceCurrent(FixedScaleNumericValue[Decimal]):
     """Light Source Current in A
 
     Indicates the actual control gear output current
@@ -530,7 +530,7 @@ class LightSourceCurrent(FixedScaleNumericValue):
     locations = MemoryRange(start=0x14, end=0x15,
                             type_=MemoryType.RAM_RO)
     tmask_supported = True
-    max_value = 0xfffd
+    max_raw_value = 0xfffd
 
 
 class LightSourceOverallFailureCondition(BinaryValue):

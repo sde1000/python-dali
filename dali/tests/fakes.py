@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
-from typing import Iterable, Optional, Type
+from typing import Iterable, Optional, TypeVar, Sequence, cast
 
 # Fake hardware for testing
 from dali import address, device, frame, gear
-from dali.command import Command
+from dali.command import Command, Response
 from dali.gear.colour import QueryColourValueDTR
-from dali.memory import info, oem
+from dali.memory import location, info, oem
 from dali.memory.location import MemoryType
-from dali.sequences import progress
+from dali.sequences import progress, DALISequence
 
 _yes = 0xff
 
@@ -22,50 +22,52 @@ class FakeMemoryBank:
     implement. An instance will be created by each fake Gear instance
     that the memory bank is passed to.
     """
-    bank = None
-    initial_contents = None
+    bank: location.MemoryBank
+    initial_contents: Optional[Iterable[Optional[int]]] = None
     unlock_value = 0x55
     nobble_dtr0_update = False
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.contents = list(self.bank.factory_default_contents())
         if self.initial_contents is not None:
             self.set_memory_data(self.initial_contents)
 
-    def set_memory_data(self, new_contents):
+    def set_memory_data(self, new_contents: Iterable[Optional[int]]) -> None:
         # Update memory bank using new_contents. Locations with
         # new_contents 'None' are not changed.
         for addr, value in enumerate(new_contents):
             if value is not None:
                 self.contents[addr] = value
 
-    def read(self, address):
-        if address > self.contents[0]:
-            return
+    def read(self, address: int) -> Optional[int]:
+        if self.contents[0] is not None and address > self.contents[0]:
+            return None
         try:
             return self.contents[address]
         except IndexError:
             # return nothing when trying to read non-existent
             # memory location
-            return
+            return None
 
-    def write(self, address, value):
+    def write(self, address: int, value: int) -> Optional[int]:
         # "If the selected memory bank location is not
         # implemented, or above the last accessible memory
         # location, or locked, or not writeable, the answer [...]
         # shall be NO and no memory location shall be written to."
-        location = self.bank.locations[address].memory_location
-        if not location:
-            return  # not implemented
-        if address > self.contents[0]:
-            return  # above the last accessible memory location
-        if location.type_ == MemoryType.NVM_RW_L \
+        if self.contents[0] and address > self.contents[0]:
+            return None  # above the last accessible memory location
+        mbe: Optional[location.MemoryBankEntry] \
+            = self.bank.locations[address]
+        if not mbe:
+            return None  # not implemented
+        mloc: location.MemoryLocation = mbe.memory_location
+        if mloc.type_ == MemoryType.NVM_RW_L \
            and self.contents[2] != self.unlock_value:
-            return  # locked
-        if location.type_ not in (
+            return None  # locked
+        if mloc.type_ not in (
                 MemoryType.RAM_RW, MemoryType.NVM_RW,
                 MemoryType.NVM_RW_L, MemoryType.NVM_RW_P):
-            return  # not writeable
+            return None  # not writeable
         self.contents[address] = value
         return value
 
@@ -95,16 +97,26 @@ class FakeBank1(FakeMemoryBank):
     ]
 
 
-class Gear:
+class BusItem:
+    """Anything that is connected to a DALI bus
+    """
+    def send(self, cmd: Command) -> Optional[int]:
+        return None
+
+
+class Gear(BusItem):
     """Control gear on a DALI bus
 
     Receives 16-bit Command objects and returns None for no response, or
     an integer in the range 0..255 to indicate responding with an 8-bit
     backward frame.
     """
-    def __init__(self, shortaddr=None, groups=set(),
-                 devicetypes=[], random_preload=[],
-                 memory_banks=(FakeBank0, FakeBank1)):
+    def __init__(self, shortaddr: Optional[int | address.GearShort] = None,
+                 groups: Iterable[int] = set(),
+                 devicetypes: list[int] = [],
+                 random_preload: list[int] = [],
+                 memory_banks: Iterable[type[FakeMemoryBank]] = (
+                     FakeBank0, FakeBank1)) -> None:
         if isinstance(shortaddr, address.GearShort):
             shortaddr = shortaddr.address
         self.shortaddr = shortaddr
@@ -118,13 +130,13 @@ class Gear:
         self.initialising = False
         self.withdrawn = False
         self.dt_gap = 1  # Number of commands since last QueryNextDeviceType
-        self.dt_queue = []  # Devices still to be returned by QueryNextDeviceType
+        self.dt_queue: list[int] = []  # Devices still to be returned by QueryNextDeviceType
         self.randomaddr = frame.Frame(24)
         self.searchaddr = frame.Frame(24)
         self.dtr0 = 0
         self.dtr1 = 0
         self.dtr2 = 0
-        self.prev_cmd = None
+        self.prev_cmd: Optional[Command] = None
         self.temp_ct = 0
         self.actual_ct = 0
         self.ct_mired_min = 153
@@ -143,21 +155,20 @@ class Gear:
         self.lamp_emergency_time = 5
         self.lamp_total_operation_time = 100
         self.rated_duration = 90
-        self.memory_banks = {}
+        self.memory_banks: dict[int, FakeMemoryBank] = {}
         for fake_bank in memory_banks:
             bank_number = fake_bank.bank.address
-            if bank_number in memory_banks:
+            if bank_number in self.memory_banks:
                 raise Exception(f"Duplicate memory bank {bank_number}")
             self.memory_banks[bank_number] = fake_bank()
         self.enableWriteMemory = False
 
-    def _next_random_address(self):
+    def _next_random_address(self) -> int:
         if self.random_preload:
             return self.random_preload.pop(0)
-        else:
-            return random.randrange(0, 0x1000000)
+        return random.randrange(0, 0x1000000)
 
-    def valid_address(self, cmd):
+    def valid_address(self, cmd: Command) -> bool:
         """Should we respond to this command?
         """
         if len(cmd.frame) != 16:
@@ -174,8 +185,9 @@ class Gear:
             return cmd.destination.address == self.shortaddr
         if isinstance(cmd.destination, address.GearGroup):
             return cmd.destination.group in self.groups
+        return False
 
-    def send(self, cmd):
+    def send(self, cmd: Command) -> Optional[int]:
         self.prev_cmd = cmd
         self.dt_gap += 1
         # Reset enableWriteMemory if command is not one of the memory
@@ -189,7 +201,7 @@ class Gear:
                     gear.general.QueryContentDTR2)):
             self.enableWriteMemory = False
         if not self.valid_address(cmd):
-            return
+            return None
         # Command is either addressed to us, or is a broadcast
         if isinstance(cmd, gear.general.SetScene):
             self.scenes[cmd.param] = self.dtr0
@@ -201,7 +213,7 @@ class Gear:
             self.groups.discard(cmd.param)
         elif isinstance(cmd, gear.general.DAPC):
             if cmd.power == 255:
-                return
+                return None
             elif cmd.power == 0:
                 self.level = 0
             elif cmd.power > self.level_max:
@@ -289,7 +301,7 @@ class Gear:
             scene_level = self.scenes[cmd.param]
             if scene_level == 255:
                 # Don't change level if scene is MASK
-                return
+                return None
             elif scene_level > self.level_max:
                 self.level = self.level_max
             elif scene_level < self.level_min:
@@ -364,7 +376,7 @@ class Gear:
             # command shall be ignored."
             bank = self.memory_banks.get(self.dtr1)
             if not bank:
-                return
+                return None
             try:
                 return bank.read(self.dtr0)
             finally:
@@ -379,11 +391,11 @@ class Gear:
             # addressed memory bank is implemented, the control gear
             # shall accept..."
             if not self.enableWriteMemory or not bank:
-                return
+                return None
             try:
-                r = bank.write(self.dtr0, cmd.param)
+                wmlr = bank.write(self.dtr0, cmd.param)
                 if isinstance(cmd, gear.general.WriteMemoryLocation):
-                    return r
+                    return wmlr
             finally:
                 if not bank.nobble_dtr0_update:
                     self.dtr0 = min(self.dtr0 + 1, 255)
@@ -392,7 +404,7 @@ class Gear:
         if isinstance(cmd, gear.colour._ColourCommand):
             # Only handle if this Gear instance has been declared as a DT8 type
             if 8 not in self.devicetypes:
-                return
+                return None
             if isinstance(cmd, gear.colour.QueryColourTypeFeatures):
                 return 0b00000010  # Bit 1 = Colour temperature Tc capable
             elif isinstance(cmd, gear.colour.QueryColourValue):
@@ -456,7 +468,7 @@ class Gear:
         if isinstance(cmd, gear.emergency._EmergencyLightingCommand):
             # Only handle if this Gear instance has been declared as a DT1 type
             if 1 not in self.devicetypes:
-                return
+                return None
             if isinstance(cmd, gear.emergency.QueryEmergencyMode):
                 return self.emergency_mode
             elif isinstance(cmd, gear.emergency.QueryEmergencyFeatures):
@@ -488,6 +500,8 @@ class Gear:
             elif isinstance(cmd, gear.emergency.ReLightResetInhibit):
                 self.emergency_status &= ~0b00000001
 
+        return None
+
 
 # Valid bank 0 ROM contents compatible with IEC 62386-103
 class FakeDeviceBank0(FakeMemoryBank):
@@ -507,7 +521,7 @@ class FakeDeviceBank0(FakeMemoryBank):
     ]
 
 
-class Device:
+class Device(BusItem):
     """
     Control device on a DALI bus
 
@@ -537,7 +551,7 @@ class Device:
         self,
         shortaddr: Optional[address.DeviceShort] = None,
         groups: Optional[Iterable[address.DeviceGroup]] = None,
-        memory_banks: Optional[Iterable[Type[FakeMemoryBank]]] = (FakeDeviceBank0,),
+        memory_banks: Iterable[type[FakeMemoryBank]] = (FakeDeviceBank0,),
         random_preload: Optional[Iterable[int]] = None,
     ):
         # Store parameters
@@ -554,10 +568,10 @@ class Device:
         self.quiescent: bool = False
         self.randomaddr = frame.Frame(24)
         self.searchaddr = frame.Frame(24)
-        self.memory_banks = {}
+        self.memory_banks: dict[int, FakeMemoryBank] = {}
         for fake_bank in memory_banks:
             bank_number = fake_bank.bank.address
-            if bank_number in memory_banks:
+            if bank_number in self.memory_banks:
                 raise ValueError(f"Duplicate memory bank {bank_number}")
             self.memory_banks[bank_number] = fake_bank()
 
@@ -595,6 +609,7 @@ class Device:
             return cmd.destination == self.shortaddr
         if isinstance(cmd.destination, address.DeviceGroup):
             return cmd.destination in self.groups
+        return False
 
     def send(self, cmd: Command) -> Optional[int]:
         # Reset enable_write_memory if command is not one of the memory
@@ -715,7 +730,7 @@ class Device:
             # command shall be ignored."
             bank = self.memory_banks.get(self.dtr1)
             if not bank:
-                return
+                return None
             try:
                 return bank.read(self.dtr0)
             finally:
@@ -735,7 +750,7 @@ class Device:
             # addressed memory bank is implemented, the control gear
             # shall accept..."
             if not self.enable_write_memory or not bank:
-                return
+                return None
             try:
                 r = bank.write(self.dtr0, cmd.param)
                 if isinstance(cmd, device.general.WriteMemoryLocation):
@@ -747,6 +762,9 @@ class Device:
         return None
 
 
+SRT = TypeVar('SRT')  # Sequence return type
+
+
 class Bus:
     """A DALI bus
 
@@ -755,28 +773,33 @@ class Bus:
     responds, its response is used.  If multiple devices respond, a
     BackwardFrameError is used to represent the bus collision.
     """
-    def __init__(self, gear: list):
-        self.gear: list = gear
+    def __init__(self, gear: Sequence[BusItem]) -> None:
+        self.gear = gear
 
-    def send(self, cmd):
+    def send(self, cmd: Command) -> Optional[Response]:
         r = [x for x in (i.send(cmd) for i in self.gear) if x is not None]
+        rf: Optional[frame.BackwardFrame] = None
         if len(r) > 1:
             rf = frame.BackwardFrameError(r[0])
         elif len(r) == 1:
             rf = frame.BackwardFrame(r[0])
-        else:
-            rf = None
 
         if cmd.response:
             return cmd.response(rf)
+        return None
 
-    def run_sequence(self, seq, verbose=False):
-        response = None
+    def run_sequence(self, seq: DALISequence[SRT],
+                     verbose: bool = False) -> SRT:
+        response: Optional[Response] = None
         while True:
             try:
                 cmd = seq.send(response)
             except StopIteration as r:
-                return r.value
+                # XXX is there any better way to do this than an
+                # explicit cast?  I've seen some workarounds with a
+                # class that does "yield from" and then stashes the
+                # value somewhere, but that seems excessive!
+                return cast(SRT, r.value)
             response = None
             if isinstance(cmd, Command):
                 response = self.send(cmd)

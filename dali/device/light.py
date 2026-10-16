@@ -4,6 +4,7 @@ Light sensor"
 """
 from __future__ import annotations
 
+from typing import Optional
 from dali import command, frame
 from dali.device import general
 
@@ -27,22 +28,23 @@ class LightEvent(general._Event):
     _event_info = 0
 
     @classmethod
-    def _register_subclass(cls, subclass):
+    def _register_subclass(cls, subclass: type[command.Command]) -> None:
         raise RuntimeError(
             "Called LightEvent._register_subclass()! There should be no "
             "subclasses of LightEvent."
         )
 
     @classmethod
-    def from_event_data(cls, event_data: int):
+    def from_event_data(cls, event_data: int) -> type[LightEvent]:
         # There is only one class for LightEvent, which contains the illuminance
         return LightEvent
 
     @property
-    def event_data(self):
+    def event_data(self) -> int:
         return self._event_info
 
-    def _set_event_data(self, set_data: int, set_frame: frame.Frame):
+    def _set_event_data(self, set_data: Optional[int],
+                        set_frame: frame.Frame) -> None:
         if not isinstance(set_data, int):
             raise ValueError("LightEvent requires 'data' to be set as an 'int'")
 
@@ -80,8 +82,7 @@ class _LightCommand(general._StandardInstanceCommand):
     An extension of the standard commands, addressed to a light sensor control
     device instance
     """
-
-    _opcode = None
+    pass
 
 
 class SetReportTimer(_LightCommand):

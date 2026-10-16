@@ -1,5 +1,6 @@
+from typing import Optional
 from .location import MemoryBank, MemoryLocation, MemoryRange, \
-    MemoryType, NumericValue, FlagValue
+    MemoryType, MemoryValue, NumericValue, FlagValue
 from decimal import Decimal
 
 # Memory bank definitions from DiiA Specification, DALI Part 252 -
@@ -9,7 +10,7 @@ BANK_203 = MemoryBank(203, 0x0F, has_latch=True)
 BANK_204 = MemoryBank(204, 0x0F, has_latch=True)
 
 
-class ScaledNumericValue(NumericValue):
+class ScaledNumericValue(MemoryValue[Decimal]):
     """A numeric value with scaling factor provided by the bus unit
 
     Scale is valid from 10^-6 to 10^6 and is read from the first
@@ -22,13 +23,13 @@ class ScaledNumericValue(NumericValue):
     mask_length_adjust = -1
 
     @classmethod
-    def raw_to_value(cls, raw):
+    def raw_to_value(cls, raw: bytes) -> Decimal:
         scaling_factor = pow(Decimal(10), int.from_bytes(
             raw[:1], 'big', signed=True))
         return int.from_bytes(raw[1:], 'big') * scaling_factor
 
     @classmethod
-    def check_raw(cls, raw):
+    def check_raw(cls, raw: bytes) -> Optional[FlagValue]:
         # Check the scale factor here rather than in is_valid(); the
         # raw value passed to is_valid() by check_raw() will be
         # missing the scale factor
