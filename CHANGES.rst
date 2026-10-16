@@ -1,6 +1,25 @@
 Changes
 =======
 
+0.12 (2026-10-16)
+-----------------
+
+Please note that this is the last release that will officially support
+Python 3.8 and Python 3.9.
+
+From release 1.0, drivers will be split out into a different package
+and will no longer be present in python-dali. If you depend on the
+drivers in python-dali, ensure your dependency is "<1.0" or similar.
+
+Debian packaging scripts will be removed in release 0.13. Note that
+there have never been official Debian packages released for
+python-dali.
+
+- Python 3.7 is no longer supported (it may work in practice but it is
+  not included in testing)
+
+- Driver updates [jktjkt, sikmir]
+
 0.11 (2024-05-03)
 -----------------
 
