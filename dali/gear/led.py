@@ -90,13 +90,14 @@ class QueryGearType(_LEDCommand):
     _cmdval = 0xed
 
 
+# XXX should this have an EnumResponse instead?
 class QueryDimmingCurve(_LEDCommand):
     """Query the dimming curve currently in use.
 
     0 - standard
     1 - linear
     """
-    response = command.Response
+    response = command.NumericResponse
     _cmdval = 0xee
 
 
@@ -214,14 +215,14 @@ class FastFadeTimeResponse(command.NumericResponse):
     Refer to Part 207 section 9.13 and Table 1 "Fast fade time".
     """
 
-    def __str__(self):
-        if isinstance(self.value, int):
+    def __str__(self) -> str:
+        if self.valid:
             if self.value == 0:
                 return "shortest"
             if self.value > 27:
                 return f"out of range ({self.value})"
             return f"{self.value * 25} ms"
-        return self.value
+        return super().__str__()
 
 
 class QueryFastFadeTime(_LEDCommand):

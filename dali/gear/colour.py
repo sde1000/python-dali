@@ -4,6 +4,7 @@ gear
 """
 from __future__ import annotations
 
+from typing import Optional
 from enum import IntEnum
 
 from dali import command
@@ -299,24 +300,22 @@ class QueryColourTypeFeaturesResponse(command.BitmapResponse):
     ]
 
     @property
-    def primary_n(self) -> int:
+    def primary_n(self) -> Optional[int]:
         """
         Returns the number of primaries supported by the control gear
         """
-        count = self.primary_N_bit_2 << 2
-        count += self.primary_N_bit_1 << 1
-        count += self.primary_N_bit_0
-        return count
+        if not self.raw_value or self.raw_value.error:
+            return None
+        return self.raw_value[4:2]
 
     @property
-    def RGBWAF_channels(self) -> int:
+    def RGBWAF_channels(self) -> Optional[int]:
         """
         Returns the number of RGBWAF channels supported by the control gear
         """
-        count = self.RGBWAF_channels_bit_2 << 2
-        count += self.RGBWAF_channels_bit_1 << 1
-        count += self.RGBWAF_channels_bit_0
-        return count
+        if not self.raw_value or self.raw_value.error:
+            return None
+        return self.raw_value[7:5]
 
 
 class QueryColourTypeFeatures(_ColourCommand):
@@ -359,8 +358,9 @@ class QueryRBGWAFControlResponse(command.BitmapResponse):
         * colour control
         * normalised colour control
         """
-        count = self.control_type_bit_1 << 1
-        count += self.control_type_bit_0
+        self.raise_for_status()
+        assert self.raw_value is not None
+        count = self.raw_value[7:6]
         if count == 0:
             return "channel control"
         elif count == 1:
@@ -390,7 +390,7 @@ class AssignedColour(IntEnum):
     freecolour = 6
 
 
-class QueryAssignedColourResponse(command.EnumResponse):
+class QueryAssignedColourResponse(command.EnumResponseMask):
     """
     Assigned colour for a given channel (as specified in DTR0). Refer to Part
     209 section 11.3.4.3, Command 252 "QUERY ASSIGNED COLOUR".
@@ -400,18 +400,6 @@ class QueryAssignedColourResponse(command.EnumResponse):
     """
 
     enumerator = AssignedColour
-
-    @property
-    def value(self):
-        if self.raw_value is None:
-            return None
-        _value = self.raw_value.as_integer
-        if 6 < _value < 255:
-            return "(error)"
-        elif _value == 255:
-            return "MASK"
-        else:
-            return super().value
 
 
 class QueryAssignedColour(_ColourCommand):

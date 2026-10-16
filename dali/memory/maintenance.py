@@ -16,7 +16,7 @@ class LuminaireMaintenanceBankVersion(NumericValue):
                                 type_=MemoryType.ROM),)
 
 
-class RatedMedianUsefulLifeOfLuminaire(FixedScaleNumericValue):
+class RatedMedianUsefulLifeOfLuminaire(FixedScaleNumericValue[int]):
     """Rated Median Useful Life Of Luminaire in h
 
     The parameter represents the rated median useful life time of the
@@ -41,7 +41,7 @@ class RatedMedianUsefulLifeOfLuminaire(FixedScaleNumericValue):
                                 type_=MemoryType.NVM_RW_L),)
     tmask_supported = True
     mask_supported = True
-    max_value = 0xfd
+    max_raw_value = 0xfd
 
 
 class InternalControlGearReferenceTemperature(TemperatureValue):
@@ -66,7 +66,7 @@ class InternalControlGearReferenceTemperature(TemperatureValue):
     max_value = 0xfd
 
 
-class RatedMedianUsefulLightSourceStarts(FixedScaleNumericValue):
+class RatedMedianUsefulLightSourceStarts(FixedScaleNumericValue[int]):
     """Rated Median Useful Light Source Starts
 
     The parameter represents the rated median useful light source starts
@@ -83,4 +83,4 @@ class RatedMedianUsefulLightSourceStarts(FixedScaleNumericValue):
                             type_=MemoryType.NVM_RW_L)
     tmask_supported = True
     mask_supported = True
-    max_value = 0xfffd
+    max_raw_value = 0xfffd

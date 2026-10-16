@@ -94,19 +94,19 @@ class QueryDimmingCurve(_ConversionCommand):
     2-255 = reserved for future use
     """
     _cmdval = 238
-    response = command.Response
+    response = command.NumericResponse
 
 
 class OutputLevelResponse(command.NumericResponse):
-    def __str__(self):
-        if isinstance(self.value, int):
+    def __str__(self) -> str:
+        if self.valid:
             if self.value == 254:
                 return "10.16V or more"
             elif self.value == 255:
                 return "unknown"
             else:
                 return f"{self.value * 0.04} V"
-        return self.value
+        return super().__str__()
 
 
 class QueryOutputLevel(_ConversionCommand):

@@ -9,7 +9,7 @@ from dali.gear.colour import (
 )
 
 
-def test_colour_type_features_properties_decoding():
+def test_colour_type_features_properties_decoding() -> None:
     rsp = QueryColourTypeFeaturesResponse(BackwardFrame(0b10101010))
 
     # These properties are common for any BitmapResponse
@@ -27,7 +27,7 @@ def test_colour_type_features_properties_decoding():
     assert rsp.RGBWAF_channels == 5
 
 
-def test_query_assigned_colour_decoding():
+def test_query_assigned_colour_decoding() -> None:
     rsp = QueryAssignedColourResponse(BackwardFrame(0b00000000))
     assert rsp.value == AssignedColour.not_assigned
     rsp = QueryAssignedColourResponse(BackwardFrame(0b00000001))
@@ -42,15 +42,17 @@ def test_query_assigned_colour_decoding():
     assert rsp.value == AssignedColour.amber
     rsp = QueryAssignedColourResponse(BackwardFrame(0b00000110))
     assert rsp.value == AssignedColour.freecolour
-    rsp = QueryAssignedColourResponse(BackwardFrame(7))
-    assert rsp.value == "(error)"
-    rsp = QueryAssignedColourResponse(BackwardFrame(254))
-    assert rsp.value == "(error)"
+    # XXX note change: accessing rsp.value should raise ValueError
+    with pytest.raises(ValueError):
+        rsp = QueryAssignedColourResponse(BackwardFrame(7))
+        assert rsp.value
+        rsp = QueryAssignedColourResponse(BackwardFrame(254))
+        assert rsp.value
     rsp = QueryAssignedColourResponse(BackwardFrame(255))
     assert rsp.value == "MASK"
 
 
-def test_query_rgbwaf_control_decoding():
+def test_query_rgbwaf_control_decoding() -> None:
     rsp = QueryRBGWAFControlResponse(BackwardFrame(0b00000000))
     assert not rsp.channel_0_red
     assert rsp.control_type == "channel control"

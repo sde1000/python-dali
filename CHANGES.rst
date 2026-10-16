@@ -1,6 +1,198 @@
 Changes
 =======
 
+1.0 (in preparation)
+--------------------
+
+**This release is not guaranteed to be compatible with the 0.x series
+of releases. Check these release notes carefully!**
+
+Highlights
+~~~~~~~~~~
+
+- The library is now fully type-annotated
+
+- The way Response classes work has been made more consistent; see
+  below
+
+- Passing ``int`` as an address as a shorthand for
+  ``address.GearShort`` or ``address.DeviceShort`` is now deprecated;
+  it isn't included in the type annotations, and if you do it a
+  DeprecationWarning will be issued
+
+- Device drivers are no longer included; they have been moved to a
+  separate project
+
+Response class changes
+~~~~~~~~~~~~~~~~~~~~~~
+
+These changes are the most likely to cause problems with existing code
+because their behaviour has had to be changed to enable sensible type
+annotations:
+
+- ``command.Response`` is now an abstract base class; it is no longer
+  valid to use as a value for ``command.Command.response``
+
+- ``command.Response`` is generically typed; subclasses declare the
+  actual type of the ``command.Response.value`` property
+  (eg. ``NumericResponse`` is declared as a ``Response[int]``)
+
+- Accessing the ``value`` property will always yield a value of the
+  declared type, or raise an exception. The property will no longer
+  have string values like ``"(missing)"`` or ``"(error)"``.
+
+- A new property ``valid`` has been added. If ``valid`` is True then
+  accessing the ``value`` property is guaranteed to yield a valid
+  value and not raise an exception.
+
+- Two new properties ``missing`` and ``error`` have been added, to
+  indicate whether an expected response was missing, or a response
+  with a framing error was found where one was not expected.
+
+- ``BitmapResponse`` now has a ``dict[str, bool]`` as its value
+  (instead of the previous default ``Optional[BackwardFrame]``
+  inherited from ``Response``), in addition to its existing ``status``
+  property and per-bit attributes
+
+- ``EnumResponse`` raises ``ValueError`` on access to its ``value``
+  property if the value in the received frame does not exist in the
+  enum; this hasn't changed. The ``valid`` property can now be used to
+  check for this ahead of accessing ``value``. (Similarly for the new
+  ``EnumResponseMask`` class.)
+
+- Some new response classes have been added, with appropriate types:
+
+  + ``OptionalNumericResponse``
+  + ``OptionalNumericResponseMask``
+  + ``EnumResponseMask``
+
+The following commands have had their response types changed from
+``Response``:
+
++------------------------------------------------------+---------------------------------------------+
+|                        Class                         |             New response class              |
++======================================================+=============================================+
+| ``dali.gear.converter.QueryDimmingCurve``            | ``NumericResponse`` (for now; maybe Enum?)  |
++------------------------------------------------------+---------------------------------------------+
+| ``dali.gear.emergency.QueryTestTiming``              | ``NumericResponse``                         |
++------------------------------------------------------+---------------------------------------------+
+| ``dali.gear.general.QueryExtendedFadeTime``          | ``QueryExtendedFadeTimeResponse`` (new)     |
++------------------------------------------------------+---------------------------------------------+
+| ``dali.gear.general.QueryGroupsZeroToSeven``         | ``QueryGroupsZeroToSevenResponse`` (new)    |
++------------------------------------------------------+---------------------------------------------+
+| ``dali.gear.general.QueryGroupsEightToFifteen``      | ``QueryGroupsEightToFifteenResponse`` (new) |
++------------------------------------------------------+---------------------------------------------+
+| ``dali.gear.general.QueryRandomAddressH``            | ``NumericResponse``                         |
++------------------------------------------------------+---------------------------------------------+
+| ``dali.gear.general.QueryRandomAddressM``            | ``NumericResponse``                         |
++------------------------------------------------------+---------------------------------------------+
+| ``dali.gear.general.QueryRandomAddressL``            | ``NumericResponse``                         |
++------------------------------------------------------+---------------------------------------------+
+| ``dali.gear.general.ReadMemoryLocation``             | ``OptionalNumericResponse``                 |
++------------------------------------------------------+---------------------------------------------+
+| ``dali.gear.general.QueryExtendedVersionNumerMixin`` | ``NumericResponse``                         |
++------------------------------------------------------+---------------------------------------------+
+| ``dali.gear.general.WriteMemoryLocation``            | ``OptionalNumericResponse``                 |
++------------------------------------------------------+---------------------------------------------+
+| ``dali.gear.incandescent.QueryDimmingCurve``         | ``NumericResponse`` (for now; maybe Enum?)  |
++------------------------------------------------------+---------------------------------------------+
+| ``dali.gear.incandescent.QueryDimmerTemperature``    | ``DimmerTemperatureResponse`` (new)         |
++------------------------------------------------------+---------------------------------------------+
+| ``dali.gear.incandescent.QuerySupplyFrequency``      | ``FrequencyResponse`` (new)                 |
++------------------------------------------------------+---------------------------------------------+
+| ``dali.gear.incandescent.QueryRMSLoadCurrent``       | ``LoadCurrentPctResponse`` (new)            |
++------------------------------------------------------+---------------------------------------------+
+| ``dali.gear.incandescent.QueryRealLoadPower``        | ``OptionalNumericResponse``                 |
++------------------------------------------------------+---------------------------------------------+
+| ``dali.gear.incandescent.QueryLoadRating``           | ``LoadCurrentRatingResponse`` (new)         |
++------------------------------------------------------+---------------------------------------------+
+| ``dali.gear.incandescent.QueryDimmingCurve``         | ``NumericResponse``                         |
++------------------------------------------------------+---------------------------------------------+
+
+The following response classes have been changed:
+
+- ``dali.gear.general.QueryStatusResponse`` had an ``error`` property,
+  but this clashed with the new ``response.error`` property. It has
+  been renamed to ``ballast_error``.
+
+- ``dali.gear.incandescent.VoltageResponse`` has been changed from
+  being a ``Response`` subclass with no customisation (the class body
+  was just ``pass``!) to a ``OptionalNumericResponseMask`` subclass
+  that returns a voltage between 0 and 508, or "MASK".
+
+- ``dali.gear.general.QueryDeviceTypeResponse`` is now a subclass of
+  ``command.NumericResponse``. It retains its custom ``__str__()``
+  behaviour.
+
+- ``dali.gear.colour.QueryRBGWAFControlResponse.control_type`` now
+  raises ``MissingResponse`` or ``ResponseError`` instead of returning
+  ``"(error)"`` if the response frame is missing or bad. It now only
+  returns ``"(error)"`` if bits 6 and 7 of the response are both set.
+
+- ``dali.gear.colour.QueryAssignedColourResponse`` no longer returns
+  ``"(error)"`` as its ``value`` property when an unknown response is
+  received; instead it relies on the new default ``EnumResponse``
+  behaviour and will raise a ``ValueError``.
+
+Detailed changes
+~~~~~~~~~~~~~~~~
+
+- The use of metaclasses has been removed where possible, and replaced
+  by ``__init_subclass__()``. This affects the ``Address``,
+  ``Command`` and ``BitmapResponse`` classes. A metaclass is still
+  used for ``MemoryValue`` to override ``__str__()`` on the class.
+
+- The ``Command._register_subclass()`` method has been removed; if you
+  were using it, extend ``__init_subclass__()`` instead.
+
+- ``dali.gear.incandescent`` has received many response changes and
+  needs tests writing!
+
+- Gear-related sequences are moving from ``dali.sequences`` to
+  ``dali.gear.sequences``. The new locations are available now for the
+  following sequences:
+
+  + ``dali.gear.sequences.QueryDeviceTypes``
+  + ``dali.gear.sequences.QueryGroups``
+  + ``dali.gear.sequences.SetGroups``
+  + ``dali.gear.sequences.Commissioning``
+
+- There is a new type alias for sequences,
+  ``dali.sequences.DALISequence``. It's generic; you can customise it
+  for the return type of your sequences, for example
+  ``DALISequence[list[int]]`` declares that the sequence returns a
+  list of int.
+
+- ``dali.memory.location.MemoryValue`` implementation detail:
+  ``MemoryValue.locations`` is defined to be either a single
+  ``MemoryLocation`` or an iterable of ``MemoryLocation``. The
+  metaclass used to rewrite ``MemoryValue.locations`` in place to
+  always be an iterable, but this was very awkward for type checking:
+  it retained its original type annotation. During class
+  initialisation, ``MemoryLocation.locations`` is now left untouched,
+  and a new attribute ``MemoryLocation._locations`` is created that is
+  always an iterable.
+
+- ``dali.memory.location.FixedScaleNumericValue`` now supports
+  ``min_value``, ``max_value``, ``min_raw_value`` and
+  ``max_raw_value`` attributes (the ``..._raw_value`` attributes
+  operate on the underling raw int; the others operate on the scaled
+  value)
+
+TODO
+~~~~
+
+- Check these release notes against the full diff!
+
+- Make Command be a generic based on Response type?
+
+- Actually issue and test for DeprecationWarning on passing a plain
+  int address
+
+- Search for "XXX" notes and resolve them; mostly adding more tests.
+
+- Actually move the device drivers!
+
 0.16 (2026-10-20)
 -----------------
 

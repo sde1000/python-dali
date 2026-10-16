@@ -3,12 +3,12 @@ name: Run tests
 on: [push, pull_request]
 
 jobs:
-  build:
-
+  test:
     runs-on: ubuntu-latest
+
     strategy:
       matrix:
-        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14', '3.15']
 
     steps:
       - uses: actions/checkout@v7
@@ -20,10 +20,14 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install flake8
+          pip install mypy
           pip install -e ".[test]"
       - name: Lint with flake8
         run: |
           flake8 dali --count --show-source --statistics
+      - name: Typecheck with mypy
+        run: |
+          mypy --strict --exclude dali/tests/fakes_serial.py --exclude dali/tests/test_dummy.py --exclude dali/tests/test_serial_driver.py --exclude dali/driver/ dali/
       - name: Test with pytest
         run: |
           pytest dali/tests

@@ -1,5 +1,9 @@
 """Declaration of base types for dali commands and their responses."""
 
+from __future__ import annotations
+
+from typing import Optional, Protocol, Literal, Generic, Any, Sequence, TypeVar
+from abc import ABC, abstractmethod
 from enum import IntEnum
 from dali import address
 from dali import frame
@@ -7,31 +11,26 @@ from dali.exceptions import MissingResponse
 from dali.exceptions import ResponseError
 
 
-class _CommandTracker(type):
-    """Metaclass keeping track of all the types of Command we understand.
-
-    Commands that have names starting with '_' are treated as abstract
-    base classes that will never be instantiated because they do not
-    correspond to a DALI frame.
-    """
-
-    def __init__(cls, name, bases, attrs):
-        if not hasattr(cls, '_commands'):
-            cls._commands = []
-        else:
-            if cls.__name__[0] != '_':
-                cls._commands.append(cls)
-        if not hasattr(cls, '_supported_devicetypes'):
-            cls._supported_devicetypes = set()
-        else:
-            if cls.devicetype != 0:
-                cls._supported_devicetypes.add(cls.devicetype)
-        for c in bases:
-            if issubclass(c, Command):
-                c._register_subclass(cls)
+# Device Instance Type Mapper
+class DITM(Protocol):
+    def get_type(
+            self,
+            *,
+            short_address: address.DeviceShort,
+            instance_number: address.InstanceNumber | int,
+    ) -> Optional[int]:
+        ...
 
 
-class Response:
+T = TypeVar("T")
+
+
+# XXX it may simplify things in the future if we add a "NoResponse"
+# subclass (Response[None]) to indicate no response is expected,
+# rather than have response = None in the Command class.
+
+
+class Response(Generic[T], ABC):
     """Some DALI commands cause a response from the addressed devices.
 
     The response is either an 8-bit backward frame encoding 8-bit data
@@ -42,92 +41,142 @@ class Response:
 
     Initialise this class by passing a BackwardFrame object, or None
     if there was no response.
+
+    This is a generic abstract base class; subclasses override the
+    `value` property and return a suitable type. Accessing this
+    property raises `MissingResponse` or `ResponseError` if the
+    response frame is not valid. Before accessing the `value`
+    property, you can check the `valid` property (or `missing` and
+    `error` separately) to avoid receiving an exception.
     """
     _expected = False
     _error_acceptable = False
 
-    def __init__(self, val):
+    def __init__(self, val: Optional[frame.BackwardFrame]) -> None:
         if val is not None and not isinstance(val, frame.BackwardFrame):
             raise TypeError("Response must be passed None or a BackwardFrame")
         self._value = val
 
     @property
-    def raw_value(self):
+    def raw_value(self) -> Optional[frame.BackwardFrame]:
         return self._value
 
     @property
-    def value(self):
-        if self._value is None and self._expected:
+    def missing(self) -> bool:
+        return self._value is None and self._expected
+
+    # NB don't extend this in subclasses if only a subset of responses
+    # are acceptable; extend the "valid" property instead
+    @property
+    def error(self) -> bool:
+        if self._value:
+            return self._value.error and not self._error_acceptable
+        return False
+
+    def raise_for_status(self) -> None:
+        if self.missing:
             raise MissingResponse()
-        if self._value and self._value.error and not self._error_acceptable:
+        if self.error:
             raise ResponseError()
-        return self._value
 
-    def __str__(self):
-        try:
-            return "{}".format(self.value)
-        except MissingResponse or ResponseError as e:
-            return "{}".format(e)
+    # If only a subset of response frames are acceptable, extend this
+    # property to check for them.
+    @property
+    def valid(self) -> bool:
+        return not (self.missing or self.error)
+
+    @property
+    @abstractmethod
+    def value(self) -> T:
+        ...
+
+    def __str__(self) -> str:
+        if self.valid:
+            return f"{self.value}"
+        return "MissingResponse" if self.missing else "ResponseError"
 
 
-class NumericResponse(Response):
+class NumericResponse(Response[int]):
     _expected = True
 
     @property
-    def value(self):
-        if self._value is None:
-            return "(missing)"
-        if self._value and self._value.error:
-            return "(framing error)"
+    def value(self) -> int:
+        self.raise_for_status()
+        assert self._value
         return self._value.as_integer
 
 
-class NumericResponseMask(NumericResponse):
+class NumericResponseMask(Response[int | Literal["MASK"]]):
+    _expected = True
+
     @property
-    def value(self):
-        v = super(NumericResponseMask, self).value
-        if v == 255:
+    def value(self) -> int | Literal["MASK"]:
+        self.raise_for_status()
+        assert self._value
+        if self._value.as_integer == 0xff:
             return "MASK"
-        return v
+        return self._value.as_integer
 
 
-class YesNoResponse(Response):
+class OptionalNumericResponse(Response[Optional[int]]):
+    @property
+    def value(self) -> Optional[int]:
+        self.raise_for_status()
+        if not self._value:
+            return None
+        return self._value.as_integer
+
+
+class OptionalNumericResponseMask(Response[Optional[int | Literal["MASK"]]]):
+    @property
+    def value(self) -> Optional[int | Literal["MASK"]]:
+        self.raise_for_status()
+        if self._value is None:
+            return None
+        if self._value.as_integer == 0xff:
+            return "MASK"
+        return self._value.as_integer
+
+
+class YesNoResponse(Response[bool]):
     _error_acceptable = True
 
     @property
-    def value(self):
+    def value(self) -> bool:
         return self._value is not None
 
 
-class BitmapResponseBitDict(type):
-    """Metaclass adding dict of status bits."""
-
-    def __init__(cls, name, bases, attrs):
-        if hasattr(cls, "bits"):
-            bd = {}
-            bit = 0
-            for b in cls.bits:
-                if b:
-                    mangled = b.replace(' ', '_').replace('-', '')
-                    bd[mangled] = bit
-                bit = bit + 1
-            cls._bit_properties = bd
-
-
-class BitmapResponse(Response, metaclass=BitmapResponseBitDict):
+class BitmapResponse(Response[dict[str, bool]]):
     """A response that consists of several named bits.
 
     Bits are listed in subclasses with the least-sigificant bit first.
     """
     _expected = True
-    bits = []
+    _bit_properties: dict[str, int]
+    bits: Sequence[Optional[str]] = ()
+
+    def __init_subclass__(cls) -> None:
+        bd = {}
+        bit = 0
+        for b in cls.bits:
+            if b:
+                mangled = b.replace(' ', '_').replace('-', '')
+                bd[mangled] = bit
+            bit = bit + 1
+        cls._bit_properties = bd
+
+    # XXX this is new and needs a test adding
+    @property
+    def value(self) -> dict[str, bool]:
+        self.raise_for_status()
+        assert self._value is not None
+        return {name: bool(self._value[self._bit_properties[name]])
+                for name in self._bit_properties.keys()}
 
     @property
-    def status(self):
-        if self._value is None:
-            raise MissingResponse()
-        if self._value.error:
-            return ["response received with framing error"]
+    def status(self) -> list[str]:
+        self.raise_for_status()
+        assert self._value is not None
         v = self._value[7:0]
         l = []
         for b in self.bits:
@@ -136,45 +185,72 @@ class BitmapResponse(Response, metaclass=BitmapResponseBitDict):
             v = (v >> 1)
         return l
 
-    @property
-    def error(self):
-        if self._value is None:
-            return False
-        return self._value.error
-
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Optional[bool]:
         if name in self._bit_properties:
-            if self._value is None:
-                return
-            if self._value.error:
-                return
-            return self._value[self._bit_properties[name]]
+            self.raise_for_status()
+            assert self._value is not None
+            return bool(self._value[self._bit_properties[name]])
         raise AttributeError
 
-    def __str__(self):
+    def __str__(self) -> str:
         try:
             return ",".join(self.status)
-        # XXX: be more explicit which exception to catch
-        except Exception as e:
+        except (MissingResponse, ResponseError) as e:
             return "{}".format(e)
 
 
-class EnumResponse(Response):
-    """
-    A response that consists of a number from a pre-defined enumerator
-    """
+class EnumResponse(Response[IntEnum]):
+    """A response that consists of a number from a pre-defined enumerator
 
-    enumerator: IntEnum = None
+    If the value of the response is not present in the enumerator, then
+    TypeError will be raised.
+    """
+    _expected = True
+    enumerator: type[IntEnum]
 
     @property
-    def value(self):
-        _value = super().value
-        if _value:
-            return self.enumerator(_value.as_integer)  # noqa
-        return _value
+    def valid(self) -> bool:
+        if not super().valid:
+            return False
+        assert self._value is not None
+        # In Python >=3.12 we can write this as:
+        # return self._value.as_integer in self.enumerator
+        return self._value.as_integer in self.enumerator.__members__.values()
+
+    @property
+    def value(self) -> IntEnum:
+        self.raise_for_status()
+        assert self._value is not None
+        return self.enumerator(self._value.as_integer)
 
 
-class Command(metaclass=_CommandTracker):
+class EnumResponseMask(Response[IntEnum | Literal["MASK"]]):
+    _expected = True
+    enumerator: type[IntEnum]
+
+    @property
+    def valid(self) -> bool:
+        if not super().valid:
+            return False
+        assert self._value is not None
+        # In Python >=3.12 we can write this as:
+        # return self._value.as_integer in self.enumerator
+        return self._value.as_integer in self.enumerator.__members__.values()
+
+    @property
+    def value(self) -> IntEnum | Literal["MASK"]:
+        self.raise_for_status()
+        assert self._value is not None
+        if self._value.as_integer == 0xff:
+            return "MASK"
+        return self.enumerator(self._value.as_integer)
+
+
+# XXX we may want to make Command a generic, too, on the type of its
+# Response.  That way, the DALISequence type annotation can match up
+# commands with response types.
+
+class Command:
     """A command frame.
 
     Subclasses must provide a class method "from_frame" which, when
@@ -197,7 +273,7 @@ class Command(metaclass=_CommandTracker):
     uses_dtr0 = False
     uses_dtr1 = False
     uses_dtr2 = False
-    response = None
+    response: Optional[type[Response[Any]]] = None
     sendtwice = False
 
     # 16-bit frames may be interpreted differently if they are
@@ -206,22 +282,31 @@ class Command(metaclass=_CommandTracker):
     # foo.  This parameter is ignored for all other frame lengths.
     devicetype = 0
 
-    def __init__(self, f):
+    _commands: set[type[Command]] = set()
+    _supported_devicetypes: set[int] = set()
+    _framesizes: dict[int, list[type[Command]]] = {}
+
+    def __init_subclass__(cls) -> None:
+        if cls.__name__[0] != '_':
+            cls._commands.add(cls)
+        if cls.devicetype != 0:
+            cls._supported_devicetypes.add(cls.devicetype)
+        subs = cls._framesizes.setdefault(cls._framesize, list())
+        subs.append(cls)
+
+    def __init__(self, f: frame.ForwardFrame) -> None:
         if not isinstance(f, frame.ForwardFrame):
             raise TypeError(
-                f"{self.__class__.__name__} expected a ForwardFrame, not a {type(f)}"
+                f"{self.__class__.__name__} expected a ForwardFrame, "
+                f"not a {type(f)}"
             )
         self._data = f
 
-    _framesizes = {}
-
     @classmethod
-    def _register_subclass(cls, subclass):
-        subs = cls._framesizes.setdefault(subclass._framesize, list())
-        subs.append(subclass)
-
-    @classmethod
-    def from_frame(cls, f, devicetype=0, dev_inst_map=None):
+    def from_frame(
+            cls, f: frame.ForwardFrame, devicetype: int = 0,
+            dev_inst_map: Optional[DITM] = None
+    ) -> Optional[Command]:
         """Return a Command instance corresponding to the supplied frame.
 
         If the device type the command is intended for is known
@@ -243,7 +328,8 @@ class Command(metaclass=_CommandTracker):
         subs = cls._framesizes.get(len(f), [])
 
         for c in subs:
-            r = c.from_frame(f, devicetype=devicetype, dev_inst_map=dev_inst_map)
+            r = c.from_frame(f, devicetype=devicetype,
+                             dev_inst_map=dev_inst_map)
             if r:
                 return r
 
@@ -251,34 +337,16 @@ class Command(metaclass=_CommandTracker):
         return cls(f)
 
     @property
-    def frame(self):
+    def frame(self) -> frame.ForwardFrame:
         """The forward frame to be transmitted for this command."""
         return self._data
 
     @property
-    def is_query(self):
+    def is_query(self) -> bool:
         """Does this command return a result?"""
         return self.response is not None
 
-    @staticmethod
-    def _check_destination(destination):
-        """Check that a valid destination has been specified.
-
-        destination can be a dali.bus.Device object with
-        address_obj attribute, a dali.address.Address object with
-        add_to_frame method, or an integer which will be wrapped in a
-        dali.address.Address object.
-        """
-        if hasattr(destination, 'address_obj'):
-            destination = destination.address_obj
-        if isinstance(destination, int):
-            destination = address.Short(destination)
-        if hasattr(destination, 'add_to_frame'):
-            return destination
-        raise ValueError('destination must be an integer, dali.bus.Device '
-                         'object or dali.address.Address object')
-
-    def __str__(self):
+    def __str__(self) -> str:
         joined = ":".join(
             "{:02x}".format(c) for c in self._data.as_byte_sequence)
         return "({0}){1}".format(type(self), joined)
