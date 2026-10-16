@@ -403,9 +403,8 @@ def test_device_commissioning_adds_new_without_readdress():
 
 
 def test_device_commissioning_readdress_dry_run_keeps_addresses():
-    devices = [fakes.Device() for _ in range(10)]
+    devices = [fakes.Device(DeviceShort(i + 20)) for i in range(10)]
     bus = fakes.Bus(devices)
-    bus.run_sequence(Commissioning())
     before = _short_addresses(devices)
 
     bus.run_sequence(Commissioning(readdress=True, dry_run=True))
@@ -428,6 +427,18 @@ def test_device_commissioning_clash():
     randoms = list(range(0, 0xFFFFFF, 0x82000))
     randoms[8] = randoms[4]
     devices = [fakes.Device(random_preload=[x]) for x in randoms]
+    bus = fakes.Bus(devices)
+
+    bus.run_sequence(Commissioning())
+
+    assert _short_addresses(devices) == list(range(len(devices)))
+
+
+def test_device_commissioning_high_random_address():
+    # One of the devices is persistently going to pick 0xffffff as
+    # its random address
+    devices = [fakes.Device() for x in range(9)]
+    devices.append(fakes.Device(random_preload=[0xffffff] * 10))
     bus = fakes.Bus(devices)
 
     bus.run_sequence(Commissioning())
