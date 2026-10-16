@@ -19,6 +19,7 @@ from dali.device.general import (
 from dali.device.helpers import DeviceInstanceTypeMapper, check_bad_rsp
 from dali.device.pushbutton import InstanceEventFilter as EventFilter_pb
 from dali.device.sequences import (
+    Commissioning,
     QueryEventFilters,
     SetEventFilters,
     SetEventSchemes,
@@ -363,3 +364,84 @@ def test_query_input_values_10bit():
     except StopIteration as r:
         ret = r.value
     assert ret == 434
+
+
+def _short_addresses(devices: list[fakes.Device]) -> list[int]:
+    """Return the sorted short addresses of the devices that have one."""
+    return sorted(
+        d.shortaddr.address for d in devices if d.shortaddr is not None
+    )
+
+
+def test_device_commissioning():
+    devices = [fakes.Device() for _ in range(10)]
+    bus = fakes.Bus(devices)
+
+    used = bus.run_sequence(Commissioning())
+
+    assert _short_addresses(devices) == list(range(10))
+    assert sorted(a.address for a in used) == list(range(10))
+    # Quiescent mode must be exited for every device once addressing completes.
+    assert all(not d.quiescent for d in devices)
+
+
+def test_device_commissioning_adds_new_without_readdress():
+    devices = [fakes.Device() for _ in range(10)]
+    bus = fakes.Bus(devices)
+    bus.run_sequence(Commissioning())
+
+    # Move one device out to address 30 and add 10 fresh unaddressed devices.
+    # bus.gear is the same list object, so appending once adds them to the bus.
+    devices[5].shortaddr = DeviceShort(30)
+    for _ in range(10):
+        devices.append(fakes.Device())
+
+    bus.run_sequence(Commissioning())
+
+    # Existing addresses are kept; new devices fill the lowest free addresses.
+    assert _short_addresses(devices) == list(range(19)) + [30]
+
+
+def test_device_commissioning_readdress_dry_run_keeps_addresses():
+    devices = [fakes.Device() for _ in range(10)]
+    bus = fakes.Bus(devices)
+    bus.run_sequence(Commissioning())
+    before = _short_addresses(devices)
+
+    bus.run_sequence(Commissioning(readdress=True, dry_run=True))
+
+    assert _short_addresses(devices) == before
+
+
+def test_device_commissioning_readdress():
+    devices = [fakes.Device(DeviceShort(i + 20)) for i in range(10)]
+    bus = fakes.Bus(devices)
+
+    bus.run_sequence(Commissioning(readdress=True))
+
+    assert _short_addresses(devices) == list(range(10))
+
+
+def test_device_commissioning_clash():
+    # At least one device picks the same random address as another on the
+    # first pass, forcing a re-randomise.
+    randoms = list(range(0, 0xFFFFFF, 0x82000))
+    randoms[8] = randoms[4]
+    devices = [fakes.Device(random_preload=[x]) for x in randoms]
+    bus = fakes.Bus(devices)
+
+    bus.run_sequence(Commissioning())
+
+    assert _short_addresses(devices) == list(range(len(devices)))
+
+
+def test_device_commissioning_restricted_addresses():
+    devices = [fakes.Device() for _ in range(10)]
+    bus = fakes.Bus(devices)
+
+    bus.run_sequence(Commissioning(available_addresses=range(10, 15)))
+
+    addressed = _short_addresses(devices)
+    assert all(10 <= a < 15 for a in addressed)
+    assert len(addressed) == 5
+    assert sum(d.shortaddr is None for d in devices) == 5

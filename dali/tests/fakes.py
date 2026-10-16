@@ -488,21 +488,46 @@ class Device:
         shortaddr: Optional[address.DeviceShort] = None,
         groups: Optional[Iterable[address.DeviceGroup]] = None,
         memory_banks: Optional[Iterable[Type[FakeMemoryBank]]] = (FakeDeviceBank0,),
+        random_preload: Optional[Iterable[int]] = None,
     ):
         # Store parameters
         self.shortaddr = shortaddr
         self.groups = set(groups) if groups else set()
+        self.random_preload = list(random_preload) if random_preload else []
         # Configure internal variables
         self.dtr0: int = 0
         self.dtr1: int = 0
         self.dtr2: int = 0
         self.enable_write_memory: bool = False
+        self.initialising: bool = False
+        self.withdrawn: bool = False
+        self.quiescent: bool = False
+        self.randomaddr = frame.Frame(24)
+        self.searchaddr = frame.Frame(24)
         self.memory_banks = {}
         for fake_bank in memory_banks:
             bank_number = fake_bank.bank.address
             if bank_number in memory_banks:
                 raise ValueError(f"Duplicate memory bank {bank_number}")
             self.memory_banks[bank_number] = fake_bank()
+
+    def _next_random_address(self) -> int:
+        if self.random_preload:
+            return self.random_preload.pop(0)
+        return random.randrange(0, 0x1000000)
+
+    def _initialise_reacts(self, param: int) -> bool:
+        """Whether an INITIALISE with this data byte selects this device.
+
+        Per IEC 62386-103:2014 Table 21: 0xff addresses all devices, 0x7f
+        addresses devices without a short address, and 0x00..0x3f addresses
+        the device with that short address.
+        """
+        if param == 0xFF:
+            return True
+        if param == 0x7F:
+            return self.shortaddr is None
+        return self.shortaddr is not None and self.shortaddr.address == param
 
     def valid_address(self, cmd: Command) -> bool:
         """Should we respond to this command?"""
@@ -591,6 +616,47 @@ class Device:
             return self._device_status
         elif isinstance(cmd, device.general.QueryNumberOfInstances):
             return len(self._instances)
+        elif isinstance(cmd, device.general.Terminate):
+            self.initialising = False
+            self.withdrawn = False
+        elif isinstance(cmd, device.general.Initialise):
+            if self._initialise_reacts(cmd.param):
+                self.initialising = True
+                self.withdrawn = False
+        elif isinstance(cmd, device.general.Randomise):
+            self.randomaddr = frame.Frame(24, self._next_random_address())
+        elif isinstance(cmd, device.general.Compare):
+            if (
+                self.initialising
+                and not self.withdrawn
+                and self.randomaddr.as_integer <= self.searchaddr.as_integer
+            ):
+                return _yes
+        elif isinstance(cmd, device.general.Withdraw):
+            if self.initialising and self.randomaddr == self.searchaddr:
+                self.withdrawn = True
+        elif isinstance(cmd, device.general.SearchAddrH):
+            self.searchaddr[23:16] = cmd.param
+        elif isinstance(cmd, device.general.SearchAddrM):
+            self.searchaddr[15:8] = cmd.param
+        elif isinstance(cmd, device.general.SearchAddrL):
+            self.searchaddr[7:0] = cmd.param
+        elif isinstance(cmd, device.general.ProgramShortAddress):
+            if self.initialising and self.randomaddr == self.searchaddr:
+                if cmd.param == 0xFF:
+                    self.shortaddr = None
+                else:
+                    self.shortaddr = address.DeviceShort(cmd.param)
+        elif isinstance(cmd, device.general.VerifyShortAddress):
+            if self.shortaddr is not None and self.shortaddr.address == cmd.param:
+                return _yes
+        elif isinstance(cmd, device.general.SetShortAddress):
+            if self.dtr0 == 0xFF:
+                self.shortaddr = None
+        elif isinstance(cmd, device.general.StartQuiescentMode):
+            self.quiescent = True
+        elif isinstance(cmd, device.general.StopQuiescentMode):
+            self.quiescent = False
 
         elif isinstance(cmd, device.general.EnableWriteMemory):
             self.enable_write_memory = True
