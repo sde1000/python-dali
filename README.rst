@@ -43,7 +43,7 @@ Interface Alliance`_:
 Python versions supported
 -------------------------
 
-This library currently requires Python version 3.8 or later.
+This library currently requires Python version 3.10 or later.
 
 Stability
 ---------

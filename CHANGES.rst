@@ -1,6 +1,16 @@
 Changes
 =======
 
+Next release (unreleased)
+-------------------------
+
+- Python 3.8 and Python 3.9 are no longer supported
+
+- Add a sequence for commissioning control devices
+  [markus-becker-tridonic-com]
+
+- LUBA Driver updates [markus-becker-tridonic-com]
+
 0.12 (2026-10-16)
 -----------------
 
