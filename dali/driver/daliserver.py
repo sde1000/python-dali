@@ -1,4 +1,6 @@
-from dali.command import Command
+from typing import Any, Optional
+
+from dali.command import Command, Response
 from dali.exceptions import CommunicationError
 import dali.frame
 import logging
@@ -19,23 +21,23 @@ class DaliServer:
     90e34a0cd2945dc7a15681f11647e708f858521e or later.
     """
 
-    def __init__(self, host="localhost", port=55825,
-                 multiple_frames_per_connection=False):
+    def __init__(self, host: str = "localhost", port: int = 55825,
+                 multiple_frames_per_connection: bool = False) -> None:
         self._target = (host, port)
-        self._s = None
+        self._s: Optional[socket.socket] = None
         self._multiple_frames_per_connection = multiple_frames_per_connection
 
-    def __enter__(self):
+    def __enter__(self) -> "DaliServer":
         if self._multiple_frames_per_connection:
             self._s = socket.create_connection(self._target)
         return self
 
-    def __exit__(self, *vpass):
-        if self._multiple_frames_per_connection:
+    def __exit__(self, *vpass: Any) -> None:
+        if self._s is not None:
             self._s.close()
             self._s = None
 
-    def send(self, command):
+    def send(self, command: Command) -> Optional[Response]:
         if self._s:
             s = self._s
         else:
@@ -48,7 +50,7 @@ class DaliServer:
             command, " (twice)" if command.sendtwice else ""))
 
         # Set a default result which may be used if the first send fails
-        result = "\x02\xff\x00\x00"
+        result = b"\x02\xff\x00\x00"
 
         try:
             s.send(message)
@@ -69,7 +71,7 @@ class DaliServer:
 
         return response
 
-    def unpack_response(self, command, result):
+    def unpack_response(self, command: Command, result: bytes) -> Optional[Response]:
         """Unpack result from the given bytestream and creates the
         corresponding response object
 
