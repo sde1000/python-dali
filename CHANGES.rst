@@ -1,6 +1,14 @@
 Changes
 =======
 
+0.15 (2026-10-19)
+-----------------
+
+- Fix the licence expression in setup.cfg so it doesn't include
+  unneeded quotes
+
+- Fix a LUBA driver sync problem [markus-becker-tridonic-com]
+
 0.14 (2026-10-19)
 -----------------
 
