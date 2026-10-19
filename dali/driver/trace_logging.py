@@ -16,12 +16,24 @@ You should have received a copy of the GNU Lesser General Public License along w
 If not, see <https://www.gnu.org/licenses/>.
 """
 import logging
+from typing import Any, cast
 
-_LOG = logging.getLogger(f"dali")
+_LOG = logging.getLogger("dali")
 _logging_trace_created = False
 
 
-def add_logging_level(level_name: str, level_num: int):
+class TraceLogger(logging.Logger):
+    """A logger exposing the extra TRACE level installed by this module."""
+
+    def trace(self, msg: object, *args: object, **kwargs: object) -> None: ...
+
+
+def get_logger(name: str) -> TraceLogger:
+    """Return a logger typed as exposing the TRACE level."""
+    return cast(TraceLogger, logging.getLogger(name))
+
+
+def add_logging_level(level_name: str, level_num: int) -> None:
     """
     Original source: https://stackoverflow.com/a/35804945
 
@@ -46,11 +58,13 @@ def add_logging_level(level_name: str, level_num: int):
     # This method was inspired by the answers to Stack Overflow post
     # http://stackoverflow.com/q/2183233/2988730, especially
     # http://stackoverflow.com/a/13638084/2988730
-    def logForLevel(self, message, *args, **kwargs):
+    def logForLevel(
+        self: logging.Logger, message: object, *args: Any, **kwargs: Any
+    ) -> None:
         if self.isEnabledFor(level_num):
             self._log(level_num, message, args, **kwargs)
 
-    def logToRoot(message, *args, **kwargs):
+    def logToRoot(message: object, *args: Any, **kwargs: Any) -> None:
         logging.log(level_num, message, *args, **kwargs)
 
     logging.addLevelName(level_num, level_name)

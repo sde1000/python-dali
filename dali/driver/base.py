@@ -1,6 +1,14 @@
 ###############################################################################
 # driver contracts
 ###############################################################################
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Callable, Optional
+
+if TYPE_CHECKING:
+    from dali.command import Command
+    from dali.frame import Frame
+
 
 class DALIDriver:
     """Object for handling wrapped DALI frames sent to and received from
@@ -10,10 +18,10 @@ class DALIDriver:
     communicate with a DALI bus.
     """
 
-    backend = None
+    backend: Optional[Backend] = None
     """``Backend`` instance used for reading and writing."""
 
-    def construct(self, command):
+    def construct(self, command: Command) -> bytes:
         """Construct raw data containing the packed DALI frame from command
         which can be sent to DALI driver.
 
@@ -23,7 +31,7 @@ class DALIDriver:
         raise NotImplementedError(
             'Abstract ``DaliDriver`` does not implement ```construct`')
 
-    def extract(self, data):
+    def extract(self, data: bytes) -> Frame:
         """Extract and return DALI Frame from data which has been received
         from DALI driver.
 
@@ -39,7 +47,7 @@ class SyncDALIDriver(DALIDriver):
     expecting and returning a result.
     """
 
-    def send(self, command, timeout=None):
+    def send(self, command: Command, timeout: Optional[int] = None) -> Any:
         """Send command to gateway and return response.
 
         @param command: DALI command to send.
@@ -55,11 +63,16 @@ class AsyncDALIDriver(DALIDriver):
     DALI drivers.
     """
 
-    dispatcher = None
+    dispatcher: Optional[Callable[..., Any]] = None
     """Callable used for dispatching incoming forward frames.
     """
 
-    def send(self, command, callback=None, **kw):
+    def send(
+        self,
+        command: Command,
+        callback: Optional[Callable[..., Any]] = None,
+        **kw: Any,
+    ) -> None:
         """Send command to gateway.
 
         @param command: DALI command to send.
@@ -70,7 +83,7 @@ class AsyncDALIDriver(DALIDriver):
         raise NotImplementedError(
             'Abstract ``AsyncDALIDriver`` does not implement ``send``')
 
-    def receive(self, frame):
+    def receive(self, frame: Frame) -> None:
         """Receive DALI Frame.
 
         If a forward frame is received, ``self.dispatcher`` is used for
@@ -93,15 +106,15 @@ class Backend:
     """Object representing a backend.
     """
 
-    def read(self, timeout=None):
+    def read(self, timeout: Optional[int] = None) -> Any:
         raise NotImplementedError(
             'Abstract ``Backend`` does not implement ``read``')
 
-    def write(data):
+    def write(self, data: bytes) -> None:
         raise NotImplementedError(
             'Abstract ``Backend`` does not implement ``write``')
 
-    def close(self):
+    def close(self) -> None:
         raise NotImplementedError(
             'Abstract ``Backend`` does not implement ``close``')
 
@@ -111,11 +124,11 @@ class Listener(Backend):
     incoming frames.
     """
 
-    driver = None
+    driver: Optional[AsyncDALIDriver] = None
     """``AsyncDALIDriver`` instance.
     """
 
-    def listen(self):
+    def listen(self) -> None:
         """Listen to backend and dispatch receiced data to ``self.driver``.
         """
         raise NotImplementedError(
