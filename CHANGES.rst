@@ -1,6 +1,14 @@
 Changes
 =======
 
+0.14 (2026-10-19)
+-----------------
+
+- Unify ``send()`` and ``run_sequence()`` in some drivers; the
+  ``send()`` method now accepts both sequences and individual
+  commands, and includes an optional argument for priority
+  [markus-becker-tridonic-com]
+
 0.13 (2026-10-16)
 -----------------
 
