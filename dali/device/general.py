@@ -128,7 +128,7 @@ class _StandardDeviceCommand(_DeviceCommand):
     """
     _opcode = None
 
-    def __init__(self, device):
+    def __init__(self, device: address.Address | int) -> None:
         if self._opcode is None:
             raise NotImplementedError
 
@@ -514,7 +514,9 @@ class _StandardInstanceCommand(_DeviceCommand):
 
     _opcode = None
 
-    def __init__(self, device, instance):
+    def __init__(
+        self, device: address.Address | int, instance: address.Instance
+    ) -> None:
         if self._opcode is None:
             raise NotImplementedError
 
@@ -784,7 +786,7 @@ class _SpecialDeviceCommand(_DeviceCommand):
 
 
 class _SpecialDeviceCommandOneParam(_SpecialDeviceCommand):
-    def __init__(self, param):
+    def __init__(self, param: int) -> None:
         if not isinstance(param, int):
             raise ValueError("parameter must be an integer")
         if param < 0 or param > 255:

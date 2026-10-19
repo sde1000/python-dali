@@ -80,7 +80,7 @@ class OccupancyEvent(general._Event):
         return OccupancyEvent
 
     @property
-    def event_data(self):
+    def event_data(self) -> EventData:
         return self._extra_data
 
     def _set_event_data(
