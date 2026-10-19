@@ -27,18 +27,18 @@ import warnings
 from enum import Enum
 from functools import reduce
 from operator import xor
-from typing import Any, Callable, Generator, NamedTuple, Optional
+from typing import Any, Callable, Generator, NamedTuple, Optional, Sequence, cast
 from urllib.parse import ParseResult, urlparse, urlunparse
 
 import serialx
 
 import dali.gear
 from dali import command, frame, gear, sequences
-from dali.driver import trace_logging  # noqa: F401
+from dali.driver.trace_logging import get_logger
 from dali.device.helpers import DeviceInstanceTypeMapper
 from dali.exceptions import TransmissionError
 
-_LOG = logging.getLogger("dali.driver")
+_LOG = get_logger("dali.driver")
 
 # Sentinel placed on the raw DALI response queue when the interface reports a
 # framing error, so a waiting query returns an error response instead of
@@ -48,9 +48,9 @@ _LOG = logging.getLogger("dali.driver")
 _DALI_FRAMING_ERROR = object()
 
 
-def _drain_queue(queue: asyncio.Queue) -> list:
+def _drain_queue(queue: asyncio.Queue[Any]) -> list[Any]:
     """Remove and return every currently-queued item without blocking."""
-    items = []
+    items: list[Any] = []
     while True:
         try:
             items.append(queue.get_nowait())
@@ -65,8 +65,8 @@ def _single_command_sequence(
     return (yield cmd)
 
 
-class DistributorQueue(asyncio.Queue):
-    def __init__(self, parent: Optional[DistributorQueue] = None, *, maxsize=0):
+class DistributorQueue(asyncio.Queue[Any]):
+    def __init__(self, parent: Optional[DistributorQueue] = None, *, maxsize: int = 0) -> None:
         """
         A DistributorQueue provides a way of distributing some object to
         multiple waiting consumers. The base of a DistributorQueue structure
@@ -107,7 +107,7 @@ class DistributorQueue(asyncio.Queue):
     def is_parent(self) -> bool:
         return self._parent is None
 
-    def add_handler(self, handler: DistributorQueue):
+    def add_handler(self, handler: DistributorQueue) -> None:
         if self.is_parent:
             self._handlers[hash(handler)] = handler
         else:
@@ -116,16 +116,16 @@ class DistributorQueue(asyncio.Queue):
                 "Cannot add handler to DistributorQueue with a parent"
             )
 
-    def del_handler(self, handler: DistributorQueue):
+    def del_handler(self, handler: DistributorQueue) -> None:
         self._handlers.pop(hash(handler), None)
 
-    def distribute(self, item: Any):
+    def distribute(self, item: Any) -> None:
         if self._parent is not None:
             self.put_nowait(item)
         for handler in self._handlers.values():
             handler.distribute(item)
 
-    def __del__(self):
+    def __del__(self) -> None:
         if self._parent is not None:
             self._parent.del_handler(self)
 
@@ -157,9 +157,7 @@ class DriverSerialBase:
                 "DriverSerialBase cannot be instantiated directly"
             )
 
-        try:
-            uri.path
-        except AttributeError:
+        if isinstance(uri, str):
             uri = urlparse(uri)
 
         if uri.scheme != self.uri_scheme:
@@ -168,19 +166,19 @@ class DriverSerialBase:
                 f"instance with a scheme of {uri.scheme}"
             )
 
-        self.uri = uri
-        self.dev_inst_map: DeviceInstanceTypeMapper = dev_inst_map
-        if dev_inst_map is None:
-            self.dev_inst_map = DeviceInstanceTypeMapper()
+        self.uri: ParseResult = uri
+        self.dev_inst_map = (
+            DeviceInstanceTypeMapper() if dev_inst_map is None else dev_inst_map
+        )
         self._connected = asyncio.Event()
         # Assigned by the subclass once the asyncio transport protocol exists
         self._protocol: Any = None
         self.transaction_lock = asyncio.Lock()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'{self.__class__.__name__}("{urlunparse(self.uri)}")'
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.uri)
 
     async def connect(self, *, scan_dev_inst: bool = False) -> None:
@@ -213,7 +211,7 @@ class DriverSerialBase:
             return False
         if self._protocol is None:
             return True
-        return self._protocol.connected.is_set()
+        return bool(self._protocol.connected.is_set())
 
     async def wait_connected(self) -> None:
         """
@@ -271,7 +269,7 @@ class DriverSerialBase:
 
     async def send(
         self,
-        msg: command.Command | Generator,
+        msg: command.Command | Generator[Any, Any, Any],
         *,
         priority: int = 5,
         progress: Optional[Callable[[str | sequences.progress], None]] = None,
@@ -506,20 +504,20 @@ class DriverLubaRs232(DriverSerialBase):
 
         def __init__(self) -> None:
             super().__init__()
-            self.transport = None
+            self.transport: Optional[serialx.SerialTransport] = None
 
             self._queue_rx_dali = DistributorQueue()
-            self._queue_rx_raw_dali = asyncio.Queue()
-            self._queue_rx_luba_cmd = asyncio.Queue()
-            self._queue_tx_conf = asyncio.Queue()
+            self._queue_rx_raw_dali: asyncio.Queue[Any] = asyncio.Queue()
+            self._queue_rx_luba_cmd: asyncio.Queue[Any] = asyncio.Queue()
+            self._queue_tx_conf: asyncio.Queue[Any] = asyncio.Queue()
             self._prev_rx_enable_dt = 0
             self._prev_tx_enable_dt = 0
             self._tx_lock = asyncio.Lock()
-            self._rx_state = None
+            self._rx_state = self.ReadState.WAIT_START
             self.rx_idle = asyncio.Event()
-            self._buffer = None
-            self._rx_expected_len = None
-            self._rx_received_len = None
+            self._buffer: list[int] = []
+            self._rx_expected_len: Optional[int] = None
+            self._rx_received_len: int = 0
             self._connected = asyncio.Event()
             self._dev_info: Optional[DriverLubaRs232.LubaDeviceInfo] = None
             self._dev_inst_map: Optional[DeviceInstanceTypeMapper] = None
@@ -529,11 +527,19 @@ class DriverLubaRs232(DriverSerialBase):
             self.reset()
 
         @property
+        def _tx(self) -> serialx.SerialTransport:
+            """The connected serial transport, or raise if not connected."""
+            if self.transport is None:
+                raise IOError("serial transport not connected")
+            return self.transport
+
+        @property
         def rx_state(self) -> ReadState:
+            assert self._rx_state is not None
             return self._rx_state
 
         @rx_state.setter
-        def rx_state(self, state: ReadState):
+        def rx_state(self, state: ReadState) -> None:
             if not isinstance(state, self.ReadState):
                 raise TypeError(
                     f"rx_state must be a ReadState enum, not {type(state)}"
@@ -550,19 +556,19 @@ class DriverLubaRs232(DriverSerialBase):
             return self._dev_inst_map
 
         @dev_inst_map.setter
-        def dev_inst_map(self, value: DeviceInstanceTypeMapper):
+        def dev_inst_map(self, value: DeviceInstanceTypeMapper) -> None:
             self._dev_inst_map = value
 
         @property
         def queue_rx_dali(self) -> DistributorQueue:
             return self._queue_rx_dali
 
-        def reset(self):
+        def reset(self) -> None:
             """
             Returns the state machine to "WAIT_START"
             """
             self.rx_state = self.ReadState.WAIT_START
-            self._buffer = [None] * self.MAX_LEN
+            self._buffer = [0] * self.MAX_LEN
             self._rx_expected_len = None
             self._rx_received_len = 0
 
@@ -573,7 +579,7 @@ class DriverLubaRs232(DriverSerialBase):
 
             :return: A received DALI frame, as an int
             """
-            return await self._queue_rx_raw_dali.get()
+            return cast(int, await self._queue_rx_raw_dali.get())
 
         def reset_dali_response(self) -> None:
             """Drop any DALI responses left buffered from a previous exchange.
@@ -605,7 +611,7 @@ class DriverLubaRs232(DriverSerialBase):
 
         async def send_dali_command(
             self, tx: command.Command, priority: int = 1
-        ) -> None:
+        ) -> int:
             """
             Sends a variable length DALI command (16 or 24 bits), waiting
             until the LUBA device confirms it has sent the message before
@@ -618,7 +624,7 @@ class DriverLubaRs232(DriverSerialBase):
             # data before we send
             await self.rx_idle.wait()
 
-            dali_ints = tx.frame.as_byte_sequence
+            dali_ints = list(tx.frame.as_byte_sequence)
             if not len(dali_ints) in (2, 3):
                 raise ValueError(
                     f"Only works with 16 or 24 bit messages, not {8*len(dali_ints)}"
@@ -636,7 +642,7 @@ class DriverLubaRs232(DriverSerialBase):
                 dali_ints[1],  # Data, big-endian
                 0 if len(dali_ints) == 2 else dali_ints[2],  # Data, big-endian
                 0,  # Pad out to four bytes, to fit LUBA frame
-                None,  # Checksum
+                0,  # Checksum
             ]
             # Fill in the checksum
             self._insert_checksum(tx_ints)
@@ -648,7 +654,7 @@ class DriverLubaRs232(DriverSerialBase):
                 _LOG.trace(
                     f"LUBA frame to send: {[f'0x{data:02x}' for data in tx_ints]}"
                 )
-                self.transport.write(bytearray(tx_ints))
+                self._tx.write(bytearray(tx_ints))
 
                 # Wait for the LUBA device to respond, considering whether the
                 # message is sent twice or not
@@ -680,7 +686,7 @@ class DriverLubaRs232(DriverSerialBase):
                     confirm_count -= 1
             # Release the lock
 
-            return confirm.tx_id
+            return cast(int, confirm.tx_id)
 
         async def send_device_info_query(self) -> None:
             """
@@ -694,7 +700,7 @@ class DriverLubaRs232(DriverSerialBase):
                     DriverLubaRs232.LubaCmd.QUERY_DEVICE_INFO_CMD.value,  # LUBA Command
                     1,  # Length
                     0,  # Request set "0" information
-                    None,  # Checksum
+                    0,  # Checksum
                 ]
                 # Fill in the checksum
                 self._insert_checksum(tx_ints)
@@ -702,7 +708,7 @@ class DriverLubaRs232(DriverSerialBase):
                 _LOG.trace(
                     f"LUBA frame to send: {[f'0x{data:02x}' for data in tx_ints]}"
                 )
-                self.transport.write(bytearray(tx_ints))
+                self._tx.write(bytearray(tx_ints))
 
                 # Wait for the LUBA device to respond
                 dev_info = await asyncio.wait_for(
@@ -729,14 +735,14 @@ class DriverLubaRs232(DriverSerialBase):
                     0x59,  # ASCII 'Y'
                     DriverLubaRs232.LubaCmd.QUERY_DEVICE_DESCRIPTOR_CMD.value,
                     0,  # Length, this command carries no data
-                    None,  # Checksum
+                    0,  # Checksum
                 ]
                 self._insert_checksum(tx_ints)
 
                 _LOG.trace(
                     f"LUBA frame to send: {[f'0x{data:02x}' for data in tx_ints]}"
                 )
-                self.transport.write(bytearray(tx_ints))
+                self._tx.write(bytearray(tx_ints))
 
                 descriptor = await asyncio.wait_for(
                     self._queue_rx_luba_cmd.get(),
@@ -768,14 +774,14 @@ class DriverLubaRs232(DriverSerialBase):
                     DriverLubaRs232.LubaCmd.READ_STATUS_CMD.value,
                     1,  # Length
                     0,  # Line 0 (devices with a single DALI line)
-                    None,  # Checksum
+                    0,  # Checksum
                 ]
                 self._insert_checksum(tx_ints)
 
                 _LOG.trace(
                     f"LUBA frame to send: {[f'0x{data:02x}' for data in tx_ints]}"
                 )
-                self.transport.write(bytearray(tx_ints))
+                self._tx.write(bytearray(tx_ints))
 
                 line_status = await asyncio.wait_for(
                     self._queue_rx_luba_cmd.get(),
@@ -823,7 +829,7 @@ class DriverLubaRs232(DriverSerialBase):
                     mode_settings,
                     event_settings,
                     hardware_settings,
-                    None,  # Checksum
+                    0,  # Checksum
                 ]
                 # Fill in the checksum
                 self._insert_checksum(tx_ints)
@@ -831,7 +837,7 @@ class DriverLubaRs232(DriverSerialBase):
                 _LOG.trace(
                     f"LUBA frame to send: {[f'0x{data:02x}' for data in tx_ints]}"
                 )
-                self.transport.write(bytearray(tx_ints))
+                self._tx.write(bytearray(tx_ints))
 
                 # Wait for the LUBA device to respond
                 dev_settings = await asyncio.wait_for(
@@ -984,7 +990,7 @@ class DriverLubaRs232(DriverSerialBase):
             else:
                 raise RuntimeError(f"Invalid state: {self._rx_state}")
 
-        def _process_luba_event(self, received_data: tuple):
+        def _process_luba_event(self, received_data: Sequence[int]) -> None:
             """
             Handle a LUBA 'event' message, typically these are received when
             a DALI frame was observed on the bus by the LUBA device
@@ -1022,7 +1028,7 @@ class DriverLubaRs232(DriverSerialBase):
                 # Decode the command, for logging and debugging
                 try:
                     dali_command = command.Command.from_frame(
-                        frame.Frame(bits=8 * len(tx_dali), data=tx_dali),
+                        frame.ForwardFrame(bits=8 * len(tx_dali), data=tx_dali),
                         devicetype=self._prev_tx_enable_dt,
                         dev_inst_map=self._dev_inst_map,
                     )
@@ -1090,7 +1096,7 @@ class DriverLubaRs232(DriverSerialBase):
                 else:
                     # A 16 or 24-bit frame is an intercepted DALI command,
                     # it can be deciphered into a Command object
-                    dali_frame = frame.Frame(
+                    dali_frame = frame.ForwardFrame(
                         bits=8 * len(rx_dali), data=rx_dali
                     )
                     try:
@@ -1114,7 +1120,7 @@ class DriverLubaRs232(DriverSerialBase):
                     _LOG.debug(f"Adding DALI command to queue: {dali_command}")
                     self._queue_rx_dali.distribute(dali_command)
 
-        def _process_luba_response_dali_frame_to_tx(self, received_data: tuple):
+        def _process_luba_response_dali_frame_to_tx(self, received_data: Sequence[int]) -> None:
             """
             Handle a LUBA 'ADD DALI FRAME TO TX BUFFER' response message
             """
@@ -1149,7 +1155,7 @@ class DriverLubaRs232(DriverSerialBase):
                     f"Invalid LUBA response length: {payload_length}"
                 )
 
-        def _process_luba_response_device_info(self, received_data: tuple):
+        def _process_luba_response_device_info(self, received_data: Sequence[int]) -> None:
             """
             Handle a received "QUERY DEVICE INFO" response message
             """
@@ -1206,8 +1212,8 @@ class DriverLubaRs232(DriverSerialBase):
             self._queue_rx_luba_cmd.put_nowait(info)
 
         def _process_luba_response_device_descriptor(
-            self, received_data: tuple
-        ):
+            self, received_data: Sequence[int]
+        ) -> None:
             """
             Handle a received "QUERY DEVICE DESCRIPTOR" response message
             """
@@ -1234,7 +1240,7 @@ class DriverLubaRs232(DriverSerialBase):
             _LOG.info(f"Received device descriptor: {descriptor}")
             self._queue_rx_luba_cmd.put_nowait(descriptor)
 
-        def _process_luba_response_status(self, received_data: tuple):
+        def _process_luba_response_status(self, received_data: Sequence[int]) -> None:
             """
             Handle a received "READ STATUS" response message
             """
@@ -1262,7 +1268,7 @@ class DriverLubaRs232(DriverSerialBase):
             _LOG.info(f"Received line status: {line_status}")
             self._queue_rx_luba_cmd.put_nowait(line_status)
 
-        def _process_luba_response_settings(self, received_data: tuple):
+        def _process_luba_response_settings(self, received_data: Sequence[int]) -> None:
             """
             Handle a received "READ / WRITE SETTINGS" response message
             """
@@ -1280,17 +1286,17 @@ class DriverLubaRs232(DriverSerialBase):
             _LOG.info(f"Received device settings: {settings}")
             self._queue_rx_luba_cmd.put_nowait(settings)
 
-        def connection_made(self, transport):
-            self.transport = transport
+        def connection_made(self, transport: asyncio.BaseTransport) -> None:
+            self.transport = cast(serialx.SerialTransport, transport)
             _LOG.info(f"Serial port opened: {transport}")
             self._connected.set()
 
-        def data_received(self, data):
-            _LOG.trace(f"Serial data received: {data}")
+        def data_received(self, data: bytes) -> None:
+            _LOG.trace(f"Serial data received: {data!r}")
             for rx in data:
                 self._process_byte(rx)
 
-        def connection_lost(self, exc):
+        def connection_lost(self, exc: Optional[Exception]) -> None:
             _LOG.info("Serial port closed")
             self._connected.clear()
 
@@ -1317,6 +1323,13 @@ class DriverLubaRs232(DriverSerialBase):
         self._transport: Optional[serialx.SerialTransport] = None
         self._protocol: Optional[DriverLubaRs232.LubaProtocol] = None
 
+    @property
+    def _proto(self) -> DriverLubaRs232.LubaProtocol:
+        """The connected protocol, or raise if the driver is not connected."""
+        if self._protocol is None:
+            raise IOError("DALI driver not connected")
+        return self._protocol
+
     async def connect(self, *, scan_dev_inst: bool = False) -> None:
         if self.is_connected:
             _LOG.warning(
@@ -1325,18 +1338,17 @@ class DriverLubaRs232(DriverSerialBase):
             return
 
         # TODO: Add failure/retry handling
-        (
-            self._transport,
-            self._protocol,
-        ) = await serialx.create_serial_connection(
+        transport, protocol = await serialx.create_serial_connection(
             loop=asyncio.get_event_loop(),
             protocol_factory=DriverLubaRs232.LubaProtocol,
             url=self.serial_path,
             baudrate=38400,
         )
+        self._transport = transport
+        self._protocol = cast(DriverLubaRs232.LubaProtocol, protocol)
         try:
             await asyncio.wait_for(
-                self._protocol.connected.wait(),
+                self._proto.connected.wait(),
                 timeout=DriverLubaRs232.timeout_connect,
             )
         except asyncio.exceptions.TimeoutError as exc:
@@ -1345,9 +1357,9 @@ class DriverLubaRs232(DriverSerialBase):
 
         for attempt in range(1, DriverLubaRs232.handshake_attempts + 1):
             try:
-                await self._protocol.send_device_info_query()
-                self._protocol.bus_power = self.bus_power
-                await self._protocol.send_device_settings()
+                await self._proto.send_device_info_query()
+                self._proto.bus_power = self.bus_power
+                await self._proto.send_device_settings()
                 break
             except (asyncio.TimeoutError, TimeoutError):
                 if attempt >= DriverLubaRs232.handshake_attempts:
@@ -1359,8 +1371,8 @@ class DriverLubaRs232(DriverSerialBase):
                 _LOG.warning(
                     "LUBA handshake attempt %d timed out, retrying", attempt
                 )
-                self._protocol.reset_luba_response()
-        self._protocol.dev_inst_map = self.dev_inst_map
+                self._proto.reset_luba_response()
+        self._proto.dev_inst_map = self.dev_inst_map
 
         self._connected.set()
 
@@ -1385,7 +1397,7 @@ class DriverLubaRs232(DriverSerialBase):
         loop = asyncio.get_event_loop()
         deadline = loop.time() + DriverLubaRs232.timeout_bus_power
         while loop.time() < deadline:
-            status = await self._protocol.send_read_status()
+            status = await self._proto.send_read_status()
             if status is not None and not status.bus_voltage_error:
                 return
             await asyncio.sleep(0.1)
@@ -1397,13 +1409,13 @@ class DriverLubaRs232(DriverSerialBase):
         """Return the interface's device descriptor (feature flags)."""
         if not self.is_connected:
             raise IOError("DALI driver cannot query, not connected")
-        return await self._protocol.send_device_descriptor_query()
+        return await self._proto.send_device_descriptor_query()
 
     async def read_status(self) -> Optional[DriverLubaRs232.LubaLineStatus]:
         """Return the status of the DALI line (e.g. bus power state)."""
         if not self.is_connected:
             raise IOError("DALI driver cannot query, not connected")
-        return await self._protocol.send_read_status()
+        return await self._proto.send_read_status()
 
     async def _send_frame(
         self, cmd: command.Command, *, priority: int = 1
@@ -1417,28 +1429,29 @@ class DriverLubaRs232(DriverSerialBase):
 
         # Make sure the received command buffer is empty, so that an
         # unexpected response can't accidentally be used
-        self._protocol.reset_dali_response()
-        await self._protocol.send_dali_command(cmd, priority=priority)
-        if cmd.is_query:
+        self._proto.reset_dali_response()
+        await self._proto.send_dali_command(cmd, priority=priority)
+        response_type = cmd.response
+        if response_type is not None:
             # Default to the command's own response type so that a query
             # which times out is reported as a missing value; a bare
             # Response(None) passes check_bad_rsp and leaks None to callers.
-            response = cmd.response(None)
+            response = response_type(None)
             while True:
                 try:
                     raw_rsp = await asyncio.wait_for(
-                        self._protocol.wait_dali_raw_response(),
+                        self._proto.wait_dali_raw_response(),
                         timeout=DriverLubaRs232.timeout_rx,
                     )
                 except asyncio.exceptions.TimeoutError:
                     _LOG.debug(f"DALI response timeout, from message: {cmd}")
                     break
                 if raw_rsp is _DALI_FRAMING_ERROR:
-                    response = cmd.response(frame.BackwardFrameError(255))
+                    response = response_type(frame.BackwardFrameError(255))
                     _LOG.debug(f"DALI framing error, from message: {cmd}")
                     break
                 if isinstance(raw_rsp, int):
-                    response = cmd.response(frame.BackwardFrame(raw_rsp))
+                    response = response_type(frame.BackwardFrame(raw_rsp))
                     _LOG.debug(f"DALI response received: {raw_rsp}")
                     break
                 else:
@@ -1452,7 +1465,7 @@ class DriverLubaRs232(DriverSerialBase):
         return response
 
     def new_dali_rx_queue(self) -> DistributorQueue:
-        return DistributorQueue(self._protocol.queue_rx_dali)
+        return DistributorQueue(self._proto.queue_rx_dali)
 
 
 
@@ -1546,19 +1559,19 @@ class DriverSCIRS232(DriverSerialBase):
 
         def __init__(self) -> None:
             super().__init__()
-            self.transport = None
+            self.transport: Optional[serialx.SerialTransport] = None
 
             self._queue_rx_dali = DistributorQueue()
-            self._queue_rx_raw_dali = asyncio.Queue()
-            self._queue_rx_info = asyncio.Queue()
+            self._queue_rx_raw_dali: asyncio.Queue[Any] = asyncio.Queue()
+            self._queue_rx_info: asyncio.Queue[Any] = asyncio.Queue()
             self._prev_rx_enable_dt = 0
             self._prev_tx_enable_dt = 0
             self._tx_lock = asyncio.Lock()
-            self._rx_state = None
+            self._rx_state = self.ReadState.WAIT_STATUS
             self.rx_idle = asyncio.Event()
-            self._buffer = None
-            self._rx_expected_len = None
-            self._rx_received_len = None
+            self._buffer: list[int] = []
+            self._rx_expected_len: Optional[int] = None
+            self._rx_received_len: int = 0
             self._connected = asyncio.Event()
             self._dev_info: Optional[DriverSCIRS232.SCIRS232DeviceReply] = None
             self._dev_inst_map: Optional[DeviceInstanceTypeMapper] = None
@@ -1570,11 +1583,19 @@ class DriverSCIRS232(DriverSerialBase):
             self.reset()
 
         @property
+        def _tx(self) -> serialx.SerialTransport:
+            """The connected serial transport, or raise if not connected."""
+            if self.transport is None:
+                raise IOError("serial transport not connected")
+            return self.transport
+
+        @property
         def rx_state(self) -> ReadState:
+            assert self._rx_state is not None
             return self._rx_state
 
         @rx_state.setter
-        def rx_state(self, state: ReadState):
+        def rx_state(self, state: ReadState) -> None:
             if not isinstance(state, self.ReadState):
                 raise TypeError(
                     f"rx_state must be a ReadState enum, not {type(state)}"
@@ -1591,19 +1612,19 @@ class DriverSCIRS232(DriverSerialBase):
             return self._dev_inst_map
 
         @dev_inst_map.setter
-        def dev_inst_map(self, value: DeviceInstanceTypeMapper):
+        def dev_inst_map(self, value: DeviceInstanceTypeMapper) -> None:
             self._dev_inst_map = value
 
         @property
         def queue_rx_dali(self) -> DistributorQueue:
             return self._queue_rx_dali
 
-        def reset(self):
+        def reset(self) -> None:
             """
             Returns the state machine to "WAIT_STATUS"
             """
             self.rx_state = self.ReadState.WAIT_STATUS
-            self._buffer = [None] * self.MAX_LEN
+            self._buffer = [0] * self.MAX_LEN
             self._rx_expected_len = None
             self._rx_received_len = 0
 
@@ -1614,7 +1635,7 @@ class DriverSCIRS232(DriverSerialBase):
 
             :return: A received DALI frame, as an int
             """
-            return await self._queue_rx_raw_dali.get()
+            return cast(int, await self._queue_rx_raw_dali.get())
 
         def reset_dali_response(self) -> None:
             """Drop any DALI frames left buffered from a previous exchange.
@@ -1656,7 +1677,7 @@ class DriverSCIRS232(DriverSerialBase):
             # data before we send
             await self.rx_idle.wait()
 
-            dali_ints = tx.frame.as_byte_sequence
+            dali_ints = list(tx.frame.as_byte_sequence)
             if not len(dali_ints) in (1, 2, 3):
                 raise ValueError(
                     f"Only works with 8, 16 or 24 bit messages, not {8*len(dali_ints)}"
@@ -1675,7 +1696,7 @@ class DriverSCIRS232(DriverSerialBase):
                 dali_ints[0],
                 0 if len(dali_ints) < 2 else dali_ints[1],
                 0 if len(dali_ints) < 3 else dali_ints[2],
-                None,  # Checksum
+                0,  # Checksum
             ]
             # Fill in the checksum
             self._insert_checksum(tx_ints)
@@ -1687,7 +1708,7 @@ class DriverSCIRS232(DriverSerialBase):
                 _LOG.trace(
                     f"SCI RS232 frame to send: {[f'0x{data:02x}' for data in tx_ints]}"
                 )
-                self.transport.write(bytearray(tx_ints))
+                self._tx.write(bytearray(tx_ints))
 
                 confirm = await asyncio.wait_for(
                     self._queue_rx_info.get(),
@@ -1711,7 +1732,7 @@ class DriverSCIRS232(DriverSerialBase):
                     0,
                     0,
                     0,
-                    None,  # Checksum
+                    0,  # Checksum
                 ]
                 # Fill in the checksum
                 self._insert_checksum(tx_ints)
@@ -1724,7 +1745,7 @@ class DriverSCIRS232(DriverSerialBase):
                 _LOG.trace(
                     f"SCI RS232 frame to send: {[f'0x{data:02x}' for data in tx_ints]}"
                 )
-                self.transport.write(bytearray(tx_ints))
+                self._tx.write(bytearray(tx_ints))
 
                 # Wait for the SCI RS232 device to respond
                 dev_info = await asyncio.wait_for(
@@ -1833,12 +1854,12 @@ class DriverSCIRS232(DriverSerialBase):
             else:
                 raise RuntimeError(f"Invalid state: {self._rx_state}")
             
-        def _process_system_message(self, data : int):
+        def _process_system_message(self, data: int) -> None:
             device_id_info = DriverSCIRS232.SCIRS232DeviceReply(
                 id=(data & 0xf0) >> 4,code=data&0xf)
             self._queue_rx_info.put_nowait(device_id_info) 
         
-        def _process_error(self, data : tuple):
+        def _process_error(self, data: Sequence[int]) -> None:
             try:
                 error_type = DriverSCIRS232.SCIRS232Protocol.ErrorType(data[3])
             except ValueError:
@@ -1863,7 +1884,7 @@ class DriverSCIRS232(DriverSerialBase):
             _LOG.error(f"SCI RS232 reports {error_str} error ({error_type})")
             self._process_system_message(data[0])
 
-        def _process_dali_frame(self, received_data: tuple):
+        def _process_dali_frame(self, received_data: Sequence[int]) -> None:
             """
             Handle a DALI 'event' message, typically these are received when
             a DALI frame was observed on the bus by the SCI RS232 device
@@ -1884,7 +1905,7 @@ class DriverSCIRS232(DriverSerialBase):
             else:
                 # A 16 or 24-bit frame is an intercepted DALI command,
                 # it can be deciphered into a Command object
-                dali_frame = frame.Frame(
+                dali_frame = frame.ForwardFrame(
                     bits=8 * len(received_data), data=received_data
                 )
                 try:
@@ -1908,17 +1929,17 @@ class DriverSCIRS232(DriverSerialBase):
                 _LOG.debug(f"Adding DALI command to queue: {dali_command}")
                 self._queue_rx_dali.distribute(dali_command)
 
-        def connection_made(self, transport):
-            self.transport = transport
+        def connection_made(self, transport: asyncio.BaseTransport) -> None:
+            self.transport = cast(serialx.SerialTransport, transport)
             _LOG.info(f"Serial port opened: {transport}")
             self._connected.set()
 
-        def data_received(self, data):
-            _LOG.trace(f"Serial data received: {data}")
+        def data_received(self, data: bytes) -> None:
+            _LOG.trace(f"Serial data received: {data!r}")
             for rx in data:
                 self._process_byte(rx)
 
-        def connection_lost(self, exc):
+        def connection_lost(self, exc: Optional[Exception]) -> None:
             _LOG.info("Serial port closed")
             self._connected.clear()
 
@@ -1943,6 +1964,13 @@ class DriverSCIRS232(DriverSerialBase):
         self._transport: Optional[serialx.SerialTransport] = None
         self._protocol: Optional[DriverSCIRS232.SCIRS232Protocol] = None
 
+    @property
+    def _proto(self) -> DriverSCIRS232.SCIRS232Protocol:
+        """The connected protocol, or raise if the driver is not connected."""
+        if self._protocol is None:
+            raise IOError("DALI driver not connected")
+        return self._protocol
+
     async def connect(self, *, scan_dev_inst: bool = False) -> None:
         if self.is_connected:
             _LOG.warning(
@@ -1955,27 +1983,26 @@ class DriverSCIRS232(DriverSerialBase):
             )
 
         # TODO: Add failure/retry handling
-        (
-            self._transport,
-            self._protocol,
-        ) = await serialx.create_serial_connection(
+        transport, protocol = await serialx.create_serial_connection(
             loop=asyncio.get_event_loop(),
             protocol_factory=DriverSCIRS232.SCIRS232Protocol,
             url=self.serial_path,
             baudrate=38400,
         )
+        self._transport = transport
+        self._protocol = cast(DriverSCIRS232.SCIRS232Protocol, protocol)
 
         try:
             await asyncio.wait_for(
-                self._protocol._connected.wait(),
+                self._proto._connected.wait(),
                 timeout=DriverSCIRS232.timeout_connect,
             )
         except asyncio.exceptions.TimeoutError as exc:
             _LOG.critical(f"Timeout waiting for driver to connect: {exc}")
             raise
 
-        await self._protocol.send_device_info_query()
-        self._protocol.dev_inst_map = self.dev_inst_map
+        await self._proto.send_device_info_query()
+        self._proto.dev_inst_map = self.dev_inst_map
 
         self._connected.set()
 
@@ -2003,25 +2030,26 @@ class DriverSCIRS232(DriverSerialBase):
 
         # Make sure the received command buffer is empty, so that an
         # unexpected response can't accidentally be used
-        self._protocol.reset_dali_response()
-        await self._protocol.send_dali_command(cmd)
-        if cmd.is_query:
+        self._proto.reset_dali_response()
+        await self._proto.send_dali_command(cmd)
+        response_type = cmd.response
+        if response_type is not None:
             # Default to the command's own response type so that a query
             # which times out is reported as a missing value; a bare
             # Response(None) passes check_bad_rsp and leaks None to callers.
-            response = cmd.response(None)
+            response = response_type(None)
             while True:
                 try:
                     raw_rsp = await asyncio.wait_for(
-                        self._protocol._queue_rx_raw_dali.get(),
-                        #self._protocol.wait_dali_raw_response(),
+                        self._proto._queue_rx_raw_dali.get(),
+                        #self._proto.wait_dali_raw_response(),
                         timeout=DriverSCIRS232.timeout_rx,
                     )
                 except asyncio.exceptions.TimeoutError:
                     _LOG.debug(f"DALI response timeout, from message: {cmd}")
                     break
                 if isinstance(raw_rsp, int):
-                    response = cmd.response(frame.BackwardFrame(raw_rsp))
+                    response = response_type(frame.BackwardFrame(raw_rsp))
                     _LOG.debug(f"DALI response received: {raw_rsp}")
                     break
                 else:
@@ -2035,4 +2063,4 @@ class DriverSCIRS232(DriverSerialBase):
         return response
 
     def new_dali_rx_queue(self) -> DistributorQueue:
-        return DistributorQueue(self._protocol.queue_rx_dali)
+        return DistributorQueue(self._proto.queue_rx_dali)
