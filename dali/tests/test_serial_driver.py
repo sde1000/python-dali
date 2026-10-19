@@ -6,11 +6,12 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from dali.address import DeviceShort, InstanceNumber
+from dali.address import DeviceShort, GearShort, InstanceNumber
 from dali.command import NumericResponse
 from dali.device.general import QueryInstanceType
 from dali.device.helpers import check_bad_rsp
 from dali.driver.serial import _DALI_FRAMING_ERROR, DriverLubaRs232
+from dali.gear.general import QueryActualLevel
 
 
 @pytest.mark.asyncio
@@ -147,6 +148,35 @@ async def test_connect_reopens_the_port_after_a_lost_transport(monkeypatch):
 
     assert driver.is_connected
     assert driver._protocol is replacement
+
+
+@pytest.mark.asyncio
+async def test_send_dali_command_resyncs_after_stale_confirmation(caplog):
+    """A stale confirmation must not desync every following transmission.
+
+    A weak bus can let a send's confirmation arrive after it timed out; the
+    next send then finds that stale confirmation queued ahead of its own. It
+    must be discarded and the matching one awaited, so the stream recovers
+    instead of every later frame inheriting the one-off mismatch.
+    """
+    protocol = DriverLubaRs232.LubaProtocol()
+    protocol.transport = MagicMock()
+    protocol.rx_idle.set()
+
+    command = QueryActualLevel(GearShort(0))
+    stale = QueryActualLevel(GearShort(1))
+    protocol._queue_tx_conf.put_nowait(
+        protocol.LubaMsgTxConf(tx_id=1, message=stale)
+    )
+    protocol._queue_tx_conf.put_nowait(
+        protocol.LubaMsgTxConf(tx_id=2, message=command)
+    )
+
+    with caplog.at_level(logging.WARNING, logger="dali.driver"):
+        await protocol.send_dali_command(command)
+
+    assert protocol._queue_tx_conf.empty()
+    assert any("stale LUBA confirmation" in r.getMessage() for r in caplog.records)
 
 
 @pytest.mark.asyncio
