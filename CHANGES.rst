@@ -1,6 +1,12 @@
 Changes
 =======
 
+0.16 (2026-10-20)
+-----------------
+
+- Add a non-mutating connect(apply_settings=False) probe mode to
+  serial device drivers [markus-becker-tridonic-com]
+
 0.15 (2026-10-19)
 -----------------
 
