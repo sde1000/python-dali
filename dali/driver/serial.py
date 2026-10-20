@@ -1329,7 +1329,13 @@ class DriverLubaRs232(DriverSerialBase):
         self._transport: Optional[serialx.SerialTransport] = None
         self._protocol: Optional[DriverLubaRs232.LubaProtocol] = None
 
-    async def connect(self, *, scan_dev_inst: bool = False) -> None:
+    async def connect(
+        self, *, scan_dev_inst: bool = False, apply_settings: bool = True
+    ) -> None:
+        # ``apply_settings=False`` connects without writing the device settings,
+        # leaving the interface's hardware configuration (including its bus-power
+        # state) untouched. Use it to probe a discovered interface read-only so
+        # the probe cannot depower a bus the integrated supply is already driving.
         if self.is_connected:
             _LOG.warning(
                 f"'connect()' called but luba232 driver already connected"
@@ -1358,8 +1364,9 @@ class DriverLubaRs232(DriverSerialBase):
         for attempt in range(1, DriverLubaRs232.handshake_attempts + 1):
             try:
                 await self._protocol.send_device_info_query()
-                self._protocol.bus_power = self.bus_power
-                await self._protocol.send_device_settings()
+                if apply_settings:
+                    self._protocol.bus_power = self.bus_power
+                    await self._protocol.send_device_settings()
                 break
             except (asyncio.TimeoutError, TimeoutError):
                 if attempt >= DriverLubaRs232.handshake_attempts:
@@ -1378,8 +1385,9 @@ class DriverLubaRs232(DriverSerialBase):
 
         # After switching on the integrated power supply the bus voltage takes
         # a moment to rise; sending DALI frames before then fails, so wait for
-        # the bus to be powered before scanning.
-        if self.bus_power:
+        # the bus to be powered before scanning. Skipped when the settings were
+        # not applied, as the bus-power state was then left untouched.
+        if apply_settings and self.bus_power:
             await self._wait_for_bus_power()
 
         # Scan the bus for control devices, and create a mapping of addresses

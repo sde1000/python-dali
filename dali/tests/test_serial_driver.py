@@ -95,6 +95,25 @@ async def test_connect_retries_handshake_on_timeout(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_connect_without_applying_settings_leaves_hardware_untouched(
+    monkeypatch,
+):
+    """connect(apply_settings=False) must not write the device settings.
+
+    A read-only probe of a discovered interface must not overwrite the
+    hardware configuration, otherwise it could depower a bus the integrated
+    supply is already driving.
+    """
+    driver, protocol = _connecting_driver(monkeypatch, [None])
+
+    await driver.connect(apply_settings=False)
+
+    assert driver.is_connected
+    assert protocol.send_device_info_query.await_count == 1
+    assert protocol.send_device_settings.await_count == 0
+
+
+@pytest.mark.asyncio
 async def test_connect_raises_after_exhausting_handshake_attempts(monkeypatch):
     """When every handshake attempt times out, connect must give up and raise."""
     driver, protocol = _connecting_driver(monkeypatch, asyncio.TimeoutError)
