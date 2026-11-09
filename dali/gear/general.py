@@ -7,6 +7,8 @@ Where a command name is or contains an abbreviation, for example DAPC
 or DTR0, the abbreviation has been kept in capitals.
 """
 
+from __future__ import annotations
+
 from dali import command
 from dali import address
 from dali import frame
@@ -61,7 +63,7 @@ class _StandardCommand(_GearCommand):
     _cmdval = None
     _hasparam = False
 
-    def __init__(self, destination, *args):
+    def __init__(self, destination: address.Address | int, *args: int) -> None:
         if self._cmdval is None:
             raise NotImplementedError
 
@@ -155,7 +157,7 @@ class DAPC(_GearCommand):
     be respected.
     """
 
-    def __init__(self, destination, power):
+    def __init__(self, destination: address.Address | int, power: int | str) -> None:
         if power == "OFF":
             power = 0
 
@@ -1003,7 +1005,7 @@ class _SpecialCommand(_GearCommand):
     _hasparam = False
     _cmdval = None
 
-    def __init__(self, *args):
+    def __init__(self, *args: int) -> None:
         if self._hasparam:
             if len(args) != 1:
                 raise TypeError(

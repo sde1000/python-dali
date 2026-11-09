@@ -18,10 +18,16 @@
 # Sequences may raise exceptions, which the driver should pass to the
 # caller.
 
+from __future__ import annotations
+
+from collections.abc import Iterable
+from typing import Generator, Optional
+
+from dali import command
 from dali.exceptions import DALISequenceError, ProgramShortAddressFailure
 
 from dali.gear.general import *
-from dali.address import Broadcast, Short
+from dali.address import Broadcast, GearAddress, Short
 
 
 class sleep:
@@ -30,7 +36,7 @@ class sleep:
     Yielded during a sequence to request that the caller wait for at
     least the specified length of time in seconds
     """
-    def __init__(self, delay):
+    def __init__(self, delay: float) -> None:
         self.delay = delay
 
 
@@ -42,7 +48,12 @@ class progress:
     both.  The amount of progress is just an indication and there is
     no guarantee that it will not decrease as well as increase.
     """
-    def __init__(self, message=None, completed=None, size=None):
+    def __init__(
+        self,
+        message: str | None = None,
+        completed: int | None = None,
+        size: int | None = None,
+    ) -> None:
         self.message = message
         self.completed = completed
         self.size = size
@@ -54,7 +65,9 @@ class progress:
             return f"Progress: {self.completed}/{self.size}"
 
 
-def QueryDeviceTypes(addr):
+def QueryDeviceTypes(
+    addr: GearAddress,
+) -> Generator[command.Command, Optional[command.Response], list[int]]:
     """Obtain a list of part 2xx device types supported by control gear
     """
     r = yield QueryDeviceType(addr)
@@ -147,8 +160,11 @@ def _find_next(low, high):
         return (yield from _find_next(midpoint + 1, high))
 
 
-def Commissioning(available_addresses=None, readdress=False,
-                  dry_run=False):
+def Commissioning(
+    available_addresses: Iterable[int] | None = None,
+    readdress: bool = False,
+    dry_run: bool = False,
+) -> Generator[command.Command, Optional[command.Response], None]:
     """Assign short addresses to control gear
 
     If available_addresses is passed, only the specified addresses

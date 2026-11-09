@@ -36,7 +36,7 @@ from dali.gear.general import DTR0, DTR1, DTR2, QueryActualLevel, QueryContentDT
 
 
 def SetDT8ColourValueTc(
-    address: GearAddress,
+    address: GearAddress | int,
     tc_mired: int,
 ) -> Generator[command.Command, Optional[command.Response], None]:
     """

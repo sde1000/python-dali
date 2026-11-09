@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from collections import namedtuple
+from collections.abc import Generator
 from enum import Enum, auto
+from typing import Any, Optional
 
-from dali import device, gear
+from dali import command, device, gear
 from dali.address import Address, DeviceAddress, DeviceShort, GearAddress, GearShort
 from dali.exceptions import (
     LatchingNotSupported,
@@ -165,7 +167,11 @@ class MemoryBank:
         la = yield from self.LastAddress.read(addr)
         return la
 
-    def read_all(self, addr: Address, use_latch: bool = True):
+    def read_all(
+        self, addr: Address, use_latch: bool = True
+    ) -> Generator[
+        command.Command, Optional[command.Response], dict[type[MemoryValue], Any]
+    ]:
         """Read all available memory values from this memory bank.
 
         If the memory bank has a latch, the latch is set during the
