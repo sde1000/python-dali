@@ -4,7 +4,7 @@ from typing import Any, Optional, Iterable
 import pytest
 
 from dali.command import Command
-from dali.address import DeviceShort
+from dali.address import DeviceShort, InstanceNumber
 from dali.device import general, pushbutton
 from dali.device.general import (
     AmbiguousInstanceType,
@@ -218,8 +218,8 @@ def test_frame_to_ambiguous_event() -> None:
 def test_frame_to_event_dev_inst_pushbutton() -> None:
     device_instance_map = DeviceInstanceTypeMapper()
     device_instance_map.add_type(
-        short_address=1,
-        instance_number=1,
+        short_address=DeviceShort(1),
+        instance_number=InstanceNumber(1),
         instance_type=pushbutton,
     )
 
@@ -237,8 +237,8 @@ def test_frame_to_event_dev_inst_pushbutton() -> None:
 def test_event_decode_retry() -> None:
     device_instance_map = DeviceInstanceTypeMapper()
     device_instance_map.add_type(
-        short_address=1,
-        instance_number=1,
+        short_address=DeviceShort(1),
+        instance_number=InstanceNumber(1),
         instance_type=pushbutton,
     )
 
@@ -319,8 +319,8 @@ def test_event_filter_pushbutton_width() -> None:
 def test_frame_to_event_dev_inst_occupancy_occupied() -> None:
     device_instance_map = DeviceInstanceTypeMapper()
     device_instance_map.add_type(
-        short_address=1,
-        instance_number=1,
+        short_address=DeviceShort(1),
+        instance_number=InstanceNumber(1),
         instance_type=3,
     )
 
@@ -354,8 +354,8 @@ def test_invalid_occupancy() -> None:
 def test_frame_to_event_dev_inst_light() -> None:
     device_instance_map = DeviceInstanceTypeMapper()
     device_instance_map.add_type(
-        short_address=5,
-        instance_number=2,
+        short_address=DeviceShort(5),
+        instance_number=InstanceNumber(2),
         instance_type=4,
     )
 

@@ -3,6 +3,7 @@ Helper functions and classes, used in various other places through the library
 """
 from __future__ import annotations
 
+import warnings
 import types
 from typing import Iterable, Optional
 
@@ -168,8 +169,8 @@ class DeviceInstanceTypeMapper:
     def add_type(
         self,
         *,
-        short_address: DeviceShort | int,
-        instance_number: InstanceNumber | int,
+        short_address: DeviceShort,
+        instance_number: InstanceNumber,
         instance_type: types.ModuleType | int,
     ) -> None:
         """
@@ -190,20 +191,32 @@ class DeviceInstanceTypeMapper:
         :return: None
         """
         if isinstance(short_address, DeviceShort):
-            short_address = short_address.address
+            _short_address = short_address
+        else:
+            warnings.warn(
+                "Passing int for short_address to DeviceInstanceTypeMapper "
+                "is not longer supported; pass a DeviceShort instead",
+                DeprecationWarning, stacklevel=2)
+            _short_address = DeviceShort(short_address)
         if isinstance(instance_number, InstanceNumber):
-            instance_number = instance_number.value
+            _instance_number = instance_number
+        else:
+            warnings.warn(
+                "Passing int for instance_number to DeviceInstanceTypeMapper "
+                "is no longer supported; pass an InstanceNumber instead",
+                DeprecationWarning, stacklevel=2)
+            _instance_number = InstanceNumber(instance_number)
         if hasattr(instance_type, "instance_type"):
             instance_type = int(instance_type.instance_type)
         else:
             instance_type = int(instance_type)
-        self._mapping[(short_address, instance_number)] = instance_type
+        self._mapping[(_short_address.address, _instance_number.value)] = instance_type
 
     def get_type(
         self,
         *,
-        short_address: DeviceShort | int,
-        instance_number: InstanceNumber | int,
+        short_address: DeviceShort,
+        instance_number: InstanceNumber,
     ) -> Optional[int]:
         """
         Looks up the instance type based on the short address and instance
@@ -217,10 +230,23 @@ class DeviceInstanceTypeMapper:
         :return: Either the instance type as an integer, or None
         """
         if isinstance(short_address, DeviceShort):
-            short_address = short_address.address
+            _short_address = short_address
+        else:
+            warnings.warn(
+                "Passing int for short_address to DeviceInstanceTypeMapper "
+                "is no longer supported; pass a DeviceShort instead",
+                DeprecationWarning, stacklevel=2)
+            _short_address = DeviceShort(short_address)
         if isinstance(instance_number, InstanceNumber):
-            instance_number = instance_number.value
-        return self._mapping.get((short_address, instance_number), None)
+            _instance_number = instance_number
+        else:
+            warnings.warn(
+                "Passing int for instance_number to DeviceInstanceTypeMapper "
+                "is no longer supported; pass an InstanceNumber instead",
+                DeprecationWarning, stacklevel=2)
+            _instance_number = InstanceNumber(instance_number)
+        return self._mapping.get(
+            (_short_address.address, _instance_number.value), None)
 
     def clear(self) -> None:
         """

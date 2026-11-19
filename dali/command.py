@@ -17,7 +17,7 @@ class DITM(Protocol):
             self,
             *,
             short_address: address.DeviceShort,
-            instance_number: address.InstanceNumber | int,
+            instance_number: address.InstanceNumber,
     ) -> Optional[int]:
         ...
 

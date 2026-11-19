@@ -1242,7 +1242,8 @@ class _Event(command.Command):
 
             if dev_inst_map is not None:
                 instance_type = dev_inst_map.get_type(
-                    short_address=short_address, instance_number=instance_number
+                    short_address=short_address,
+                    instance_number=address.InstanceNumber(instance_number)
                 )
             else:
                 instance_type = None
