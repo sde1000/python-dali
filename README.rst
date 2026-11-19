@@ -1,6 +1,10 @@
 python-dali — lighting control interface
 ========================================
 
+**This is an alpha 1.0 release with many new features that is not
+guaranteed to be compatible with the 0.x series of releases. Check the
+release notes carefully!**
+
 DALI ("Digital Addressable Lighting Interface") defines how lighting
 control gear (eg. fluorescent ballasts, LED dimmers) and input devices
 (push buttons, motion detectors, etc.) should interoperate.  It is
