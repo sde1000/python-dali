@@ -9,7 +9,7 @@ from dali.gear.colour import tc_kelvin_mirek, QueryColourValueDTR, QueryColourSt
 from dali.gear.general import QueryControlGearPresent, QueryActualLevel
 from dali.gear.led import QueryDimmingCurve
 from dali.gear.sequences import SetDT8ColourValueTc, SetDT8TcLimit, QueryDT8ColourValue
-from dalidrivers.misc.hid import tridonic
+from dalidrivers.typed.hid import tridonic
 from dali.sequences import QueryDeviceTypes, DALISequenceError
 
 def print_command_and_response(dev, command, response, config_command_error):
