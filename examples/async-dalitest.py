@@ -9,7 +9,7 @@ import dali.device.general as dg
 import dali.device.sequences as ds
 from dali.gear import emergency, led, converter
 from dali.sequences import QueryDeviceTypes, DALISequenceError
-from dali.driver.hid import tridonic, hasseb
+from dalidrivers.misc.hid import tridonic, hasseb
 from dali.memory import *
 
 def print_command_and_response(dev, command, response, config_command_error):

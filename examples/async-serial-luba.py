@@ -48,7 +48,7 @@ from dali.device.general import (
     UnknownEvent,
 )
 from dali.device.sequences import SetEventFilters, SetEventSchemes
-from dali.driver.serial import DriverLubaRs232
+from dalidrivers.misc.serial import DriverLubaRs232
 from dali.exceptions import DALISequenceError
 from dali.gear.colour import QueryColourValueDTR
 from dali.gear.general import DAPC, QueryControlGearPresent

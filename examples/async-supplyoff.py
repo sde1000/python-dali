@@ -2,7 +2,7 @@
 
 import logging
 import asyncio
-from dali.driver.hid import tridonic, hasseb
+from dalidrivers.misc.hid import tridonic, hasseb
 from dali.gear.general import RecallMaxLevel, RecallMinLevel, QueryActualLevel, Off
 from dali.address import Broadcast, Short
 
