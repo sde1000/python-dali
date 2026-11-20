@@ -2,7 +2,7 @@
 
 import logging
 import asyncio
-from dalidrivers.misc.hid import tridonic
+from dalidrivers.typed.hid import tridonic
 import signal
 import dali.gear
 import dali.device
