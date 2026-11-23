@@ -207,6 +207,27 @@ Detailed changes
   operate on the underling raw int; the others operate on the scaled
   value)
 
+- ``dali.sequences.QueryDeviceTypes`` no longer rejects device type 0.
+  It was comparing each answer against the previous one to check the
+  required ascending order, but starting from 0 rather than from below
+  the lowest valid device type, and never updating it.
+
+- ``dali.sequences.QueryDeviceTypes`` now falls back to the method in
+  Annex A.4 of IEC 62386-102 when control gear answers ``MASK`` without
+  implementing ``QueryNextDeviceType``, as gear built to the 2009
+  edition does. It enables each device type in turn and keeps those
+  that answer ``QueryExtendedVersionNumber``, where it previously
+  raised ``DALISequenceError``.
+
+- ``dali.sequences.QueryDeviceTypes`` now probes by the same method
+  when control gear answers 254 to ``QueryDeviceType``, instead of
+  taking that as "no device type". 254 only carries that meaning from
+  IEC 62386-102:2014 onwards; Annex B of the 2009 edition reserves
+  128 to 254 for control devices, so gear built to that edition can
+  answer 254 while implementing device types. Gear that really has
+  none answers nothing to the probe and is still reported as having
+  none.
+
 .. _dali-drivers: https://github.com/sde1000/dali-drivers
 
 0.16 (2026-10-20)
