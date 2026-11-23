@@ -13,6 +13,8 @@ class TestSequences(unittest.TestCase):
             [6],
             [],
             [252, 253],
+            [0],
+            [0, 1],
         ]
         bus = fakes.Bus([fakes.Gear(shortaddr=a, devicetypes=dts)
                          for a, dts in enumerate(testcases)])
@@ -20,6 +22,53 @@ class TestSequences(unittest.TestCase):
             r = bus.run_sequence(
                 sequences.QueryDeviceTypes(GearShort(a)))
             self.assertEqual(r, dts)
+
+    def test_querydevicetypes_by_probing(self) -> None:
+        """Gear that answers MASK without implementing QueryNextDeviceType"""
+        testcases = [
+            [0, 1],
+            [1, 6],
+            [0, 6, 8],
+        ]
+        bus = fakes.Bus([
+            fakes.Gear(shortaddr=a, devicetypes=dts,
+                       enumerate_devicetypes=False)
+            for a, dts in enumerate(testcases)])
+        for a, dts in enumerate(testcases):
+            r = bus.run_sequence(
+                sequences.QueryDeviceTypes(GearShort(a)))
+            self.assertEqual(r, dts)
+
+    def test_querydevicetypes_by_probing_noanswer(self) -> None:
+        """Gear implementing only device types IEC 62386 does not define"""
+        bus = fakes.Bus([fakes.Gear(shortaddr=0, devicetypes=[252, 253],
+                                    enumerate_devicetypes=False)])
+        self.assertRaises(
+            exceptions.DALISequenceError,
+            bus.run_sequence, sequences.QueryDeviceTypes(GearShort(0)))
+
+    def test_querydevicetypes_unreported(self) -> None:
+        """Gear answering 254 while implementing device types anyway"""
+        testcases = [
+            [0],
+            [6],
+            [0, 1],
+        ]
+        bus = fakes.Bus([
+            fakes.Gear(shortaddr=a, devicetypes=dts,
+                       reports_device_type=False)
+            for a, dts in enumerate(testcases)])
+        for a, dts in enumerate(testcases):
+            r = bus.run_sequence(
+                sequences.QueryDeviceTypes(GearShort(a)))
+            self.assertEqual(r, dts)
+
+    def test_querydevicetypes_none_confirmed_by_probing(self) -> None:
+        """Gear answering 254 and implementing no device type"""
+        bus = fakes.Bus([fakes.Gear(shortaddr=0, devicetypes=[],
+                                    reports_device_type=False)])
+        self.assertEqual(
+            bus.run_sequence(sequences.QueryDeviceTypes(GearShort(0))), [])
 
     def test_querydevicetypes_noresponse(self) -> None:
         bus = fakes.Bus([])

@@ -104,6 +104,11 @@ class BusUnit:
         return None
 
 
+# Part 2xx version numbers answered by QueryExtendedVersionNumber; device
+# types that are not listed answer 1, the version of their first edition
+_extended_versions = {8: 2}
+
+
 class Gear(BusUnit):
     """Control gear on a DALI bus
 
@@ -116,7 +121,9 @@ class Gear(BusUnit):
                  devicetypes: list[int] = [],
                  random_preload: list[int] = [],
                  memory_banks: Iterable[type[FakeMemoryBank]] = (
-                     FakeBank0, FakeBank1)) -> None:
+                     FakeBank0, FakeBank1),
+                 enumerate_devicetypes: bool = True,
+                 reports_device_type: bool = True) -> None:
         if isinstance(shortaddr, address.GearShort):
             shortaddr = shortaddr.address
         self.shortaddr = shortaddr
@@ -131,6 +138,13 @@ class Gear(BusUnit):
         self.withdrawn = False
         self.dt_gap = 1  # Number of commands since last QueryNextDeviceType
         self.dt_queue: list[int] = []  # Devices still to be returned by QueryNextDeviceType
+        # Gear built to IEC 62386-102:2009 has no QueryNextDeviceType
+        self.enumerate_devicetypes = enumerate_devicetypes
+        # Some gear answers QueryDeviceType with 254 whatever it
+        # implements; 254 is reserved for control devices in the 2009
+        # edition and only means "no device type" from 2014 onwards
+        self.reports_device_type = reports_device_type
+        self.enabled_devicetype: Optional[int] = None
         self.randomaddr = frame.Frame(24)
         self.searchaddr = frame.Frame(24)
         self.dtr0 = 0
@@ -193,6 +207,9 @@ class Gear(BusUnit):
     def send(self, cmd: Command) -> Optional[int]:
         self.prev_cmd = cmd
         self.dt_gap += 1
+        # EnableDeviceType only applies to the command that follows it
+        enabled_devicetype = self.enabled_devicetype
+        self.enabled_devicetype = None
         # Reset enableWriteMemory if command is not one of the memory
         # writing commands, even if the command is not addressed to us
         if self.enableWriteMemory and not any(
@@ -273,6 +290,8 @@ class Gear(BusUnit):
         elif isinstance(cmd, gear.general.QueryContentDTR0):
             return self.dtr0
         elif isinstance(cmd, gear.general.QueryDeviceType):
+            if not self.reports_device_type:
+                return 254
             if len(self.devicetypes) == 0:
                 return 254
             elif len(self.devicetypes) == 1:
@@ -290,7 +309,15 @@ class Gear(BusUnit):
             return self.dtr1
         elif isinstance(cmd, gear.general.QueryContentDTR2):
             return self.dtr2
+        elif isinstance(cmd, gear.general.EnableDeviceType):
+            self.enabled_devicetype = cmd.param
+        elif isinstance(cmd, gear.general.QueryExtendedVersionNumber):
+            # Only the device types the gear implements answer this
+            if enabled_devicetype in self.devicetypes:
+                return _extended_versions.get(enabled_devicetype, 1)
         elif isinstance(cmd, gear.general.QueryNextDeviceType):
+            if not self.enumerate_devicetypes:
+                return None
             # self.dt_gap must be 1 for this command to be valid; otherwise
             # there was an intervening command
             if self.dt_gap == 1:
