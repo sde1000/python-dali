@@ -207,6 +207,16 @@ Detailed changes
   operate on the underling raw int; the others operate on the scaled
   value)
 
+- New sequences ``dali.gear.sequences.QueryDT8ColourTypeFeatures``,
+  ``QueryDT8ColourStatus`` and ``QueryDT6DimmingCurve``, which send the
+  application extended query with the ``EnableDeviceType`` prefix the
+  gear needs to answer it.
+
+- New sequence ``dali.gear.sequences.EmergencyCommand``, which issues a
+  single DT1 application extended command with its ``EnableDeviceType``
+  prefix. Without it the emergency tests, resets and mode changes are
+  ignored by the gear.
+
 - ``dali.sequences.QueryDeviceTypes`` no longer rejects device type 0.
   It was comparing each answer against the previous one to check the
   required ascending order, but starting from 0 rather than from below

@@ -13,6 +13,10 @@ from dali.address import GearAddress, GearShort
 from dali.exceptions import DALISequenceError
 from dali.gear.colour import (
     Activate,
+    QueryColourStatus,
+    QueryColourStatusResponse,
+    QueryColourTypeFeatures,
+    QueryColourTypeFeaturesResponse,
     QueryColourValue,
     QueryColourValueDTR,
     SetTemporaryColourTemperature,
@@ -35,6 +39,7 @@ from dali.gear.emergency import (
     QueryRatedDuration,
 )
 from dali.gear.incandescent import QueryRealLoadPower
+from dali.gear.led import QueryDimmingCurve, QueryDimmingCurveResponse
 from dali.gear.general import DTR0, DTR1, DTR2, QueryActualLevel, QueryContentDTR0
 
 
@@ -135,6 +140,67 @@ def QueryDT8ColourValue(
             col_val = None
 
     return col_val
+
+
+def QueryDT8ColourTypeFeatures(
+    address: GearShort,
+) -> DALISequence[Optional[QueryColourTypeFeaturesResponse]]:
+    """
+    A generator sequence to query the colour type features of a DT8 control
+    gear (62386-209, command 249), which report the colour types it supports.
+
+    Running it as a sequence ensures the required "ENABLE DEVICE TYPE 8"
+    command is sent immediately beforehand, so the gear answers the
+    application extended command instead of ignoring it.
+
+    :param address: GearShort address to query
+    :return: The QueryColourTypeFeaturesResponse, or None if no answer
+    """
+    r = yield QueryColourTypeFeatures(address)
+    if isinstance(r, QueryColourTypeFeaturesResponse):
+        return r
+    return None
+
+
+def QueryDT8ColourStatus(
+    address: GearShort,
+) -> DALISequence[Optional[QueryColourStatusResponse]]:
+    """
+    A generator sequence to query the colour status of a DT8 control gear
+    (62386-209, command 248), which reports the currently active colour type.
+
+    Running it as a sequence ensures the required "ENABLE DEVICE TYPE 8"
+    command is sent immediately beforehand, so the gear answers the
+    application extended command instead of ignoring it.
+
+    :param address: GearShort address to query
+    :return: The QueryColourStatusResponse, or None if no answer
+    """
+    r = yield QueryColourStatus(address)
+    if isinstance(r, QueryColourStatusResponse):
+        return r
+    return None
+
+
+def QueryDT6DimmingCurve(
+    address: GearShort,
+) -> DALISequence[Optional[QueryDimmingCurveResponse]]:
+    """
+    A generator sequence to query the dimming curve of a DT6 control gear
+    (62386-207, command 238), which reports whether the standard logarithmic
+    or the linear curve is in use.
+
+    Running it as a sequence ensures the required "ENABLE DEVICE TYPE 6"
+    command is sent immediately beforehand, so the gear answers the
+    application extended command instead of ignoring it.
+
+    :param address: GearShort address to query
+    :return: The QueryDimmingCurveResponse, or None if no answer
+    """
+    r = yield QueryDimmingCurve(address)
+    if isinstance(r, QueryDimmingCurveResponse):
+        return r
+    return None
 
 
 def SetDT8TcLimit(
@@ -283,3 +349,21 @@ def QueryIncandescentRealLoadPower(
     if value_int == 0xffff:
         return "MASK"
     return value_int / 4.0
+
+
+def EmergencyCommand(
+    address: GearShort,
+    command_class: type[command.Command],
+) -> DALISequence[Optional[command.Response[Any]]]:
+    """Issue a single DT1 (IEC 62386-202) application-extended command.
+
+    Running it as a sequence ensures the required "ENABLE DEVICE TYPE 1"
+    command is sent immediately beforehand, so the gear acts on the command.
+    Use this for the emergency control commands (tests, resets, mode changes)
+    which otherwise are ignored if sent without the device-type prefix.
+
+    :param address: GearShort address to command
+    :param command_class: an emergency command class taking a single address
+    :return: the command response, or None
+    """
+    return (yield command_class(address))

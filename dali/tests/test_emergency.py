@@ -7,8 +7,10 @@ from dali.gear.emergency import (
     QueryEmergencyFailureStatusResponse,
     QueryEmergencyModeResponse,
     QueryEmergencyStatusResponse,
+    StartFunctionTest,
+    StopTest,
 )
-from dali.gear.sequences import QueryEmergencyInformation
+from dali.gear.sequences import EmergencyCommand, QueryEmergencyInformation
 from dali.tests import fakes
 
 
@@ -70,3 +72,12 @@ def test_query_emergency_information_aborts_on_missing_response() -> None:
     bus = fakes.Bus([gear])
     with pytest.raises(DALISequenceError):
         bus.run_sequence(QueryEmergencyInformation(GearShort(0)))
+
+
+def test_emergency_command() -> None:
+    gear = fakes.Gear(shortaddr=0, devicetypes=[1])
+    bus = fakes.Bus([gear])
+    bus.run_sequence(EmergencyCommand(GearShort(0), StartFunctionTest))
+    assert gear.emergency_status & 0b00010000
+    bus.run_sequence(EmergencyCommand(GearShort(0), StopTest))
+    assert not gear.emergency_status & 0b00110000
