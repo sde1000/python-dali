@@ -26,7 +26,7 @@ class _GearCommand(command.Command):
         cls._gearcommands.append(cls)
 
     @classmethod
-    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: Optional[int] = None,
                    dev_inst_map: Optional[command.DITM] = None
                    ) -> Optional[_GearCommand]:
         for gc in cls._gearcommands:
@@ -62,7 +62,7 @@ class UnknownGearCommand(_GearCommand):
     """An unknown command addressed to control gear.
     """
     @classmethod
-    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: Optional[int] = None,
                    dev_inst_map: Optional[command.DITM] = None) -> None:
         return None
 
@@ -125,7 +125,8 @@ class _StandardCommand(_GearCommand):
         super().__init__(f)
 
     # (devicetype, opcode) -> commandclass
-    _opcodes: dict[tuple[int, int], type[_StandardCommand]] = {}
+    _opcodes: dict[tuple[Optional[int], int],
+                   type[_StandardCommand]] = {}
 
     def __init_subclass__(cls) -> None:
         super().__init_subclass__()
@@ -140,7 +141,7 @@ class _StandardCommand(_GearCommand):
             cls._opcodes[(cls.devicetype, cls._cmdval)] = cls
 
     @classmethod
-    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: Optional[int] = None,
                    dev_inst_map: Optional[command.DITM] = None
                    ) -> Optional[_GearCommand]:
         if not f[8]:
@@ -212,7 +213,7 @@ class DAPC(_GearCommand):
         super().__init__(f)
 
     @classmethod
-    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: Optional[int] = None,
                    dev_inst_map: Optional[command.DITM] = None
                    ) -> Optional[_GearCommand]:
         if f[8]:
@@ -1052,7 +1053,11 @@ class QueryExtendedVersionNumber(QueryExtendedVersionNumberMixin,
                                  _StandardCommand):
     """Query Extended Version Number
 
-    For device type 0, this command is ignored.
+    Not preceded by an EnableDeviceType command, so control gear will
+    ignore it.  This exists to decode such a frame when it is seen on
+    the bus, and to ask about a device type chosen at run time by
+    sending EnableDeviceType explicitly beforehand; to query a device
+    type known in advance, use its own implementation instead.
     """
     pass
 
@@ -1102,7 +1107,7 @@ class _SpecialCommand(_GearCommand):
         cls._opcodes[cls._cmdval] = cls
 
     @classmethod
-    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: Optional[int] = None,
                    dev_inst_map: Optional[command.DITM] = None
                    ) -> Optional[_GearCommand]:
         opcode = f[15:8]
@@ -1143,7 +1148,7 @@ class _ShortAddrSpecialCommand(_SpecialCommand):
             super().__init__((self.address << 1) | 1)
 
     @classmethod
-    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: Optional[int] = None,
                    dev_inst_map: Optional[command.DITM] = None
                    ) -> Optional[_ShortAddrSpecialCommand]:
         if cls == _ShortAddrSpecialCommand:
@@ -1212,7 +1217,7 @@ class Initialise(_SpecialCommand):
         super().__init__(b)
 
     @classmethod
-    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: Optional[int] = None,
                    dev_inst_map: Optional[command.DITM] = None
                    ) -> Optional[_SpecialCommand]:
         if f[15:8] == cls._cmdval:
@@ -1333,7 +1338,8 @@ class QueryShortAddress(_SpecialCommand):
 class EnableDeviceType(_SpecialCommand):
     """This command shall be sent before an application extended command.
     This command can be processed without the use of the Initialise()
-    command.  This command shall not be used for device type 0.
+    command.  The valid range of the parameter is 0 to 254; device type
+    0 is fluorescent lamp control gear, described in IEC 62386-201.
     """
     _cmdval = 0xc1
     _hasparam = True

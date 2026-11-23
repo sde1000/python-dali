@@ -5,6 +5,7 @@ This module declares commands and responses defined in part 102
 extensions and control gear specific features).
 """
 import dali.gear.general
+import dali.gear.fluorescent
 import dali.gear.emergency
 import dali.gear.incandescent
 import dali.gear.converter
