@@ -10,7 +10,7 @@
 
 import argparse
 import asyncio
-from dali.driver.hid import tridonic, hasseb
+from dalidrivers.misc.hid import tridonic, hasseb
 from dali.sequences import Commissioning
 
 import logging

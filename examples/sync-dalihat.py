@@ -11,8 +11,8 @@ from dali.gear.general import (
     QueryMaxLevel,
     QueryPhysicalMinimum,
 )
-from dali.driver.base import SyncDALIDriver
-from dali.driver.atxled import SyncDaliHatDriver
+from dalidrivers.misc.base import SyncDALIDriver
+from dalidrivers.misc.atxled import SyncDaliHatDriver
 from dali.address import GearShort
 
 import logging

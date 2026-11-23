@@ -191,6 +191,14 @@ Detailed changes
   module with an ``InstanceEventFilter`` attribute. A
   DeprecationWarning will be raised if you pass a module.
 
+- The ``dali.command.DITM`` protocol no longer allows ints to be
+  passed for ``short_address`` and ``instance_number``; pass
+  ``dali.address.DeviceShort`` and ``dali.address.InstanceNumber``
+  instead. The implementation in
+  ``dali.device.helpers.DeviceInstanceTypeMapper`` now raises a
+  DeprecationWarning if you pass ints to ``add_type()`` or
+  ``get_type()``.
+
 - ``dali.memory.location.MemoryValue`` implementation detail:
   ``MemoryValue.locations`` is defined to be either a single
   ``MemoryLocation`` or an iterable of ``MemoryLocation``. The
