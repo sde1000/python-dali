@@ -207,6 +207,18 @@ Detailed changes
   operate on the underling raw int; the others operate on the scaled
   value)
 
+- ``Command.devicetype`` now uses ``None`` rather than ``0`` to mean
+  "no ``EnableDeviceType`` needed", which frees 0 to name the device
+  type it is, fluorescent lamp control gear. The ``devicetype``
+  parameter of ``Command.from_frame()`` follows suit, so a frame that
+  was not preceded by ``EnableDeviceType`` no longer decodes as one
+  that was preceded by ``EnableDeviceType(0)``. Code that passes
+  ``devicetype=0`` to say "none" must pass ``None`` instead.
+
+- New module ``dali.gear.fluorescent`` with the commands from IEC
+  62386-201, fluorescent lamp control gear. Part 201 defines a single
+  application extended command, ``QueryExtendedVersionNumber``.
+
 - New sequences ``dali.gear.sequences.QueryDT8ColourTypeFeatures``,
   ``QueryDT8ColourStatus`` and ``QueryDT6DimmingCurve``, which send the
   application extended query with the ``EnableDeviceType`` prefix the

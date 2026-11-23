@@ -269,8 +269,11 @@ class Command:
     # 16-bit frames may be interpreted differently if they are
     # preceded by the EnableDeviceType command.  If a command needs
     # EnableDeviceType(foo) to be sent first, override devicetype to
-    # foo.  This parameter is ignored for all other frame lengths.
-    devicetype = 0
+    # foo; None means the command must not be preceded by one.  Device
+    # type 0 is fluorescent lamp control gear, IEC 62386-201, so zero
+    # is a device type like any other.  This parameter is ignored for
+    # all other frame lengths.
+    devicetype: Optional[int] = None
 
     _commands: set[type[Command]] = set()
     _supported_devicetypes: set[int] = set()
@@ -279,7 +282,7 @@ class Command:
     def __init_subclass__(cls) -> None:
         if cls.__name__[0] != '_':
             cls._commands.add(cls)
-        if cls.devicetype != 0:
+        if cls.devicetype is not None:
             cls._supported_devicetypes.add(cls.devicetype)
         subs = cls._framesizes.setdefault(cls._framesize, list())
         subs.append(cls)
@@ -294,7 +297,7 @@ class Command:
 
     @classmethod
     def from_frame(
-            cls, f: frame.ForwardFrame, devicetype: int = 0,
+            cls, f: frame.ForwardFrame, devicetype: Optional[int] = None,
             dev_inst_map: Optional[DITM] = None
     ) -> Optional[Command]:
         """Return a Command instance corresponding to the supplied frame.

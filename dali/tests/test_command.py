@@ -8,11 +8,12 @@ from dali import exceptions
 from dali.gear import general as generalgear
 
 
-def _test_pattern() -> Iterable[tuple[int, int | Iterable[int], int]]:
-    # Control gear, device type zero
+def _test_pattern() -> Iterable[
+        tuple[int, int | Iterable[int], int | None]]:
+    # Control gear, no preceding EnableDeviceType
     for d in range(0, 0x10000):
-        yield 16, d, 0
-    # Control gear, device type non-zero, application extended commands only
+        yield 16, d, None
+    # Control gear, application extended commands only
     for dt in command.Command._supported_devicetypes:
         for a in range(1, 0x100, 2):
             for b in range(0xe0, 0x100):
@@ -20,24 +21,24 @@ def _test_pattern() -> Iterable[tuple[int, int | Iterable[int], int]]:
     # Control devices, device commands only
     for a in range(0, 0x100):
         for b in range(0, 0x100):
-            yield 24, (a, 0xfe, b), 0
+            yield 24, (a, 0xfe, b), None
     # Control devices, instance commands addressed to broadcast device addr
     for d in range(0, 0x10000):
-        yield 24, 0xff0000 | d, 0
+        yield 24, 0xff0000 | d, None
     # Control devices, special commands
     for c in range(0, 0x100):
-        yield 24, (0xc1, c, 0x00), 0
+        yield 24, (0xc1, c, 0x00), None
     for c in (0xc5, 0xc7, 0xc9):
-        yield 24, (c, 0x00, 0x00), 0
+        yield 24, (c, 0x00, 0x00), None
     # Control devices, event messages for push buttons (part 301)
     for e in (0, 1, 2, 5, 9, 11, 12, 14, 15):
-        yield 24, (0xc2, 0x04, e), 0
+        yield 24, (0xc2, 0x04, e), None
     # Control devices, QueryEventFilter
     for o in (0x90, 0x91, 0x92):
-        yield 24, (0x03, 0x00, o), 0
+        yield 24, (0x03, 0x00, o), None
     # Control devices, events for occupancy sensors (part 303)
     for e in range(16):
-        yield 24, (0x86, 0xFC, e), 0
+        yield 24, (0x86, 0xFC, e), None
 
 
 class TrialEnum(enum.IntEnum):
@@ -398,9 +399,9 @@ class TestCommands(unittest.TestCase):
     def test_queryextendedversionnumber(self) -> None:
         """all gear types implement QueryExtendedVersionNumber"""
         # dali.gear.general.QueryExtendedVersionNumber is an oddity:
-        # it is only used when preceded by EnableDeviceType with
-        # devicetype != 0.  Ensure that there is an implementation of
-        # this command for all supported device types.
+        # it is only used when preceded by EnableDeviceType.  Ensure
+        # that there is an implementation of this command for all
+        # supported device types.
         qevn_frame = generalgear.QueryExtendedVersionNumber(
             address.Broadcast()).frame
         for devicetype in command.Command._supported_devicetypes:

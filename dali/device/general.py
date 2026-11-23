@@ -66,7 +66,7 @@ class _DeviceCommand(command.Command):
         cls._devicecommands.append(cls)
 
     @classmethod
-    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: Optional[int] = None,
                    dev_inst_map: Optional[command.DITM] = None
                    ) -> Optional[_DeviceCommand]:
         # In 24-bit frames, bit 16 is 1 for "commands" (as opposed to "events")
@@ -103,7 +103,7 @@ class UnknownDeviceCommand(_DeviceCommand):
     """An unknown command addressed to a control device.
     """
     @classmethod
-    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: Optional[int] = None,
                    dev_inst_map: Optional[command.DITM] = None) -> None:
         return None
 
@@ -167,7 +167,7 @@ class _StandardDeviceCommand(_DeviceCommand):
         cls._opcodes[cls._opcode] = cls
 
     @classmethod
-    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: Optional[int] = None,
                    dev_inst_map: Optional[command.DITM] = None
                    ) -> Optional[_DeviceCommand]:
         if f[16:8] != 0x1FE:
@@ -561,7 +561,7 @@ class _StandardInstanceCommand(_DeviceCommand):
         cls._opcodes[cls._opcode] = cls
 
     @classmethod
-    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: Optional[int] = None,
                    dev_inst_map: Optional[command.DITM] = None
                    ) -> Optional[_DeviceCommand]:
         # In 24-bit frames, bit 16 is 1 for "commands" (as opposed to "events")
@@ -803,7 +803,7 @@ class _SpecialDeviceCommand(_DeviceCommand):
         )
 
     @classmethod
-    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: Optional[int] = None,
                    dev_inst_map: Optional[command.DITM] = None
                    ) -> Optional[_SpecialDeviceCommand]:
         if cls == _SpecialDeviceCommand:
@@ -827,7 +827,7 @@ class _SpecialDeviceCommandOneParam(_SpecialDeviceCommand):
         super().__init__()
 
     @classmethod
-    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: Optional[int] = None,
                    dev_inst_map: Optional[command.DITM] = None
                    ) -> Optional[_SpecialDeviceCommandOneParam]:
         if cls == _SpecialDeviceCommandOneParam:
@@ -855,7 +855,7 @@ class _SpecialDeviceCommandTwoParam(_SpecialDeviceCommand):
         super().__init__()
 
     @classmethod
-    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: Optional[int] = None,
                    dev_inst_map: Optional[command.DITM] = None
                    ) -> Optional[_SpecialDeviceCommandTwoParam]:
         if cls == _SpecialDeviceCommandTwoParam:
@@ -1212,7 +1212,7 @@ class _Event(command.Command):
 
     @classmethod
     def from_frame(
-        cls, f: frame.ForwardFrame, devicetype: int = 0,
+        cls, f: frame.ForwardFrame, devicetype: Optional[int] = None,
         dev_inst_map: Optional[command.DITM] = None
     ) -> Optional[_Event]:
         # In 24-bit frames, bit 16 is 0 for "events"
@@ -1345,7 +1345,7 @@ class UnknownEvent(_Event):
         return self._unhandled_data
 
     @classmethod
-    def from_frame(cls, f: frame.ForwardFrame, devicetype: int = 0,
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: Optional[int] = None,
                    dev_inst_map: Optional[command.DITM] = None) -> None:
         return
 
