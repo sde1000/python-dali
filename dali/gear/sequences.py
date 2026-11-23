@@ -4,6 +4,7 @@ Sequence for simplifying certain interactions with 16-bit DALI gear
 from __future__ import annotations
 
 from dataclasses import dataclass
+from collections.abc import Callable
 from typing import Optional, TypeVar, Any, Literal, Iterable
 import warnings
 
@@ -353,7 +354,7 @@ def QueryIncandescentRealLoadPower(
 
 def EmergencyCommand(
     address: GearShort,
-    command_class: type[command.Command],
+    command_class: Callable[[GearShort], command.Command],
 ) -> DALISequence[Optional[command.Response[Any]]]:
     """Issue a single DT1 (IEC 62386-202) application-extended command.
 

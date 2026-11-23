@@ -18,6 +18,9 @@ command frames can also be addressed to features.
 
 Addressing for event messages is described in IEC 62386-103 section
 7.2.2.  Decoding of event messages is currently not implemented.
+
+Addressing for firmware transfer uses 32-bit frames; the destination
+occupies the most significant byte.  See dali.firmware.
 """
 
 from __future__ import annotations
@@ -77,6 +80,24 @@ class DeviceAddress(Address):
     """Base class for control device addresses"""
 
     required_frame_size = 24
+
+
+class FirmwareAddress(Address):
+    """Base class for addresses in 32-bit firmware transfer frames
+
+    IEC 62386-105 firmware transfer frames are 32 bits long and carry
+    their destination in the most significant byte.  The selector bit
+    (bit 24) is always 0; bits 31:25 hold the same broadcast,
+    broadcast-unaddressed and short address encodings used by control
+    gear and control devices.
+
+    Firmware transfer is addressed to a bus unit regardless of whether
+    it is control gear or a control device, so these addresses are a
+    family of their own rather than a variant of GearAddress or
+    DeviceAddress.
+    """
+
+    required_frame_size = 32
 
 
 class GearBroadcast(GearAddress):
@@ -338,6 +359,93 @@ class DeviceShort(DeviceAddress):
 
     def __str__(self) -> str:
         return f"<address (control device) {self.address}>"
+
+
+class FirmwareBroadcast(FirmwareAddress):
+    """All bus units connected to the network, for firmware transfer"""
+
+    @classmethod
+    def from_frame(cls, f: ForwardFrame) -> Optional[FirmwareBroadcast]:
+        if len(f) == 32:
+            if f[31:25] == 0x7F and not f[24]:
+                return cls()
+        return None
+
+    def add_to_frame(self, f: ForwardFrame) -> None:
+        if len(f) == 32:
+            f[31:25] = 0x7F
+            f[24] = False
+        else:
+            raise _bad_frame_length
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, FirmwareBroadcast)
+
+    def __str__(self) -> str:
+        return "<broadcast (firmware transfer)>"
+
+
+class FirmwareBroadcastUnaddressed(FirmwareAddress):
+    """All bus units with no short address assigned, for firmware transfer"""
+
+    @classmethod
+    def from_frame(
+            cls, f: ForwardFrame) -> Optional[FirmwareBroadcastUnaddressed]:
+        if len(f) == 32:
+            if f[31:25] == 0x7E and not f[24]:
+                return cls()
+        return None
+
+    def add_to_frame(self, f: ForwardFrame) -> None:
+        if len(f) == 32:
+            f[31:25] = 0x7E
+            f[24] = False
+        else:
+            raise _bad_frame_length
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, FirmwareBroadcastUnaddressed)
+
+    def __str__(self) -> str:
+        return "<broadcast unaddressed (firmware transfer)>"
+
+
+class FirmwareShort(FirmwareAddress):
+    """The bus unit that has this short address, for firmware transfer
+
+    The short address spaces for control gear and control devices are
+    separate, and a 32-bit firmware transfer frame does not distinguish
+    between them.
+    """
+
+    def __init__(self, address: int) -> None:
+        if not isinstance(address, int):
+            raise ValueError("address must be an integer")
+        if address < 0 or address > 63:
+            raise ValueError("address must be in the range 0..63")
+        self.address = address
+
+    @classmethod
+    def from_frame(cls, f: ForwardFrame) -> Optional[FirmwareShort]:
+        if len(f) == 32:
+            if not f[31] and not f[24]:
+                return cls(f[30:25])
+        return None
+
+    def add_to_frame(self, f: ForwardFrame) -> None:
+        if len(f) == 32:
+            f[31] = False
+            f[30:25] = self.address
+            f[24] = False
+        else:
+            raise _bad_frame_length
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, FirmwareShort) and \
+            other.address == self.address
+
+    def __str__(self) -> str:
+        return f"<address (firmware transfer) {self.address}>"
 
 
 from_frame = Address.from_frame

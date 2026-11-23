@@ -175,8 +175,7 @@ def _QueryDeviceTypesByProbing(
     for devicetype in _device_types:
         yield EnableDeviceType(devicetype)
         r = yield QueryExtendedVersionNumber(addr)
-        assert isinstance(r, QueryExtendedVersionNumber.response)
-        if r.valid:
+        if isinstance(r, command.NumericResponse) and r.valid:
             result.append(devicetype)
     if not result and not allow_empty:
         raise DALISequenceError(

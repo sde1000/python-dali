@@ -207,6 +207,17 @@ Detailed changes
   operate on the underling raw int; the others operate on the scaled
   value)
 
+- New module ``dali.firmware`` with the firmware transfer commands, and
+  a ``FirmwareAddress`` family in ``dali.address`` for their 32-bit
+  addressing.
+
+- New module ``dali.firmware_sequences`` with sequences that transfer a
+  firmware image to control gear or a control device, and that find the
+  bus units supporting firmware transfer. See
+  ``examples/async-firmware-update.py``. The order of the commands in
+  these sequences has been inferred from the command set and should be
+  checked against IEC 62386-105 before use on real hardware.
+
 - ``Command.devicetype`` now uses ``None`` rather than ``0`` to mean
   "no ``EnableDeviceType`` needed", which frees 0 to name the device
   type it is, fluorescent lamp control gear. The ``devicetype``

@@ -124,8 +124,10 @@ class _StandardCommand(_GearCommand):
 
         super().__init__(f)
 
-    # (devicetype, opcode) -> commandclass
-    _opcodes: dict[tuple[int, int], type[_StandardCommand]] = {}
+    # (devicetype, opcode) -> commandclass; devicetype is None for
+    # commands that must not be preceded by EnableDeviceType
+    _opcodes: dict[tuple[Optional[int], int],
+                   type[_StandardCommand]] = {}
 
     def __init_subclass__(cls) -> None:
         super().__init_subclass__()

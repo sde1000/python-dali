@@ -6,6 +6,7 @@ from dali import command
 from dali import frame
 from dali import exceptions
 from dali.gear import general as generalgear
+from dali import firmware  # noqa: F401
 
 
 def _test_pattern() -> Iterable[
@@ -39,6 +40,16 @@ def _test_pattern() -> Iterable[
     # Control devices, events for occupancy sensors (part 303)
     for e in range(16):
         yield 24, (0x86, 0xFC, e), None
+    # Firmware transfer, addressed commands (including unknown opcodes)
+    for a in (0x00, 0x02, 0x7E, 0xFC, 0xFE):
+        for o in range(0, 0x100):
+            yield 32, (a, 0xFB, o, 0x00), None
+    # Firmware transfer, special commands
+    for c in (0xCB, 0xBD):
+        for d in (0x000000, 0x000001, 0xFB0000, 0xFFFFFF):
+            yield 32, (c, d >> 16, (d >> 8) & 0xFF, d & 0xFF), None
+    # Firmware transfer, frames that are not commands we recognise
+    yield 32, (0x12, 0x34, 0x56, 0x78), None
 
 
 class TrialEnum(enum.IntEnum):
