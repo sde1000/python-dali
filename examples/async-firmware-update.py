@@ -53,8 +53,8 @@ from dali.address import (
     GearShort,
 )
 from dali.device.general import QueryDeviceStatus
-from dali.driver.hid import tridonic
-from dali.driver.serial import DriverLubaRs232
+from dalidrivers.misc.hid import tridonic
+from dalidrivers.typed.serial import DriverLubaRs232
 from dali.firmware_sequences import FindFirmwareUpdateTargets, FirmwareUpdate
 from dali.gear.general import QueryControlGearPresent
 
