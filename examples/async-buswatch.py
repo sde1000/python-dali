@@ -4,15 +4,9 @@ import logging
 import asyncio
 import sys
 from dalidrivers.typed.hid import tridonic
-import signal
 import dali.gear
 import dali.device
 from dali.device.helpers import DeviceInstanceTypeMapper
-
-STOP = asyncio.Event()
-
-def handle_sigint():
-    STOP.set()
 
 def print_command_and_response(dev, command, response, config_command_error):
     if config_command_error:
@@ -37,10 +31,18 @@ async def main():
     await dev.run_sequence(dev_inst_map.autodiscover())
     print("Device instance map read")
     print(dev_inst_map)
-    asyncio.get_running_loop().add_signal_handler(signal.SIGINT, handle_sigint)
-    await STOP.wait()
-    dev.disconnect()
+    print("Watching the bus, press Ctrl+C to stop")
+    try:
+        # Run until Ctrl+C.  asyncio.run() turns it into a cancellation of
+        # this task on every platform (loop.add_signal_handler() is not
+        # available on Windows).
+        await asyncio.Event().wait()
+    finally:
+        dev.disconnect()
 
 if __name__ == "__main__":
     # logging.basicConfig(level=logging.DEBUG)
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
