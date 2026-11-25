@@ -22,6 +22,7 @@ This library has been written with reference to the following documents:
 - IEC 62386-101:2014 (general requirements for system components)
 - IEC 62386-102:2014 (general requirements for control gear)
 - IEC 62386-103:2014 (general requirements for control devices)
+- IEC 62386-105 Ed.2 FDIS (firmware transfer)
 - IEC 62386-201:2009 (fluorescent lamps)
 - IEC 62386-202:2022 (self-contained emergency lighting)
 - IEC 62386-205:2009 (supply voltage controller for incandescent lamps)
@@ -37,6 +38,11 @@ I do not have copies of the other parts of the standard; they are
 fairly expensive to obtain.  The library is designed to be extensible;
 adding support for the other parts ought to be easy and
 self-contained.
+
+The ``dali.firmware`` and ``dali.firmware_sequences`` modules have not
+been run against hardware that accepts a firmware image, so read the
+notes in both modules, and the firmware update documentation for your
+product, before pointing them at hardware you care about.
 
 The ``dali.memory`` module supports the extended memory bank
 specifications created and maintained by the `Digital Illumination
@@ -82,6 +88,11 @@ Library structure
     - ``sequences`` - Packaged sequences for working with DALI control devices
 
   - ``exceptions`` - DALI related exceptions
+
+  - ``firmware`` - Commands from part 105, in 32-bit frames; not stable
+
+  - ``firmware_sequences`` - Packaged sequences for transferring a
+    firmware image; not stable
 
   - ``frame`` - Forward and backward frames; stable
 
