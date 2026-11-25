@@ -106,7 +106,7 @@ The following commands have had their response types changed from
 +-------------------------------------------------------+---------------------------------------------+
 | ``dali.gear.incandescent.QueryLoadRating``            | ``LoadCurrentRatingResponse`` (new)         |
 +-------------------------------------------------------+---------------------------------------------+
-| ``dali.gear.incandescent.QueryDimmingCurve``          | ``NumericResponse``                         |
+| ``dali.gear.incandescent.QueryDimmingCurve``          | ``QueryDimmingCurveResponse`` (new)         |
 +-------------------------------------------------------+---------------------------------------------+
 
 The following response classes have been changed:
