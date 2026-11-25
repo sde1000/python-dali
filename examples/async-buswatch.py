@@ -2,6 +2,7 @@
 
 import logging
 import asyncio
+import sys
 from dalidrivers.typed.hid import tridonic
 import signal
 import dali.gear
@@ -23,11 +24,14 @@ def print_command_and_response(dev, command, response, config_command_error):
 
 async def main():
     dev_inst_map = DeviceInstanceTypeMapper()
-    dev = tridonic("/dev/dali/daliusb-*", glob=True, dev_inst_map=dev_inst_map)
+    # On Linux, open the hidraw node named by examples/50-dali-hid.rules;
+    # elsewhere hidapi finds the USB device.
+    linux = sys.platform.startswith("linux")
+    dev = tridonic("/dev/dali/daliusb-*" if linux else None, glob=True,
+                   dev_inst_map=dev_inst_map)
     dev.bus_traffic.register(print_command_and_response)
-    dev.connect()
     print("Waiting for device...")
-    await dev.connected.wait()
+    await dev.connect()
     print(f"Connected, firmware={dev.firmware_version}, serial={dev.serial}")
     print("Reading device instance map...")
     await dev.run_sequence(dev_inst_map.autodiscover())

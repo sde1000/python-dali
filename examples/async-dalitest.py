@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import sys
 from dali.address import GearShort, GearBroadcast, \
     DeviceShort, DeviceBroadcast, InstanceNumber
 import dali.gear.general as gg
@@ -109,13 +110,16 @@ async def scan_control_devices(d):
 
 
 async def main():
-    d = tridonic("/dev/dali/daliusb-*", glob=True)
+    # On Linux, open the hidraw node named by examples/50-dali-hid.rules.
+    # Elsewhere (Windows, macOS) hidapi opens the first matching USB device.
+    linux = sys.platform.startswith("linux")
+    d = tridonic("/dev/dali/daliusb-*" if linux else None, glob=True)
 
     # This script fails with the hasseb dali master in several
     # circumstances, for example if any devices are present that have
     # multiple device types.
 
-    # d = hasseb("/dev/dali/hasseb-*", glob=True)
+    # d = hasseb("/dev/dali/hasseb-*" if linux else None, glob=True)
 
     # Uncomment to show a dump of bus traffic
     # d.bus_traffic.register(print_command_and_response)
@@ -123,8 +127,7 @@ async def main():
     # If there's a problem sending a command, keep trying
     d.exceptions_on_send = False
 
-    d.connect()
-    await d.connected.wait()
+    await d.connect()
 
     # Is any control gear present?
     #gp = await d.send(gg.QueryControlGearPresent(GearBroadcast()))

@@ -62,7 +62,10 @@ async def scan_control_gear(d, detailed):
                 print(f"{addr}: {arc_power:.01f}%, Tc {tc_kelvin_mirek(tc)}K{tc_detailed_info}")
 
 async def main():
-    d = tridonic("/dev/dali/daliusb-*", glob=True)
+    # On Linux, open the hidraw node named by examples/50-dali-hid.rules;
+    # elsewhere hidapi finds the USB device.
+    linux = sys.platform.startswith("linux")
+    d = tridonic("/dev/dali/daliusb-*" if linux else None, glob=True)
 
     if len(sys.argv) < 2:
         show_usage()
@@ -106,8 +109,7 @@ async def main():
     # If there's a problem sending a command, keep trying
     d.exceptions_on_send = False
 
-    d.connect()
-    await d.connected.wait()
+    await d.connect()
 
     if mode == 'show-all-gear':
         await scan_control_gear(d, detailed)

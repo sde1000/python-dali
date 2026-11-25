@@ -10,6 +10,7 @@
 
 import argparse
 import asyncio
+import sys
 from dalidrivers.typed.hid import tridonic, hasseb
 from dali.sequences import Commissioning
 
@@ -41,12 +42,12 @@ async def main(args):
     d = driver(args.device)
     if args.debug:
         d.bus_traffic.register(print_command_and_response)
-    if not d.connect():
-        log.error("Unable to open device %s with %s driver",
-                  args.device, args.driver)
-        d.disconnect()
+    try:
+        await d.connect()
+    except OSError as e:
+        log.error("Unable to open device %s with %s driver: %s",
+                  args.device, args.driver, e)
         return
-    await d.connected.wait()
     log.info("Connected to device %s with %s driver", args.device, args.driver)
 
     await d.run_sequence(
@@ -59,8 +60,10 @@ async def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Add short addresses to a DALI lighting system")
-    parser.add_argument('--device', '-d', type=str, required=True,
-                        help="device file to open")
+    parser.add_argument('--device', '-d', type=str,
+                        required=sys.platform.startswith("linux"),
+                        help="device file to open (required on Linux; "
+                        "elsewhere defaults to the first matching USB device)")
     parser.add_argument('--driver', '-r', type=str, required=True,
                         choices=drivers.keys(), help="device driver")
     mode_group = parser.add_mutually_exclusive_group(required=True)
