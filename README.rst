@@ -46,16 +46,19 @@ Interface Alliance`_:
 - DiiA DALI Part 252 — Energy Reporting
 - DiiA DALI Part 253 — Diagnostics & Maintenance
 
+
 Python versions supported
 -------------------------
 
 This library currently requires Python version 3.10 or later.
+
 
 Stability
 ---------
 
 Some of the code in this project is experimental and its API is
 subject to change. Modules with stable APIs are noted below.
+
 
 Library structure
 -----------------
@@ -97,6 +100,13 @@ Library structure
   - ``memory`` - access to memory banks; not stable
 
   - ``sequences`` - base classes for packaged sequences of commands; stable
+
+
+Hardware drivers and examples
+-----------------------------
+
+There are some drivers for DALI interface hardware, and some example
+code making use of this library, in the `dali-drivers`_ project.
 
 
 Contributors
@@ -152,3 +162,4 @@ not, see `this link`_.
 
 .. _this link: https://www.gnu.org/licenses/
 .. _Digital Illumination Interface Alliance: https://www.dali-alliance.org/dali/data.html
+.. _dali-drivers: https://github.com/sde1000/dali-drivers
