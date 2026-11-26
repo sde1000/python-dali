@@ -18,6 +18,14 @@ command frames can also be addressed to features.
 
 Addressing for event messages is described in IEC 62386-103 section
 7.2.2.  Decoding of event messages is currently not implemented.
+
+Addressing for firmware transfer is described in IEC 62386-105
+section 7.2.  Command frames are 32 bits long and carry their
+destination in the most significant byte; they can be addressed to
+one of 64 short addresses, to all bus units, or to all bus units that
+do not have a short address assigned, in either the control gear or
+the control device address space.  There are no group addresses.  See
+dali.firmware.
 """
 
 from __future__ import annotations
@@ -77,6 +85,43 @@ class DeviceAddress(Address):
     """Base class for control device addresses"""
 
     required_frame_size = 24
+
+
+class FirmwareAddress(Address):
+    """Base class for addresses in 32-bit firmware transfer frames
+
+    IEC 62386-105 firmware transfer frames are 32 bits long and carry
+    their destination in the most significant byte.  Table 1 of that
+    document gives the encoding, in bits 31 down to 24:
+
+        addressing method       bits 31..24
+        ----------------------  -----------
+        short addressing        0AAAAAAx
+        broadcast unaddressed   1111110x
+        broadcast               1111111x
+
+    All other address byte values are reserved, with the exception of
+    the two data transfer commands, which use the address byte to
+    identify themselves instead; see dali.firmware.
+
+    Bit 24 - shown as "x" above - selects the address space: 0 is
+    control gear and 1 is control devices.  Per section 9.2, a bus
+    unit discards a short, broadcast or broadcast-unaddressed command
+    whose bit 24 does not match its own type, so a firmware transfer
+    is addressed to control gear or to control devices in just the
+    same way as a 16-bit or 24-bit frame - hence the separate
+    FirmwareGear* and FirmwareDevice* classes below, mirroring the
+    GearAddress and DeviceAddress families.
+
+    There is no group address: part 105 Table 1 does not define one.
+    """
+
+    required_frame_size = 32
+
+    # Bit 24 of the frame: False selects the control gear address
+    # space, True the control device address space.  Each concrete
+    # class below writes the bit itself; this reports which it writes.
+    is_control_device: bool = False
 
 
 class GearBroadcast(GearAddress):
@@ -338,6 +383,220 @@ class DeviceShort(DeviceAddress):
 
     def __str__(self) -> str:
         return f"<address (control device) {self.address}>"
+
+
+class FirmwareGearBroadcast(FirmwareAddress):
+    """All control gear connected to the network, for firmware transfer"""
+
+    is_control_device = False
+
+    @classmethod
+    def from_frame(cls, f: ForwardFrame) -> Optional[FirmwareGearBroadcast]:
+        if len(f) == 32:
+            if f[31:25] == 0x7F and not f[24]:
+                return cls()
+        return None
+
+    def add_to_frame(self, f: ForwardFrame) -> None:
+        if len(f) == 32:
+            f[31:25] = 0x7F
+            f[24] = False
+        else:
+            raise _bad_frame_length
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, FirmwareGearBroadcast)
+
+    def __str__(self) -> str:
+        return "<broadcast (firmware transfer, control gear)>"
+
+
+class FirmwareDeviceBroadcast(FirmwareAddress):
+    """All control devices connected to the network, for firmware transfer"""
+
+    is_control_device = True
+
+    @classmethod
+    def from_frame(cls, f: ForwardFrame) -> Optional[FirmwareDeviceBroadcast]:
+        if len(f) == 32:
+            if f[31:25] == 0x7F and f[24]:
+                return cls()
+        return None
+
+    def add_to_frame(self, f: ForwardFrame) -> None:
+        if len(f) == 32:
+            f[31:25] = 0x7F
+            f[24] = True
+        else:
+            raise _bad_frame_length
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, FirmwareDeviceBroadcast)
+
+    def __str__(self) -> str:
+        return "<broadcast (firmware transfer, control device)>"
+
+
+class FirmwareGearBroadcastUnaddressed(FirmwareAddress):
+    """All control gear with no short address, for firmware transfer
+
+    A firmware transfer short address is just the unit's part 102
+    short address, so this is the only way to reach control gear that
+    has not been commissioned - and it reaches all of it at once, so
+    none of the queries that check progress can be used.
+    """
+
+    is_control_device = False
+
+    @classmethod
+    def from_frame(
+            cls, f: ForwardFrame
+    ) -> Optional[FirmwareGearBroadcastUnaddressed]:
+        if len(f) == 32:
+            if f[31:25] == 0x7E and not f[24]:
+                return cls()
+        return None
+
+    def add_to_frame(self, f: ForwardFrame) -> None:
+        if len(f) == 32:
+            f[31:25] = 0x7E
+            f[24] = False
+        else:
+            raise _bad_frame_length
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, FirmwareGearBroadcastUnaddressed)
+
+    def __str__(self) -> str:
+        return "<broadcast unaddressed (firmware transfer, control gear)>"
+
+
+class FirmwareDeviceBroadcastUnaddressed(FirmwareAddress):
+    """All control devices with no short address, for firmware transfer
+
+    A firmware transfer short address is just the unit's part 103
+    short address, so this is the only way to reach a control device
+    that has not been commissioned - and it reaches all of them at
+    once, so none of the queries that check progress can be used.
+    """
+
+    is_control_device = True
+
+    @classmethod
+    def from_frame(
+            cls, f: ForwardFrame
+    ) -> Optional[FirmwareDeviceBroadcastUnaddressed]:
+        if len(f) == 32:
+            if f[31:25] == 0x7E and f[24]:
+                return cls()
+        return None
+
+    def add_to_frame(self, f: ForwardFrame) -> None:
+        if len(f) == 32:
+            f[31:25] = 0x7E
+            f[24] = True
+        else:
+            raise _bad_frame_length
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, FirmwareDeviceBroadcastUnaddressed)
+
+    def __str__(self) -> str:
+        return "<broadcast unaddressed (firmware transfer, control device)>"
+
+
+class FirmwareGearShort(FirmwareAddress):
+    """The control gear that has this short address, for firmware transfer
+
+    This is not a separate address space.  Nothing in the part 105
+    command set assigns, programs or queries a short address, so
+    control gear can only have one here because it already has one
+    from part 102 commissioning.  FirmwareGearShort(3) is the control
+    gear that GearShort(3) addresses.
+
+    The control gear and control device short address spaces are
+    separate, so control gear A3 and control device A3 are different
+    units.  Bit 24 of the frame tells them apart: this class clears
+    it, FirmwareDeviceShort sets it.
+    """
+
+    is_control_device = False
+
+    def __init__(self, address: int) -> None:
+        if not isinstance(address, int):
+            raise ValueError("address must be an integer")
+        if address < 0 or address > 63:
+            raise ValueError("address must be in the range 0..63")
+        self.address = address
+
+    @classmethod
+    def from_frame(cls, f: ForwardFrame) -> Optional[FirmwareGearShort]:
+        if len(f) == 32:
+            if not f[31] and not f[24]:
+                return cls(f[30:25])
+        return None
+
+    def add_to_frame(self, f: ForwardFrame) -> None:
+        if len(f) == 32:
+            f[31] = False
+            f[30:25] = self.address
+            f[24] = False
+        else:
+            raise _bad_frame_length
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, FirmwareGearShort) and \
+            other.address == self.address
+
+    def __str__(self) -> str:
+        return f"<address (firmware transfer, control gear) {self.address}>"
+
+
+class FirmwareDeviceShort(FirmwareAddress):
+    """The control device that has this short address, for firmware transfer
+
+    This is not a separate address space.  Nothing in the part 105
+    command set assigns, programs or queries a short address, so a
+    control device can only have one here because it already has one
+    from part 103 commissioning.  FirmwareDeviceShort(3) is the
+    control device that DeviceShort(3) addresses.
+
+    The control gear and control device short address spaces are
+    separate, so control gear A3 and control device A3 are different
+    units.  Bit 24 of the frame tells them apart: this class sets it,
+    FirmwareGearShort clears it.
+    """
+
+    is_control_device = True
+
+    def __init__(self, address: int) -> None:
+        if not isinstance(address, int):
+            raise ValueError("address must be an integer")
+        if address < 0 or address > 63:
+            raise ValueError("address must be in the range 0..63")
+        self.address = address
+
+    @classmethod
+    def from_frame(cls, f: ForwardFrame) -> Optional[FirmwareDeviceShort]:
+        if len(f) == 32:
+            if not f[31] and f[24]:
+                return cls(f[30:25])
+        return None
+
+    def add_to_frame(self, f: ForwardFrame) -> None:
+        if len(f) == 32:
+            f[31] = False
+            f[30:25] = self.address
+            f[24] = True
+        else:
+            raise _bad_frame_length
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, FirmwareDeviceShort) and \
+            other.address == self.address
+
+    def __str__(self) -> str:
+        return f"<address (firmware transfer, control device) {self.address}>"
 
 
 from_frame = Address.from_frame

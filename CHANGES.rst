@@ -215,6 +215,22 @@ Detailed changes
   operate on the underling raw int; the others operate on the scaled
   value)
 
+- New module ``dali.firmware`` with the firmware transfer commands of
+  IEC 62386-105, and a ``FirmwareAddress`` family in ``dali.address``
+  for their 32-bit addressing. Bit 24 of the frame selects the address
+  space, so the family splits into ``FirmwareGearShort`` /
+  ``FirmwareDeviceShort`` and the corresponding broadcast and
+  broadcast-unaddressed classes, in the same way as ``GearShort`` and
+  ``DeviceShort``. There is no group addressing, and an ``int`` is not
+  accepted as a destination because a short address on its own does not
+  say which address space is meant.
+
+- New module ``dali.firmware_sequences`` with sequences that transfer a
+  firmware image to control gear or a control device, and that find the
+  bus units supporting firmware transfer. These have not been run
+  against hardware that accepts a firmware image; check them against
+  the firmware update documentation for your product before use.
+
 .. _dali-drivers: https://github.com/sde1000/dali-drivers
 
 0.16 (2026-10-20)
