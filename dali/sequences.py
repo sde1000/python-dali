@@ -24,7 +24,9 @@ import warnings
 from dali.exceptions import DALISequenceError, ProgramShortAddressFailure
 from dali import command
 from dali.gear.general import (
+    EnableDeviceType,
     QueryDeviceType,
+    QueryExtendedVersionNumber,
     QueryNextDeviceType,
     QueryGroupsZeroToSeven,
     QueryGroupsEightToFifteen,
@@ -100,6 +102,10 @@ DALISequence: TypeAlias = Generator[
 # The following sequences will soon be moved to dali.gear.sequences;
 # you can use the new location to call them already.
 
+# The device types defined by IEC 62386, in parts 201 to 211
+_device_types = range(0, 11)
+
+
 def QueryDeviceTypes(
         addr: GearAddress
 ) -> DALISequence[list[int]]:
@@ -115,16 +121,27 @@ def QueryDeviceTypes(
     if r.value < 254:
         return [r.value]
     if r.value == 254:
-        return []
+        # 254 only means "no device type" from IEC 62386-102:2014
+        # onwards; Annex B of the 2009 edition reserves it for control
+        # devices, so gear built to that edition can answer it while
+        # still implementing device types. Probing settles which it is.
+        return (yield from _QueryDeviceTypesByProbing(addr, allow_empty=True))
     assert r.value == 255
-    last_seen = 0
+    # Device type 0 is fluorescent lamp control gear, so the first
+    # answer may legitimately be zero
+    last_seen = -1
     result: list[int] = []
     while True:
         r = yield QueryNextDeviceType(addr)
         assert isinstance(r, QueryNextDeviceType.response)
         if not r.valid:
-            raise DALISequenceError(
-                "Missing or invalid response to QueryNextDeviceType")
+            if result:
+                raise DALISequenceError(
+                    "Missing or invalid response to QueryNextDeviceType")
+            # Control gear built to IEC 62386-102:2009 answers MASK
+            # when it implements more than one device type, but has no
+            # QueryNextDeviceType to enumerate them with
+            return (yield from _QueryDeviceTypesByProbing(addr))
         if r.value == 254:
             if len(result) == 0:
                 raise DALISequenceError(
@@ -134,7 +151,36 @@ def QueryDeviceTypes(
             # The gear is required to return device types in
             # ascending order, without repeats
             raise DALISequenceError("Device type received out of order")
-        result.append(r.value)
+        last_seen = r.value
+        result.append(last_seen)
+
+
+def _QueryDeviceTypesByProbing(
+        addr: GearAddress,
+        allow_empty: bool = False
+) -> DALISequence[list[int]]:
+    """Obtain device types by asking about each of them in turn
+
+    Annex A.4 of IEC 62386-102 covers control gear that does not
+    implement QueryNextDeviceType: control gear only answers
+    QueryExtendedVersionNumber for the device types it implements, so
+    enabling each device type in turn and asking reveals the lot.
+
+    Gear that answered MASK promised at least one device type, so
+    finding none is an error. Gear that answered 254 is being probed
+    precisely because that answer is ambiguous, and finding none there
+    confirms it has no device type: pass allow_empty for that case.
+    """
+    result: list[int] = []
+    for devicetype in _device_types:
+        yield EnableDeviceType(devicetype)
+        r = yield QueryExtendedVersionNumber(addr)
+        if isinstance(r, command.NumericResponse) and r.valid:
+            result.append(devicetype)
+    if not result and not allow_empty:
+        raise DALISequenceError(
+            "No device types answered QueryExtendedVersionNumber")
+    return result
 
 
 def QueryGroups(addr: GearAddress) -> DALISequence[set[int]]:
