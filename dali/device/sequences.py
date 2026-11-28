@@ -220,9 +220,7 @@ def query_input_value(
     resolution: Optional[int] = None
 ) -> DALISequence[int]:
     """
-    A generator sequence to retrieve full sensor value from a part-103 control device.
-    Use with an appropriate DALI driver instance, through the `run_sequence()`
-    method.
+    A sequence to retrieve full sensor value from a part-103 control device.
 
     :param device: A DeviceShort address to target
     :param instance: An InstanceNumber to target
@@ -247,6 +245,8 @@ def query_input_value(
         assert isinstance(rsp, QueryInputValueLatch.response)
         if not rsp.valid:
             raise DALISequenceError("query_input_value: QueryInputValueLatch failed")
+        if rsp.value is None:
+            raise DALISequenceError("query_input_value: QueryInputValueLatch unexpectedly returned NO")
         value += rsp.value
 
     if resolution > 0:
@@ -254,13 +254,6 @@ def query_input_value(
         value >>= 8 - resolution
 
     return value
-
-
-# INITIALISE data byte values for control devices, from IEC 62386-103:2014
-# Table 21. Unlike control gear (part 102), devices use 0xff for "all" and
-# 0x7f for "no short address" (short address == MASK).
-_INITIALISE_ALL = 0xFF
-_INITIALISE_UNADDRESSED = 0x7F
 
 
 def _find_next(
@@ -344,7 +337,7 @@ def Commissioning(
 
     yield Terminate()
     yield StartQuiescentMode(DeviceBroadcast())
-    yield Initialise(_INITIALISE_ALL if readdress else _INITIALISE_UNADDRESSED)
+    yield Initialise(broadcast=True if readdress else False)
 
     # A verify failure must still leave the bus addressable, so the error is
     # recorded and raised only after quiescent mode has been exited below;

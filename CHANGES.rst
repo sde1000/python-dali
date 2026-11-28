@@ -15,6 +15,10 @@ Highlights
 - The way Response classes work has been made more consistent; see
   below.
 
+- Documentation strings have been added to commands in
+  ``dali.device.general``, and a number of response types have been
+  fixed.
+
 - Passing ``int`` as an address as a shorthand for
   ``address.GearShort`` or ``address.DeviceShort`` is now deprecated;
   it isn't included in the type annotations, and if you do it a
@@ -134,6 +138,39 @@ The following response classes have been changed:
   received; instead it relies on the new default ``EnumResponse``
   behaviour and will raise a ``ValueError``.
 
+- ``dali.device.general.QueryApplicationControllerError`` and
+  ``dali.device.general.QueryInputDeviceError`` now have response
+  class ``OptionalNumericResponseMask`` instead of
+  ``NumericResponseMask``, since "NO" is a valid response from these
+  commands.
+
+- ``dali.device.general.QueryExtendedVersionNumber`` now has response
+  class ``OptionalNumericResponse``, since "NO" is a valid response.
+
+- ``dali.device.general.QueryInstanceError`` now has response class
+  ``OptionalNumericResponseMask`` instead of ``NumericResponse``,
+  since both NO and MASK are valid responses to this command.
+
+- ``dali.device.general.QueryPrimaryInstanceGroup``,
+  ``dali.device.general.QueryInstanceGroup1`` and
+  ``dali.device.general.QueryInstanceGroup2`` now have response class
+  ``NumericResponseMask`` instead of ``NumericResponse``, since a
+  response of MASK indicates no group membership.
+
+- ``dali.device.general.QueryInputValueLatch`` now has response class
+  ``OptionalNumericResponse``, since a response of NO is valid.
+
+- ``dali.device.general.QueryFeatureType`` now has response class
+  `NumericResponseMask`` since MASK is a valid response.
+
+- ``dali.device.general.QueryNextFeatureType`` now has response class
+  ``OptionalNumericResponse``, since a response of NO is valid.
+
+- ``dali.device.general.WriteMemoryLocation`` and
+  ``dali.device.general.DirectWriteMemory`` now have response class
+  ``OptionalNumericResponse``, since they respond with NO when no
+  value is written.
+
 Detailed changes
 ~~~~~~~~~~~~~~~~
 
@@ -226,6 +263,9 @@ Detailed changes
 - New module ``dali.gear.fluorescent`` with the commands from IEC
   62386-201, fluorescent lamp control gear. Part 201 defines a single
   application extended command, ``QueryExtendedVersionNumber``.
+
+- ``dali.device.general.Initialise`` has been given the same arguments
+  as ``dali.gear.general.Initialise`` for consistency.
 
 .. _dali-drivers: https://github.com/sde1000/dali-drivers
 

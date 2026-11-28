@@ -17,7 +17,8 @@ or to all instances (broadcast).  For all those types of address,
 command frames can also be addressed to features.
 
 Addressing for event messages is described in IEC 62386-103 section
-7.2.2.  Decoding of event messages is currently not implemented.
+7.2.2.  Decoding of event messages is not implemented here; it is
+implemented in dali.device.general.
 """
 
 from __future__ import annotations
@@ -466,7 +467,7 @@ class Device(_UnaddressedInstance):
 
 
 def instance_from_frame(f: ForwardFrame) -> Optional[Instance]:
-    if len(f) != 24:
+    if len(f) != 24 or f[16] != 1:
         return None
     flags = f[15:13]
     p = f[12:8]

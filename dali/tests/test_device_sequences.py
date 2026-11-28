@@ -2,7 +2,8 @@ import pytest
 
 from typing import Optional, Sequence, Any
 from dali.address import GearShort, DeviceShort, InstanceNumber
-from dali.command import Command, Response, NumericResponse
+from dali.command import Command, Response, NumericResponse, \
+    OptionalNumericResponse
 from dali.device import pushbutton
 from dali.device.general import (
     DTR0,
@@ -405,20 +406,18 @@ def test_query_input_values_10bit() -> None:
     assert cmd.frame.as_byte_sequence[2] == 0x8c  # QUERY_INPUT_VALUE
     assert cmd.destination == DeviceShort(0)
     assert cmd.instance == InstanceNumber(0)
-    rsp = NumericResponse(BackwardFrame(0x6c))
     try:
-        cmd = sequence.send(rsp)
+        cmd = sequence.send(NumericResponse(BackwardFrame(0x6c)))
     except StopIteration:
         raise RuntimeError()
     assert isinstance(cmd, QueryInputValueLatch)
     assert cmd.frame.as_byte_sequence[2] == 0x8d  # QUERY_INPUT_VALUE_LATCH
     assert cmd.destination == DeviceShort(0)
     assert cmd.instance == InstanceNumber(0)
-    rsp = NumericResponse(BackwardFrame(0x9b))
 
     ret = None
     try:
-        cmd = sequence.send(rsp)
+        cmd = sequence.send(OptionalNumericResponse(BackwardFrame(0x9b)))
         raise RuntimeError()
     except StopIteration as r:
         ret = r.value

@@ -6,6 +6,7 @@ from dali import command
 from dali import frame
 from dali import exceptions
 from dali.gear import general as generalgear
+from dali.device import general as generaldevice
 
 
 def _test_pattern() -> Iterable[
@@ -411,6 +412,40 @@ class TestCommands(unittest.TestCase):
             self.assertEqual(qevn.__class__.__name__,
                              'QueryExtendedVersionNumber')
             self.assertEqual(qevn.devicetype, devicetype)
+
+    def test_initialise_gear(self) -> None:
+        """gear initialise commands are encoded and decoded correctly"""
+        Initialise = generalgear.Initialise
+        broadcast = Initialise(broadcast=True)
+        broadcast_decoded = command.from_frame(broadcast.frame)
+        assert isinstance(broadcast_decoded, Initialise)
+        self.assertTrue(broadcast_decoded.broadcast)
+        unaddressed = Initialise(broadcast=False)
+        unaddressed_decoded = command.from_frame(unaddressed.frame)
+        assert isinstance(unaddressed_decoded, Initialise)
+        self.assertFalse(unaddressed_decoded.broadcast)
+        addressed = Initialise(address=12)
+        addressed_decoded = command.from_frame(addressed.frame)
+        assert isinstance(addressed_decoded, Initialise)
+        self.assertFalse(addressed_decoded.broadcast)
+        self.assertEqual(addressed_decoded.address, 12)
+
+    def test_initialise_device(self) -> None:
+        """device initialise commands are encoded and decoded correctly"""
+        Initialise = generaldevice.Initialise
+        broadcast = Initialise(broadcast=True)
+        broadcast_decoded = command.from_frame(broadcast.frame)
+        assert isinstance(broadcast_decoded, Initialise)
+        self.assertTrue(broadcast_decoded.broadcast)
+        unaddressed = Initialise(broadcast=False)
+        unaddressed_decoded = command.from_frame(unaddressed.frame)
+        assert isinstance(unaddressed_decoded, Initialise)
+        self.assertFalse(unaddressed_decoded.broadcast)
+        addressed = Initialise(address=12)
+        addressed_decoded = command.from_frame(addressed.frame)
+        assert isinstance(addressed_decoded, Initialise)
+        self.assertFalse(addressed_decoded.broadcast)
+        self.assertEqual(addressed_decoded.address, 12)
 
 
 if __name__ == '__main__':

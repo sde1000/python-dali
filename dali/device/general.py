@@ -190,6 +190,17 @@ class _StandardDeviceCommand(_DeviceCommand):
 
 
 class IdentifyDevice(_StandardDeviceCommand):
+    """Identify Device
+
+    Start or restart a 10s procedure that will enable an observer to
+    distinguish the control devices running the procedure from those
+    of the same type that are not running it. This could be done by
+    flashing a LED, sounding a buzzer, etc. — the implementation is
+    manufacturer specific.
+
+    The procedure is aborted on reception of "Terminate", "Withdraw"
+    or "Reset".
+    """
     appctrl = True
     inputdev = True
     sendtwice = True
@@ -197,6 +208,10 @@ class IdentifyDevice(_StandardDeviceCommand):
 
 
 class ResetPowerCycleSeen(_StandardDeviceCommand):
+    """Reset Power Cycle Seen
+
+    The powerCycleSeen flag will be reset to False.
+    """
     appctrl = True
     inputdev = True
     sendtwice = True
@@ -204,6 +219,12 @@ class ResetPowerCycleSeen(_StandardDeviceCommand):
 
 
 class Reset(_StandardDeviceCommand):
+    """Reset
+
+    All variables will be changed to their reset values. Execution of
+    this command may take up to 300ms before the device starts to
+    react properly again to commands.
+    """
     appctrl = True
     inputdev = True
     sendtwice = True
@@ -211,6 +232,14 @@ class Reset(_StandardDeviceCommand):
 
 
 class ResetMemoryBank(_StandardDeviceCommand):
+    """Reset Memory Bank according to DTR0
+
+    If DTR0 = 0 then all implemented and unlocked memory banks except
+    memory bank 0 shall be reset.
+
+    In all other cases, the memory bank identified by DTR0 will be
+    reset provided it is implemented and unlocked.
+    """
     appctrl = True
     inputdev = True
     uses_dtr0 = True
@@ -219,6 +248,18 @@ class ResetMemoryBank(_StandardDeviceCommand):
 
 
 class SetShortAddress(_StandardDeviceCommand):
+    """Set Short Address according to DTR0
+
+    If DTR0 contains MASK (255) then the short address will be deleted.
+
+    If DTR0 contains a value less than 0x40 then the short address
+    will be set to DTR0.
+
+    Otherwise, the short address will not change.
+
+    Note that this is different to the SetShortAddress command used
+    for control gear!
+    """
     appctrl = True
     inputdev = True
     uses_dtr0 = True
@@ -227,6 +268,28 @@ class SetShortAddress(_StandardDeviceCommand):
 
 
 class EnableWriteMemory(_StandardDeviceCommand):
+    """Enable Write Memory
+
+    writeEnableState shall be set to ENABLED.
+
+    NB there is no command to explicitly disable memory write access;
+    any command that is not directly involved with writing to memory
+    banks will set writeEnableState to DISABLED.
+
+    The commands that do not set writeEnableState to DISABLED are:
+
+     - WriteMemoryLocation
+     - WriteMemoryLocationNoReply
+     - DirectWriteMemory
+     - DTR0
+     - DTR1
+     - DTR1DTR0
+     - DTR2
+     - DTR2DTR1
+     - QueryContentDTR0
+     - QueryContentDTR1
+     - QueryContentDTR2
+    """
     appctrl = True
     inputdev = True
     sendtwice = True
@@ -234,18 +297,34 @@ class EnableWriteMemory(_StandardDeviceCommand):
 
 
 class EnableApplicationController(_StandardDeviceCommand):
+    """Enable Application Controller
+
+    If applicationControllerPresent is True, applicationActive will be
+    set to True. Otherwise, the command is ignored.
+    """
     appctrl = True
     sendtwice = True
     _opcode = 0x16
 
 
 class DisableApplicationController(_StandardDeviceCommand):
+    """Disable Application Controller
+
+    If applicationControllerPresent is True, applicationActive will be
+    set to False. Otherwise, the command is ignored.
+    """
     appctrl = True
     sendtwice = True
     _opcode = 0x17
 
 
 class SetOperatingMode(_StandardDeviceCommand):
+    """Set Operating Mode according to DTR0
+
+    operatingMode shall be set to DTR0. Part 103 defines modes 0–0x7f;
+    mode 0 is "standard mode" and all other modes in the range are
+    reserved. Modes 0x80–0xff are manufacturer-specific modes.
+    """
     appctrl = True
     inputdev = True
     uses_dtr0 = True
@@ -254,6 +333,11 @@ class SetOperatingMode(_StandardDeviceCommand):
 
 
 class AddToDeviceGroupsZeroToFifteen(_StandardDeviceCommand):
+    """Add To Device Groups 0–15 according to DTR2:DTR1
+
+    Bits set in DTR2:DTR1 will be set in deviceGroups[15:0]. Bits not
+    set in DTR2:DTR1 will be left unchanged.
+    """
     appctrl = True
     inputdev = True
     uses_dtr1 = True
@@ -263,6 +347,11 @@ class AddToDeviceGroupsZeroToFifteen(_StandardDeviceCommand):
 
 
 class AddToDeviceGroupsSixteenToThirtyOne(_StandardDeviceCommand):
+    """Add To Device Groups 16–31 according to DTR2:DTR1
+
+    Bits set in DTR2:DTR1 will be set in deviceGroups[31:16]. Bits not
+    set in DTR2:DTR1 will be left unchanged.
+    """
     appctrl = True
     inputdev = True
     uses_dtr1 = True
@@ -272,6 +361,11 @@ class AddToDeviceGroupsSixteenToThirtyOne(_StandardDeviceCommand):
 
 
 class RemoveFromDeviceGroupsZeroToFifteen(_StandardDeviceCommand):
+    """Remove From Device Groups 0–15 according to DTR2:DTR1
+
+    Bits set in DTR2:DTR1 will be cleared in deviceGroups[15:0]. Bits
+    not set in DTR2:DTR1 will be left unchanged.
+    """
     appctrl = True
     inputdev = True
     uses_dtr1 = True
@@ -281,6 +375,11 @@ class RemoveFromDeviceGroupsZeroToFifteen(_StandardDeviceCommand):
 
 
 class RemoveFromDeviceGroupsSixteenToThirtyOne(_StandardDeviceCommand):
+    """Remove From Device Groups 16–31 according to DTR2:DTR1
+
+    Bits set in DTR2:DTR1 will be cleared in deviceGroups[31:16]. Bits
+    not set in DTR2:DTR1 will be left unchanged.
+    """
     appctrl = True
     inputdev = True
     uses_dtr1 = True
@@ -290,6 +389,17 @@ class RemoveFromDeviceGroupsSixteenToThirtyOne(_StandardDeviceCommand):
 
 
 class StartQuiescentMode(_StandardDeviceCommand):
+    """Start Quiescent Mode
+
+    In quiescent mode, the control device will not produce any forward
+    frames: no commands or event messages will be transmitted,
+    regardless of the state of applicationActive or any
+    instanceActive.
+
+    Quiescent mode is temporary; it ends 15 minutes (±1.5 minutes)
+    after the last StartQuiescentMode is received. It can also be
+    ended by StopQuiescentMode.
+    """
     appctrl = True
     inputdev = True
     sendtwice = True
@@ -297,6 +407,10 @@ class StartQuiescentMode(_StandardDeviceCommand):
 
 
 class StopQuiescentMode(_StandardDeviceCommand):
+    """Stop Quiescent Mode
+
+    Quiescent mode will be ended if it is active.
+    """
     appctrl = True
     inputdev = True
     sendtwice = True
@@ -304,6 +418,14 @@ class StopQuiescentMode(_StandardDeviceCommand):
 
 
 class EnablePowerCycleNotification(_StandardDeviceCommand):
+    """Enable Power Cycle Notification
+
+    powerCycleNotification will be set to ENABLED.
+
+    Power cycle notifications are an event sent by a device after
+    completion of the power-on procedure. They are sent once at
+    priority 2.
+    """
     appctrl = True
     inputdev = True
     sendtwice = True
@@ -311,6 +433,10 @@ class EnablePowerCycleNotification(_StandardDeviceCommand):
 
 
 class DisablePowerCycleNotification(_StandardDeviceCommand):
+    """Disable Power Cycle Notification
+
+    powerCycleNotification will be set to DISABLED.
+    """
     appctrl = True
     inputdev = True
     sendtwice = True
@@ -318,6 +444,13 @@ class DisablePowerCycleNotification(_StandardDeviceCommand):
 
 
 class SavePersistentVariables(_StandardDeviceCommand):
+    """Save Persistent Variables
+
+    All variables identified as non-volatile shall be stored to
+    non-volatile memory.  The device might not react to commands for
+    up to 300ms after reception of this command.  This command is
+    recommended to be used typically after commissioning.
+    """
     appctrl = True
     inputdev = True
     sendtwice = True
@@ -325,8 +458,7 @@ class SavePersistentVariables(_StandardDeviceCommand):
 
 
 class QueryDeviceStatusResponse(command.BitmapResponse):
-    """
-    Control Device Status, as defined in Part 103 Table 15
+    """Control Device Status, as defined in Part 103 Table 15
     """
 
     bits = [
@@ -348,20 +480,46 @@ class QueryDeviceStatus(_StandardDeviceCommand):
 
 
 class QueryApplicationControllerError(_StandardDeviceCommand):
+    """Query Application Controller Error
+
+    If no application controller error has occurred then the response
+    will be NO.
+
+    If an application controller error has occurred but the device is
+    not able to give detailed error information then the response will
+    be MASK.
+
+    Otherwise, the response will be a manufacturer-specific value in
+    the range 0..254.
+    """
     appctrl = True
     inputdev = True
-    response = command.NumericResponseMask
+    response = command.OptionalNumericResponseMask
     _opcode = 0x31
 
 
 class QueryInputDeviceError(_StandardDeviceCommand):
+    """Query Input Device Error
+
+    If no input device error has occurred then the response will be NO.
+
+    If an input device error has occurred but the device is not able
+    to give detailed error information then the response will be MASK.
+
+    Otherwise, the response will be a manufacturer-specific value in
+    the range 0..254.
+    """
     appctrl = True
     inputdev = True
-    response = command.NumericResponseMask
+    response = command.OptionalNumericResponseMask
     _opcode = 0x32
 
 
 class QueryMissingShortAddress(_StandardDeviceCommand):
+    """Query Missing Short Address
+
+    The response YES means that the device has no short address.
+    """
     appctrl = True
     inputdev = True
     response = command.YesNoResponse
@@ -369,6 +527,11 @@ class QueryMissingShortAddress(_StandardDeviceCommand):
 
 
 class QueryVersionNumber(_StandardDeviceCommand):
+    """Query Version Number
+
+    The response will be the content of memory bank 0 location 0x17:
+    the part 103 version number of all integrated control devices.
+    """
     appctrl = True
     inputdev = True
     response = command.NumericResponse
@@ -376,6 +539,11 @@ class QueryVersionNumber(_StandardDeviceCommand):
 
 
 class QueryNumberOfInstances(_StandardDeviceCommand):
+    """Query Number Of Instances
+
+    The response will be the number of instances implemented by the
+    device.
+    """
     appctrl = True
     inputdev = True
     response = command.NumericResponse
@@ -383,6 +551,10 @@ class QueryNumberOfInstances(_StandardDeviceCommand):
 
 
 class QueryContentDTR0(_StandardDeviceCommand):
+    """Query Content DTR0
+
+    The response will be DTR0.
+    """
     appctrl = True
     inputdev = True
     uses_dtr0 = True
@@ -391,6 +563,10 @@ class QueryContentDTR0(_StandardDeviceCommand):
 
 
 class QueryContentDTR1(_StandardDeviceCommand):
+    """Query Content DTR1
+
+    The response will be DTR1.
+    """
     appctrl = True
     inputdev = True
     uses_dtr1 = True
@@ -399,6 +575,10 @@ class QueryContentDTR1(_StandardDeviceCommand):
 
 
 class QueryContentDTR2(_StandardDeviceCommand):
+    """Query Content DTR2
+
+    The response will be DTR2.
+    """
     appctrl = True
     inputdev = True
     uses_dtr2 = True
@@ -407,6 +587,7 @@ class QueryContentDTR2(_StandardDeviceCommand):
 
 
 class QueryRandomAddressH(_StandardDeviceCommand):
+    """Return the 8 high bits of the random address."""
     appctrl = True
     inputdev = True
     response = command.NumericResponse
@@ -414,6 +595,7 @@ class QueryRandomAddressH(_StandardDeviceCommand):
 
 
 class QueryRandomAddressM(_StandardDeviceCommand):
+    """Return the 8 mid bits of the random address."""
     appctrl = True
     inputdev = True
     response = command.NumericResponse
@@ -421,6 +603,7 @@ class QueryRandomAddressM(_StandardDeviceCommand):
 
 
 class QueryRandomAddressL(_StandardDeviceCommand):
+    """Return the 8 low bits of the random address."""
     appctrl = True
     inputdev = True
     response = command.NumericResponse
@@ -428,6 +611,15 @@ class QueryRandomAddressL(_StandardDeviceCommand):
 
 
 class ReadMemoryLocation(_StandardDeviceCommand):
+    """Read Memory Location
+
+    The query is ignored if the addressed memory bank is not
+    implemented.
+
+    If executed, the answer will be the content of the memory location
+    identified by DTR0 in bank DTR1.  If the addressed location is
+    below 0xff, then DTR0 is incremented by 1.
+    """
     appctrl = True
     inputdev = True
     uses_dtr0 = True
@@ -437,6 +629,10 @@ class ReadMemoryLocation(_StandardDeviceCommand):
 
 
 class QueryApplicationControlEnabled(_StandardDeviceCommand):
+    """Query Application Control Enabled
+
+    The answer will be YES if applicationActive is True, otherwise NO.
+    """
     appctrl = True
     inputdev = True
     response = command.YesNoResponse
@@ -444,6 +640,10 @@ class QueryApplicationControlEnabled(_StandardDeviceCommand):
 
 
 class QueryOperatingMode(_StandardDeviceCommand):
+    """Query Operating Mode
+
+    The answer will be the operating mode.
+    """
     appctrl = True
     inputdev = True
     response = command.NumericResponse
@@ -451,6 +651,11 @@ class QueryOperatingMode(_StandardDeviceCommand):
 
 
 class QueryManufacturerSpecificMode(_StandardDeviceCommand):
+    """Query Manufacturer Specific Mode
+
+    The answer will be YES if the operating mode is in the range
+    0x80..0xff, otherwise NO.
+    """
     appctrl = True
     inputdev = True
     response = command.YesNoResponse
@@ -458,6 +663,10 @@ class QueryManufacturerSpecificMode(_StandardDeviceCommand):
 
 
 class QueryQuiescentMode(_StandardDeviceCommand):
+    """Query Quiescent Mode
+
+    The answer will be YES if the device is in quiescent mode.
+    """
     appctrl = True
     inputdev = True
     response = command.YesNoResponse
@@ -465,6 +674,10 @@ class QueryQuiescentMode(_StandardDeviceCommand):
 
 
 class QueryDeviceGroupsZeroToSeven(_StandardDeviceCommand):
+    """Query Device Groups Zero To Seven
+
+    The answer will be deviceGroups[7:0].
+    """
     appctrl = True
     inputdev = True
     response = command.NumericResponse
@@ -472,6 +685,10 @@ class QueryDeviceGroupsZeroToSeven(_StandardDeviceCommand):
 
 
 class QueryDeviceGroupsEightToFifteen(_StandardDeviceCommand):
+    """Query Device Groups Eight To Fifteen
+
+    The answer will be deviceGroups[15:8].
+    """
     appctrl = True
     inputdev = True
     response = command.NumericResponse
@@ -479,6 +696,10 @@ class QueryDeviceGroupsEightToFifteen(_StandardDeviceCommand):
 
 
 class QueryDeviceGroupsSixteenToTwentyThree(_StandardDeviceCommand):
+    """Query Device Groups Sixteen To Twenty Three
+
+    The answer will be deviceGroups[23:16].
+    """
     appctrl = True
     inputdev = True
     response = command.NumericResponse
@@ -486,6 +707,10 @@ class QueryDeviceGroupsSixteenToTwentyThree(_StandardDeviceCommand):
 
 
 class QueryDeviceGroupsTwentyFourToThirtyOne(_StandardDeviceCommand):
+    """Query Device Groups Twenty Four To Thirty One
+
+    The answer will be deviceGroups[31:24].
+    """
     appctrl = True
     inputdev = True
     response = command.NumericResponse
@@ -493,6 +718,10 @@ class QueryDeviceGroupsTwentyFourToThirtyOne(_StandardDeviceCommand):
 
 
 class QueryPowerCycleNotification(_StandardDeviceCommand):
+    """Query Power Cycle Nofication
+
+    The answer will be YES if the power cycle notification is enabled.
+    """
     appctrl = True
     inputdev = True
     response = command.YesNoResponse
@@ -500,14 +729,14 @@ class QueryPowerCycleNotification(_StandardDeviceCommand):
 
 
 class QueryDeviceCapabilitiesResponse(command.BitmapResponse):
-    """
-    Control Device Capabilities, as defined in Part 103 Table 14
+    """Control Device Capabilities, as defined in Part 103 Table 14
     """
 
     bits = [
         "application controller present",
         "number instances greater than zero",
-        "application controller always active",
+        "application controller always active",  # XXX where is this defined?
+        # It's not in part 103:2014.
     ]
 
 
@@ -519,14 +748,25 @@ class QueryDeviceCapabilities(_StandardDeviceCommand):
 
 
 class QueryExtendedVersionNumber(_StandardDeviceCommand):
+    """Query Extended Version Number according to DTR0
+
+    Answers with the version number of part 3xx of IEC 62386
+    implemented by this device, where xx is given by DTR0.
+
+    If Part 3xx is not implemented the answer will be NO.
+    """
     appctrl = True
     inputdev = True
     uses_dtr0 = True
-    response = command.NumericResponse
+    response = command.OptionalNumericResponse
     _opcode = 0x47
 
 
 class QueryResetState(_StandardDeviceCommand):
+    """Query Reset State
+
+    The answer will be YES if resetState is True.
+    """
     appctrl = True
     inputdev = True
     response = command.YesNoResponse
@@ -588,6 +828,13 @@ class _StandardInstanceCommand(_DeviceCommand):
 
 
 class SetEventPriority(_StandardInstanceCommand):
+    """Set Event Priority according to DTR0
+
+    If DTR0 is in the range 2..5 then future events from this instance will
+    be sent with that priority.
+
+    Otherwise, the command will be ignored.
+    """
     inputdev = True
     uses_dtr0 = True
     sendtwice = True
@@ -595,18 +842,33 @@ class SetEventPriority(_StandardInstanceCommand):
 
 
 class EnableInstance(_StandardInstanceCommand):
+    """Enable Instance
+
+    instanceActive shall be set to True.
+    """
     inputdev = True
     sendtwice = True
     _opcode = 0x62
 
 
 class DisableInstance(_StandardInstanceCommand):
+    """Disable Instance
+
+    instanceActive shall be set to False.
+    """
     inputdev = True
     sendtwice = True
     _opcode = 0x63
 
 
 class SetPrimaryInstanceGroup(_StandardInstanceCommand):
+    """Set Primary Instance Group according to DTR0
+
+    If DTR0 is in the range 0..31 then the instance's primary group
+    will be set to DTR0.
+
+    If DTR0 is MASK then the instance's primary group will be unset.
+    """
     inputdev = True
     uses_dtr0 = True
     sendtwice = True
@@ -614,6 +876,13 @@ class SetPrimaryInstanceGroup(_StandardInstanceCommand):
 
 
 class SetInstanceGroup1(_StandardInstanceCommand):
+    """Set Instance Group 1 according to DTR0
+
+    If DTR0 is in the range 0..31 then the instance's second group
+    will be set to DTR0.
+
+    If DTR0 is MASK then the instance's second group will be unset.
+    """
     inputdev = True
     uses_dtr0 = True
     sendtwice = True
@@ -621,6 +890,13 @@ class SetInstanceGroup1(_StandardInstanceCommand):
 
 
 class SetInstanceGroup2(_StandardInstanceCommand):
+    """Set Instance Group 2 according to DTR0
+
+    If DTR0 is in the range 0..31 then the instance's third group will
+    be set to DTR0.
+
+    If DTR0 is MASK then the instance's third group will be unset.
+    """
     inputdev = True
     uses_dtr0 = True
     sendtwice = True
@@ -628,6 +904,16 @@ class SetInstanceGroup2(_StandardInstanceCommand):
 
 
 class SetEventScheme(_StandardInstanceCommand):
+    """Set Event Scheme
+
+    If DTR0 is in the range 0..4 then future events from the instance
+    will follow the specified addressing scheme if possible.
+
+    Otherwise, the command will be ignored.
+
+    Addressing schemes are described in Part 103 Table 8; see the
+    EventScheme enum for more information.
+    """
     inputdev = True
     uses_dtr0 = True
     sendtwice = True
@@ -635,6 +921,15 @@ class SetEventScheme(_StandardInstanceCommand):
 
 
 class SetEventFilter(_StandardInstanceCommand):
+    """Set Event Filter
+
+    Set the instance event filter according to DTR2:DTR1:DTR0. The
+    meaning of the bits in the filter is defined in the appropriate
+    Part 3xx. The width of the filter may be declared as lower than 24
+    bits in the Part 3xx; if it is declared as 16 bits then DTR2 is
+    ignored by this command, and if it is declared as 8 bits then both
+    DTR2 and DTR1 are ignored.
+    """
     inputdev = True
     uses_dtr0 = True
     uses_dtr1 = True
@@ -644,26 +939,44 @@ class SetEventFilter(_StandardInstanceCommand):
 
 
 class QueryInstanceType(_StandardInstanceCommand):
+    """Query Instance Type
+
+    The answer is instanceType. Type 0 is "generic"; types 1 to 31 are
+    described in IEC 62386 Parts 301 to 331.
+    """
     inputdev = True
     response = command.NumericResponse
     _opcode = 0x80
 
 
 class QueryResolution(_StandardInstanceCommand):
+    """Query Resolution
+
+    The answer is the resolution of the instance, in the range 1..255.
+    """
     inputdev = True
     response = command.NumericResponse
     _opcode = 0x81
 
 
 class QueryInstanceError(_StandardInstanceCommand):
+    """Query Instance Error
+
+    If no error has occurred then the answer will be NO.
+
+    If an error has occurred, but the instance is not able to give
+    detailed error information then the answer will be MASK.
+
+    Otherwise, the answer is instance type specific and is described
+    in the appropriate Part 3xx of the standard.
+    """
     inputdev = True
-    response = command.NumericResponse
+    response = command.OptionalNumericResponseMask
     _opcode = 0x82
 
 
 class QueryInstanceStatusResponse(command.BitmapResponse):
-    """
-    Instance Status, as defined in Part 103 Table 16
+    """Instance Status, as defined in Part 103 Table 16
     """
 
     bits = [
@@ -673,92 +986,181 @@ class QueryInstanceStatusResponse(command.BitmapResponse):
 
 
 class QueryInstanceStatus(_StandardInstanceCommand):
+    """Query Instance Status
+
+    Replies with the instance status as defined in Part 103 Table 16.
+    """
     inputdev = True
     response = QueryInstanceStatusResponse
     _opcode = 0x83
 
 
 class QueryEventPriority(_StandardInstanceCommand):
+    """Query Event Priority
+
+    The answer is the priority with which events from the instance
+    will be sent, in the range 2..5.
+    """
     inputdev = True
     response = command.NumericResponse
     _opcode = 0x84
 
 
 class QueryInstanceEnabled(_StandardInstanceCommand):
+    """Query Instance Enabled
+
+    The answer will be YES if at least one of the addressed instances
+    is has instanceActive set to True; otherwise NO.
+    """
     inputdev = True
     response = command.YesNoResponse
     _opcode = 0x86
 
 
 class QueryPrimaryInstanceGroup(_StandardInstanceCommand):
+    """Query Primary Instance Group
+
+    Answers with the instance's primary group in the range 0..31, or
+    MASK if the instance does not have a primary group.
+
+    The primary group is used when sending events from the instance,
+    if event scheme 4 has been selected.
+    """
     inputdev = True
-    response = command.NumericResponse
+    response = command.NumericResponseMask
     _opcode = 0x88
 
 
 class QueryInstanceGroup1(_StandardInstanceCommand):
+    """Query Instance Group 1
+
+    Answers with the instance's second group in the range 0..31, or
+    MASK if the instance does not have a second group.
+    """
     inputdev = True
-    response = command.NumericResponse
+    response = command.NumericResponseMask
     _opcode = 0x89
 
 
 class QueryInstanceGroup2(_StandardInstanceCommand):
+    """Query Instance Group 2
+
+    Answers with the instance's third group in the range 0..31, or
+    MASK if the instance does not have a third group.
+    """
     inputdev = True
-    response = command.NumericResponse
+    response = command.NumericResponseMask
     _opcode = 0x8A
 
 
 class EventScheme(IntEnum):
-    """
-    Event Address Scheme setting values, as defined in Part 103 Table 8
+    """Event Addressing Scheme setting values, as defined in Part 103 Table 8
     """
 
-    instance = 0
-    device = 1
-    device_instance = 2
-    device_group = 3
-    instance_group = 4
+    instance = 0         # Instance type and number
+    device = 1           # Short address and instance type
+    device_instance = 2  # Short address and instance number
+    device_group = 3     # Device group and instance type
+    instance_group = 4   # Instance group and instance type
 
 
 class QueryEventSchemeResponse(command.EnumResponse):
-    """
-    A response object corresponding to a QueryEventScheme message
+    """A response object corresponding to a QueryEventScheme message
     """
 
     enumerator = EventScheme
 
 
 class QueryEventScheme(_StandardInstanceCommand):
+    """Query Event Scheme
+
+    Replies with the event scheme selected for the instance, in the
+    range 0..4.
+    """
     inputdev = True
     response = QueryEventSchemeResponse
     _opcode = 0x8B
 
 
 class QueryInputValue(_StandardInstanceCommand):
+    """Query Input Value
+
+    The instance latches a new inputValue and replies with the most
+    significant byte of this value.
+
+    If the query addresses multiple instances within the the device,
+    it is ignored.
+    """
     inputdev = True
     response = command.NumericResponse
     _opcode = 0x8C
 
 
 class QueryInputValueLatch(_StandardInstanceCommand):
+    """Query Input Value Latch
+
+    The instance replies with the next most significant byte from the
+    latched inputValue.
+
+    If the least significant byte of the latched inputValue has
+    already been sent, the answer is NO.
+
+    If the query addresses multiple instances within the device, it is ignored.
+    """
     inputdev = True
-    response = command.NumericResponse
+    response = command.OptionalNumericResponse
     _opcode = 0x8D
 
 
 class QueryFeatureType(_StandardInstanceCommand):
+    """Query Feature Type
+
+    The standard allows for the future publication of feature
+    extensions, which extend or alter the specification. These will be
+    published in parts 332 to 396 of the standard.
+
+    If the instance does not implement any Part 3xx features, the
+    answer is 254.
+
+    If the instance implements one Part 3xx feature, the answer is the
+    feature number (eg. 32 for Part 332) in the range 32..96.
+
+    If the instance implements multiple Part 3xx features, the answer
+    is MASK.
+    """
     inputdev = True
-    response = command.NumericResponse
+    response = command.NumericResponseMask
     _opcode = 0x8E
 
 
 class QueryNextFeatureType(_StandardInstanceCommand):
+    """Query Next Feature Type
+
+    If directly preceded by QueryFeatureType, and more than one
+    feature is supported, replies with the lowest feature number.
+
+    If directly preceded by QueryNextFeatureType, and not all features
+    have been reported, replies with the next lowest feature number.
+
+    If directly preceded by QueryNextFeatureType, and all features
+    have been reported, replies with 254.
+
+    In all other cases, replies with NO.
+
+    A sequence of QueryFeatureType and QueryNextFeatureType must be
+    sent with same address/instance combination, and should be sent as
+    a transaction.
+    """
     inputdev = True
-    response = command.NumericResponse
+    response = command.OptionalNumericResponse
     _opcode = 0x8F
 
 
 class QueryEventFilterZeroToSeven(_StandardInstanceCommand):
+    """Query Event Filter Zero To Seven
+
+    Replies with eventFilter[7:0].
+    """
     inputdev = True
     response = command.NumericResponse
     _opcode = 0x90
@@ -768,6 +1170,10 @@ QueryEventFilterL = QueryEventFilterZeroToSeven
 
 
 class QueryEventFilterEightToFifteen(_StandardInstanceCommand):
+    """Query Event Filter Eight To Fifteen
+
+    Replies with eventFilter[15:8].
+    """
     inputdev = True
     response = command.NumericResponse
     _opcode = 0x91
@@ -777,6 +1183,10 @@ QueryEventFilterM = QueryEventFilterEightToFifteen
 
 
 class QueryEventFilterSixteenToTwentyThree(_StandardInstanceCommand):
+    """Query Event Filter Sixteen To Twenty Three
+
+    Replies with eventFilter[23:16].
+    """
     inputdev = True
     response = command.NumericResponse
     _opcode = 0x92
@@ -878,74 +1288,182 @@ class _SpecialDeviceCommandTwoParam(_SpecialDeviceCommand):
 
 
 class Terminate(_SpecialDeviceCommand):
+    """Terminate
+
+    Initialisation and identification will be terminated on reception
+    of this command. Other processes described in parts 3xx could be
+    terminated as well.
+    """
     _addr = 0xC1
     _instance = 0x00
 
 
 class Initialise(_SpecialDeviceCommandOneParam):
+    """Initialise
+
+    This command will start or re-trigger a timer for 15 minutes;
+    addressing commands will only be processed within this period.
+
+    If broadcast is set to True then all devices will enter
+    initialisation state. If broadcast is False, all unaddressed
+    devices will enter initialisation state if address is None;
+    otherwise only devices with the specified address will enter
+    initialisation state.
+    """
     _addr = 0xC1
     _instance = 0x01
     sendtwice = True
 
+    def __init__(self, broadcast: bool = False,
+                 address: Optional[int] = None) -> None:
+        if broadcast and address is not None:
+            raise ValueError("can't specify address when broadcasting")
+        if address is not None:
+            if not isinstance(address, int):
+                raise ValueError("address must be an integer")
+            if address < 0 or address > 63:
+                raise ValueError("address must be in the range 0..63")
+        self.broadcast = broadcast
+        self.address = address
+        if self.broadcast:
+            b = 0xff
+        elif self.address is None:
+            b = 0x7f
+        else:
+            b = self.address
+        super().__init__(b)
+
+    @classmethod
+    def from_frame(cls, f: frame.ForwardFrame, devicetype: Optional[int] = None,
+                   dev_inst_map: Optional[command.DITM] = None
+                   ) -> Optional[Initialise]:
+        if f[23:16] == cls._addr and f[15:8] == cls._instance:
+            if f[7:0] == 0xff:
+                return cls(broadcast=True)
+            if f[7:0] == 0x7f:
+                return cls(broadcast=False)
+            if f[7:6] == 0:
+                return cls(address=f[5:0])
+        return None
+
 
 class Randomise(_SpecialDeviceCommand):
+    """Randomise
+
+    Devices in initialisation state will generate a random number in
+    the range 0..0xfffffe and store it as their random address. This
+    command may take up to 100ms to execute.
+    """
     _addr = 0xC1
     _instance = 0x02
     sendtwice = True
 
 
 class Compare(_SpecialDeviceCommand):
+    """Compare
+
+    Devices in initialisation state that are not withdrawn will answer
+    YES if their random address is less than or equal to the search
+    address, otherwise they will answer NO.
+    """
     _addr = 0xC1
     _instance = 0x03
     response = command.YesNoResponse
 
 
 class Withdraw(_SpecialDeviceCommand):
+    """Withdraw
+
+    Devices in initialisation state where their random address is
+    equal to the search address will cease to answer YES to Compare
+    commands.
+    """
     _addr = 0xC1
     _instance = 0x04
 
 
 class SearchAddrH(_SpecialDeviceCommandOneParam):
+    """Set the high 8 bits of the search address."""
     _addr = 0xC1
     _instance = 0x05
 
 
 class SearchAddrM(_SpecialDeviceCommandOneParam):
+    """Set the mid 8 bits of the search address."""
     _addr = 0xC1
     _instance = 0x06
 
 
 class SearchAddrL(_SpecialDeviceCommandOneParam):
+    """Set the low 8 bits of the search address."""
     _addr = 0xC1
     _instance = 0x07
 
 
 class ProgramShortAddress(_SpecialDeviceCommandOneParam):
+    """Program Short Address
+
+    Devices in initialisation state where the random address is equal
+    to the search address will set their short address to the command
+    parameter, if the command parameter is a valid short address.
+    """
     _addr = 0xC1
     _instance = 0x08
 
 
 class VerifyShortAddress(_SpecialDeviceCommandOneParam):
+    """Verify Short address
+
+    Devices in initialisation state where the random address is equal
+    to the search address will answer YES if their short address is
+    equal to the command parameter.
+    """
     _addr = 0xC1
     _instance = 0x09
     response = command.YesNoResponse
 
 
 class QueryShortAddress(_SpecialDeviceCommand):
+    """Query Short Address
+
+    Devices in initialisation state where the random address is equal
+    to the search address will respond with their short address.
+    """
     _addr = 0xC1
     _instance = 0x0A
     response = command.NumericResponse
 
 
 class WriteMemoryLocation(_SpecialDeviceCommandOneParam):
+    """Write Memory Location
+
+    This command will be ignored if the addressed memory bank is not
+    implemented, or writeEnableState is DISABLED.
+
+    If the command is executed then the control gear will write data
+    into the memory location identified by DTR0 in bank DTR1 and
+    return data as an answer.
+
+    If the location is not implemented, above the last accessible
+    location, locked or not writeable, the answer will be NO
+    (represented by None).
+
+    If the location addressed is below 0xff, then DTR0 will be
+    incremented by 1.
+    """
     _addr = 0xC1
     _instance = 0x20
     uses_dtr0 = True
     uses_dtr1 = True
-    response = command.NumericResponse
+    response = command.OptionalNumericResponse
 
 
 class WriteMemoryLocationNoReply(_SpecialDeviceCommandOneParam):
+    """Write Memory Location No Reply
+
+    Identical to WriteMemoryLocation except no response will ever be
+    generated.
+    """
     _addr = 0xC1
     _instance = 0x21
     uses_dtr0 = True
@@ -953,24 +1471,68 @@ class WriteMemoryLocationNoReply(_SpecialDeviceCommandOneParam):
 
 
 class DTR0(_SpecialDeviceCommandOneParam):
+    """DTR0
+
+    A broadcast command to set the value of the DTR0 register.
+    """
     _addr = 0xC1
     _instance = 0x30
     uses_dtr0 = True
 
 
 class DTR1(_SpecialDeviceCommandOneParam):
+    """DTR1
+
+    A broadcast command to set the value of the DTR1 register.
+    """
     _addr = 0xC1
     _instance = 0x31
     uses_dtr1 = True
 
 
 class DTR2(_SpecialDeviceCommandOneParam):
+    """DTR2
+
+    A broadcast command to set the value of the DTR2 register.
+    """
     _addr = 0xC1
     _instance = 0x32
     uses_dtr2 = True
 
 
 class SendTestframe(_SpecialDeviceCommandOneParam):
+    """Send Testframe
+
+    Instructs all devices to transmit one or more frames; note that
+    this command does not have an address, it is executed by all
+    connected devices.
+
+    The parameter is a bitfield CTARRPPP:
+
+     - C must be 0
+     - T is 1 to send frames as a transaction
+     - A is 1 to send a 16-bit frame, 0 to send a 24-bit frame
+     - RR is the number of additional times to send the frame (i.e. 0 means
+       "send one time", 1 means "send twice")
+     - PPP is the priority to use to send the transaction (if T is 1) or
+       each frame (if T is 0), in the range 2..5
+
+    The command will be ignored if C is 1, PPP is outside the range
+    2..5, or A is 1 and the variable "applicationControllerPresent" is
+    False.
+
+    A 24-bit frame will be sent using DTR0 for the address byte, DTR1
+    for the instance byte, and DTR2 for the opcode byte.
+
+    A 16-bit frame will be sent using DTR0 for the address byte and
+    DTR1 for the opcode byte.
+
+    The command is only executed once per bus device, independent of
+    the number of logical devices or instances. It is intended for use
+    during test procedures, to test multi-master transmission and
+    collision detection.
+
+    """
     _addr = 0xC1
     _instance = 0x33
     uses_dtr0 = True
@@ -979,32 +1541,69 @@ class SendTestframe(_SpecialDeviceCommandOneParam):
 
 
 class DirectWriteMemory(_SpecialDeviceCommandTwoParam):
+    """Direct Write Memory
+
+    This command is ignored if the memory bank identified by DTR1 is
+    not implemented, or writeEnableState is DISABLED.
+
+    The command copies the first parameter to DTR0, then proceeds as
+    for WriteMemoryLocation using the second parameter.
+    """
     _addr = 0xC5
     uses_dtr0 = True
     uses_dtr1 = True
-    response = command.NumericResponse
+    response = command.OptionalNumericResponse
 
 
 class DTR1DTR0(_SpecialDeviceCommandTwoParam):
+    """DTR1:DTR0
+
+    A broadcast command that sets DTR1 to the first parameter and DTR0
+    to the second parameter.
+    """
     _addr = 0xC7
     uses_dtr0 = True
     uses_dtr1 = True
 
 
 class DTR2DTR1(_SpecialDeviceCommandTwoParam):
+    """DTR2:DTR1
+
+    A broadcast command that sets DTR2 to the first parameter and DTR1
+    to the second parameter.
+    """
     _addr = 0xC9
     uses_dtr1 = True
     uses_dtr2 = True
 
 
+# XXX how should we represent a Device power cycle event (part 103
+# section 9.6.2) ?
+
+
 class _Event(command.Command):
-    """
-    An event message from a control device
+    """An event message from a control device
+
+    Event messages are sent by control devices to indicate an event
+    has occurred (for example a button press) or a measurement has
+    changed.
+
+    There are five schemes used to indicate the event source:
+
+    - 0: Instance type and instance number
+    - 1: Short address and instance type
+    - 2: Short address and instance number
+    - 3: Device group and instance type
+    - 4: Instance group and instance type
+
+    These event schemes are listed in the EventScheme enum.
     """
 
-    # 'enabled_by' holds a reference to an element in an enum which, when used
-    # with the appropriate 'SetEventFilter' sequence, flags if this event is
-    # enabled
+    # 'enabled_by' optionally holds a reference to an element in an
+    # enum which, when used with the appropriate 'SetEventFilter'
+    # sequence, flags if this event is enabled. Not all subclasses
+    # will implement this, for example if there is not a one-to-one
+    # relationship between class and event type.
     enabled_by: Optional[InstanceEventFilter] = None
 
     _framesize = 24
